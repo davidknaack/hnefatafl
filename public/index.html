@@ -4,18 +4,92 @@
     <meta charset="UTF-8">
     <title>Hnefatafl Debug UI</title>
     <style>
-        .board { display: grid; grid-template-columns: repeat(11, 40px); gap: 2px; margin-bottom: 10px; }
-        .cell {
-            width: 40px; height: 40px; display: flex;
-            justify-content: center; align-items: center;
-            border: 1px solid #aaa; cursor: pointer;
-        }
-        .throne { background-color: #eee; }
-        .corner { background-color: #ddd; }
-        .info { margin-bottom: 10px; }
-        input { margin-right: 5px; }
-        button { margin-right: 5px; }
-        pre { background: #f9f9f9; padding: 10px; height: 150px; overflow: auto; border: 1px solid #ccc; }
+    body {
+        background-color: #1e1e1e;
+        color: #ddd;
+        font-family: sans-serif;
+        padding: 20px;
+    }
+
+    .board {
+        display: grid;
+        grid-template-columns: repeat(11, 40px);
+        gap: 2px;
+        margin-bottom: 10px;
+    }
+
+    .cell {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border: 1px solid #444;
+        cursor: pointer;
+        background-color: #2c2c2c;
+        color: #fff;
+    }
+
+    .cell:hover {
+        background-color: #3a3a3a;
+    }
+
+    .throne {
+        background-color: #444 !important;
+    }
+
+    .corner {
+        background-color: #555 !important;
+    }
+
+    .info, .side-panel {
+        margin-bottom: 10px;
+    }
+
+    input {
+        margin-right: 5px;
+        background-color: #2a2a2a;
+        color: #fff;
+        border: 1px solid #555;
+        padding: 4px;
+    }
+
+    button {
+        margin-right: 5px;
+        background-color: #333;
+        color: #fff;
+        border: 1px solid #666;
+        padding: 4px 8px;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background-color: #444;
+    }
+
+    pre {
+        background: #2b2b2b;
+        color: #eee;
+        padding: 10px;
+        height: 150px;
+        overflow: auto;
+        border: 1px solid #444;
+    }
+
+    ul {
+        margin: 0;
+        padding: 0;
+    }
+
+    li {
+        padding: 4px 6px;
+        border-bottom: 1px solid #444;
+        font-family: monospace;
+    }
+
+    li:hover {
+        background-color: #333;
+    }
     </style>
 </head>
 <body>
@@ -26,12 +100,15 @@
         <div class="side-panel" style="display: flex; gap: 20px; align-items: flex-start;">
             <div style="flex: 1;">
                 <h3>Current Game</h3>
+                <button id="copyGame">Copy Game</button>
                 <ul id="currentMoves" style="list-style: none; padding: 0; border: 1px solid #ccc; height: 200px; overflow: auto;"></ul>
             </div>
             <div style="flex: 1;">
                 <h3>Load Game</h3>
-                <input id="notationInput" placeholder="Enter game notation string" style="width: 100%; margin-bottom: 5px;">
-                <button id="loadBtn">Load Game</button>
+                <div style="display: flex;flex-direction: row">
+                    <input id="notationInput" placeholder="Enter game notation string" style="width: 100%; margin-bottom: 5px;">
+                    <button id="loadBtn">Load</button>
+                </div>
                 <ul id="loadedMoves" style="list-style: none; padding: 0; border: 1px solid #ccc; height: 200px; overflow: auto;"></ul>
             </div>
         </div>
@@ -74,6 +151,7 @@
         const loadedMovesList = document.getElementById('loadedMoves');
         const notationInput = document.getElementById('notationInput');
         const loadBtn = document.getElementById('loadBtn');
+        const copyGameBtn = document.getElementById('copyGame');
 
         const engine = new HnefataflEngine();
 
@@ -186,6 +264,13 @@
             const input = notationInput.value;
             const parsed = parseMoveSequence(input);
             renderMoveList(loadedMovesList, parsed);
+        };
+
+        copyGameBtn.onclick = () => {
+            const moveHistory = engine.getState().moveHistory;
+            navigator.clipboard.writeText(moveHistory.join(', ')).then(() => {
+                alert('Game copied to clipboard!');
+            });
         };
 
         engine.reset();
