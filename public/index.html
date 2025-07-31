@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hnefatafl Debug UI</title>
+    <style>
+        .board { display: grid; grid-template-columns: repeat(11, 40px); gap: 2px; margin-bottom: 10px; }
+        .cell {
+            width: 40px; height: 40px; display: flex;
+            justify-content: center; align-items: center;
+            border: 1px solid #aaa; cursor: pointer;
+        }
+        .throne { background-color: #eee; }
+        .corner { background-color: #ddd; }
+        .info { margin-bottom: 10px; }
+        input { margin-right: 5px; }
+        button { margin-right: 5px; }
+        pre { background: #f9f9f9; padding: 10px; height: 150px; overflow: auto; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>Hnefatafl Debug UI</h1>
+
+    <div id="boardcontainer" style="display: flex; flex-direction: row; gap: 20px;">
+        <div id="board" class="board"></div>
+        <div class="side-panel" style="display: flex; gap: 20px; align-items: flex-start;">
+            <div style="flex: 1;">
+                <h3>Current Game</h3>
+                <ul id="currentMoves" style="list-style: none; padding: 0; border: 1px solid #ccc; height: 200px; overflow: auto;"></ul>
+            </div>
+            <div style="flex: 1;">
+                <h3>Load Game</h3>
+                <input id="notationInput" placeholder="Enter game notation string" style="width: 100%; margin-bottom: 5px;">
+                <button id="loadBtn">Load Game</button>
+                <ul id="loadedMoves" style="list-style: none; padding: 0; border: 1px solid #ccc; height: 200px; overflow: auto;"></ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="info">
+        <button id="clearBtn">Clear</button>
+        <input id="fromInput" placeholder="From (e.g. E5)">
+        <input id="toInput" placeholder="To (e.g. E6)">
+        <input id="captureInput" placeholder="Capture (e.g. D5F5)">
+        <button id="validateBtn">Validate</button>
+        <button id="applyBtn">Apply</button>
+    </div>
+
+    <div class="info">
+        <div>Current Player: <span id="currentPlayer"></span></div>
+        <div>Captured: A: <span id="capturedA"></span>, D: <span id="capturedD"></span></div>
+        <div>Status: <span id="gameStatus"></span></div>
+    </div>
+
+    <pre id="log"></pre>
+
+    <script type="module">
+        import { HnefataflEngine } from '../src/HnefataflEngine.js';
+        import { parseMoveSequence } from '../src/parser.js';
+
+        const boardEl = document.getElementById('board');
+        const fromInput = document.getElementById('fromInput');
+        const toInput = document.getElementById('toInput');
+        const captureInput = document.getElementById('captureInput');
+        const validateBtn = document.getElementById('validateBtn');
+        const applyBtn = document.getElementById('applyBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const logEl = document.getElementById('log');
+        const currentPlayerEl = document.getElementById('currentPlayer');
+        const capturedAEl = document.getElementById('capturedA');
+        const capturedDEl = document.getElementById('capturedD');
+        const gameStatusEl = document.getElementById('gameStatus');
+        const currentMovesList = document.getElementById('currentMoves');
+        const loadedMovesList = document.getElementById('loadedMoves');
+        const notationInput = document.getElementById('notationInput');
+        const loadBtn = document.getElementById('loadBtn');
+
+        const engine = new HnefataflEngine();
+
+        function coordToString(x, y) {
+            return String.fromCharCode(65 + x) + (11 - y);
+        }
+
+        function renderMoveList(listEl, moves) {
+            listEl.innerHTML = '';
+            let player = 'defender';
+            for (const move of moves) {
+                const li = document.createElement('li');
+                const prefix = player === 'defender' ? 'D' : 'A';
+                if (move === 'pass') {
+                    li.textContent = `${prefix}: P`;
+                } else {
+                    const from = coordToString(move.from.x, move.from.y);
+                    const to = coordToString(move.to.x, move.to.y);
+                    const caps = move.captures.length ? `(${move.captures.map(c => coordToString(c.x, c.y)).join('')})` : '';
+                    li.textContent = `${prefix}: ${from}-${to}${caps}`;
+                    li.style.cursor = 'pointer';
+                    li.onclick = () => {
+                        fromInput.value = from;
+                        toInput.value = to;
+                        captureInput.value = move.captures.map(c => coordToString(c.x, c.y)).join('');
+                    };
+                }
+                listEl.appendChild(li);
+                player = player === 'defender' ? 'attacker' : 'defender';
+            }
+        }
+
+        function render() {
+            const state = engine.getState();
+            boardEl.innerHTML = '';
+
+            state.board.forEach((row, y) => {
+                row.forEach((cell, x) => {
+                    const div = document.createElement('div');
+                    div.className = 'cell';
+                    if (cell.isThrone) div.classList.add('throne');
+                    if (cell.isCorner) div.classList.add('corner');
+                    div.textContent =
+                    cell.occupant === 'attacker' ? 'A' :
+                    cell.occupant === 'defender' ? 'D' :
+                    cell.occupant === 'king' ? 'K' : '';
+                    div.addEventListener('click', () => {
+                        const coord = coordToString(x, y);
+                        if (!fromInput.value)
+                            fromInput.value = coord;
+                        else if (!toInput.value)
+                            toInput.value = coord;
+                        else if (!captureInput.value)
+                            captureInput.value = coord;
+                    });
+                    boardEl.appendChild(div);
+                });
+            });
+
+            currentPlayerEl.textContent = state.currentPlayer;
+            capturedAEl.textContent = state.captured.attacker;
+            capturedDEl.textContent = state.captured.defender;
+            gameStatusEl.textContent = state.status;
+
+            const parsedMoves = state.moveHistory.map((str) => {
+                if (str === 'P')
+                    return 'pass';
+                const match = /^([A-K][1-9]|10|11)-([A-K][1-9]|10|11)(?:\(([A-K0-9]+)\))?$/i.exec(str.replace(/\s+/g, ""));
+                if (!match) 
+                    return 'pass'; // fallback
+                const parse = str => {
+                    const file = str.charCodeAt(0) - 65;
+                    const rank = 11 - parseInt(str.slice(1));
+                    return { x: file, y: rank };
+                };
+                const from = parse(match[1]);
+                const to = parse(match[2]);
+                const captures = match[3] ? match[3].match(/.{1,2}/g).map(parse) : [];
+                return { from, to, captures };
+            });
+
+            renderMoveList(currentMovesList, parsedMoves);
+        }
+
+        validateBtn.onclick = () => {
+            const move = `${fromInput.value}-${toInput.value}${captureInput.value ? `(${captureInput.value})` : ''}`;
+            const result = engine.validateMove(move);
+            logEl.textContent = JSON.stringify(result, null, 2);
+        };
+
+        applyBtn.onclick = () => {
+            const move = `${fromInput.value}-${toInput.value}${captureInput.value ? `(${captureInput.value})` : ''}`;
+            const result = engine.applyMove(move);
+            logEl.textContent = JSON.stringify(result, null, 2);
+            if (result.success) {
+                fromInput.value = '';
+                toInput.value = '';
+                captureInput.value = '';
+                render();
+            }
+        };
+
+        clearBtn.onclick = () => {
+            fromInput.value = '';
+            toInput.value = '';
+            captureInput.value = '';
+        };
+
+        loadBtn.onclick = () => {
+            const input = notationInput.value;
+            const parsed = parseMoveSequence(input);
+            renderMoveList(loadedMovesList, parsed);
+        };
+
+        engine.reset();
+        render();
+    </script>
+
+</body>
+</html>
