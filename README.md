@@ -1,5 +1,14 @@
-npm init -y
-npm install -D typescript vite
+- Intro
+
+I'm just playing with GitHub Copilot and OpenAI's agent mode in here.
+The general idea is to build a Hnefatafl game that runs in-browser (static hosting)
+and that I can maybe use with a RL setup to make an AI opponent.
+
+It's probably, like, 95% AI generated code.
+
+- Overview / Idea / Plan
+
+I had ChatGPT create this basic spec for the engine:
 
 Hnefatafl Engine – Simplified SRS (Initial Version)
 Target: Browser-compatible TypeScript module for use with web components
@@ -213,12 +222,7 @@ isCorner(coord), isThrone(coord)
 
 deepClone()
 
-🔄 State Machine?
-We don’t need a formal state machine library, but we can model turns and statuses explicitly via GameState.status and GameState.currentPlayer. This gives us the benefit of state-machine-like clarity without the overhead.
-
 ts
-Copy
-Edit
 // status can be:
 "in_progress" | "attacker_win" | "defender_win"
 🧪 Testability
