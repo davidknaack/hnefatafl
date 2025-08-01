@@ -79,36 +79,14 @@ export function getAvailableCaptures(
 }
 
 export function isKingCaptured(board: CellState[][]): boolean {
-  const size = board.length;
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      if (board[y][x].occupant === "king") {
-        // Look around for attackers or capture squares
-        const adj = [
-          { x: x - 1, y },
-          { x: x + 1, y },
-          { x, y: y - 1 },
-          { x, y: y + 1 }
-        ];
-
-        let surrounded = 0;
-        for (const { x: nx, y: ny } of adj) {
-          if (
-            nx >= 0 && ny >= 0 && nx < size && ny < size &&
-            (board[ny][nx].occupant === "attacker" ||
-              board[ny][nx].isThrone ||
-              board[ny][nx].isCorner)
-          ) {
-            surrounded++;
-          }
-        }
-
-        return surrounded >= 4;
+  for (const row of board) {
+    for (const cell of row) {
+      if (cell.occupant === "king") {
+        return false;
       }
     }
   }
-
-  return false;
+  return true;
 }
 
 export function isKingEscaped(coord: Coordinate, boardSize = 11): boolean {
