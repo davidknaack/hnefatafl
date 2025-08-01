@@ -133,7 +133,7 @@
 
     <script type="module">
         import { HnefataflEngine } from '../src/HnefataflEngine.js';
-        import { parseMoveSequence } from '../src/parser.js';
+        import { parseMove, parseMoveSequence } from '../src/parser.js';
 
         const boardEl = document.getElementById('board');
         const fromInput = document.getElementById('fromInput');
@@ -217,20 +217,9 @@
             gameStatusEl.textContent = state.status;
 
             const parsedMoves = state.moveHistory.map((str) => {
-                if (str === 'P')
-                    return 'pass';
-                const match = /^([A-K][1-9]|10|11)-([A-K][1-9]|10|11)(?:\(([A-K0-9]+)\))?$/i.exec(str.replace(/\s+/g, ""));
-                if (!match) 
-                    return 'pass'; // fallback
-                const parse = str => {
-                    const file = str.charCodeAt(0) - 65;
-                    const rank = 11 - parseInt(str.slice(1));
-                    return { x: file, y: rank };
-                };
-                const from = parse(match[1]);
-                const to = parse(match[2]);
-                const captures = match[3] ? match[3].match(/.{1,2}/g).map(parse) : [];
-                return { from, to, captures };
+                if (str === 'P') return 'pass';
+                const move = parseMove(str);
+                return move ? move : 'pass';
             });
 
             renderMoveList(currentMovesList, parsedMoves);

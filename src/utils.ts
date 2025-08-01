@@ -1,7 +1,8 @@
 import { Coordinate, CellState } from "./types";
+import { COORD_CAPTURE_RE } from "./patterns";
 
 export function coordFromString(input: string): Coordinate | null {
-  const match = /^([A-K])([1-9]|10|11)$/.exec(input.trim().toUpperCase());
+  const match = COORD_CAPTURE_RE.exec(input.trim().toUpperCase());
   if (!match) return null;
   const file = match[1].charCodeAt(0) - 65;
   const rank = 11 - parseInt(match[2], 10);
