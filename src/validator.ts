@@ -1,5 +1,6 @@
 import { CellState, Coordinate, Move, MoveValidationResult, Player } from "./types";
 import { coordToString } from "./utils";
+import { getAvailableCaptures } from "./rules";
 
 function isSameCoord(a: Coordinate, b: Coordinate): boolean {
   return a.x === b.x && a.y === b.y;
@@ -23,83 +24,6 @@ function isPathClear(board: CellState[][], from: Coordinate, to: Coordinate): bo
   return true;
 }
 
-function getAvailableCaptures(
-  board: CellState[][],
-  move: Move,
-  player: Player
-): Coordinate[] {
-  const captures: Coordinate[] = [];
-  const opponent = player === "attacker" ? ["defender", "king"] : ["attacker"];
-
-  const directions = [
-    { dx: 0, dy: -1 },
-    { dx: 0, dy: 1 },
-    { dx: -1, dy: 0 },
-    { dx: 1, dy: 0 }
-  ];
-
-  function kingWouldBeCaptured(x: number, y: number): boolean {
-    if (player !== "attacker") return false;
-
-    const checks = [
-      { dx: 0, dy: -1 },
-      { dx: 0, dy: 1 },
-      { dx: -1, dy: 0 },
-      { dx: 1, dy: 0 }
-    ];
-
-    let surrounded = 0;
-    for (const { dx, dy } of checks) {
-      const nx = x + dx;
-      const ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= board.length || ny >= board.length) {
-        return false;
-      }
-
-      const cell = board[ny][nx];
-      let occ = cell.occupant;
-
-      // account for the moving piece
-      if (nx === move.from.x && ny === move.from.y) occ = null;
-      if (nx === move.to.x && ny === move.to.y) occ = player;
-
-      if (cell.isThrone || cell.isCorner || occ === "attacker") {
-        surrounded++;
-      }
-    }
-
-    return surrounded >= 4;
-  }
-
-  for (const { dx, dy } of directions) {
-    const midX = move.to.x + dx;
-    const midY = move.to.y + dy;
-    const beyondX = move.to.x + dx * 2;
-    const beyondY = move.to.y + dy * 2;
-
-    if (
-      midX < 0 || midX >= board.length || midY < 0 || midY >= board.length ||
-      beyondX < 0 || beyondX >= board.length || beyondY < 0 || beyondY >= board.length
-    ) continue;
-
-    const middle = board[midY][midX];
-    const beyond = board[beyondY][beyondX];
-
-    if (middle.occupant === "king") {
-      if (kingWouldBeCaptured(midX, midY)) {
-        captures.push({ x: midX, y: midY });
-      }
-    } else if (
-      middle.occupant &&
-      opponent.includes(middle.occupant) &&
-      (beyond.occupant === player || beyond.isThrone || beyond.isCorner)
-    ) {
-      captures.push({ x: midX, y: midY });
-    }
-  }
-
-  return captures;
-}
 
 export function validateMove(board: CellState[][], player: Player, move: Move): MoveValidationResult {
   const fromCell = board[move.from.y][move.from.x];

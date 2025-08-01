@@ -16,6 +16,8 @@ export function getAvailableCaptures(
     { dx: 1, dy: 0 }
   ];
 
+  const size = board.length;
+
   function kingWouldBeCaptured(x: number, y: number): boolean {
     if (player !== "attacker") return false;
 
@@ -30,7 +32,7 @@ export function getAvailableCaptures(
     for (const { dx, dy } of checks) {
       const nx = x + dx;
       const ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= 11 || ny >= 11) return false;
+      if (nx < 0 || ny < 0 || nx >= size || ny >= size) return false;
 
       const cell = board[ny][nx];
       let occ = cell.occupant;
@@ -53,8 +55,8 @@ export function getAvailableCaptures(
     const beyondY = move.to.y + dy * 2;
 
     if (
-      midX < 0 || midX >= 11 || midY < 0 || midY >= 11 ||
-      beyondX < 0 || beyondX >= 11 || beyondY < 0 || beyondY >= 11
+      midX < 0 || midX >= size || midY < 0 || midY >= size ||
+      beyondX < 0 || beyondX >= size || beyondY < 0 || beyondY >= size
     ) continue;
 
     const middle = board[midY][midX];
@@ -77,8 +79,9 @@ export function getAvailableCaptures(
 }
 
 export function isKingCaptured(board: CellState[][]): boolean {
-  for (let y = 0; y < board.length; y++) {
-    for (let x = 0; x < board.length; x++) {
+  const size = board.length;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
       if (board[y][x].occupant === "king") {
         // Look around for attackers or capture squares
         const adj = [
@@ -91,7 +94,7 @@ export function isKingCaptured(board: CellState[][]): boolean {
         let surrounded = 0;
         for (const { x: nx, y: ny } of adj) {
           if (
-            nx >= 0 && ny >= 0 && nx < 11 && ny < 11 &&
+            nx >= 0 && ny >= 0 && nx < size && ny < size &&
             (board[ny][nx].occupant === "attacker" ||
               board[ny][nx].isThrone ||
               board[ny][nx].isCorner)
@@ -108,9 +111,9 @@ export function isKingCaptured(board: CellState[][]): boolean {
   return false;
 }
 
-export function isKingEscaped(coord: Coordinate): boolean {
+export function isKingEscaped(coord: Coordinate, boardSize = 11): boolean {
   return (
-    (coord.x === 0 || coord.x === 10) &&
-    (coord.y === 0 || coord.y === 10)
+    (coord.x === 0 || coord.x === boardSize - 1) &&
+    (coord.y === 0 || coord.y === boardSize - 1)
   );
 }
