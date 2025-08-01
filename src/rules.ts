@@ -1,7 +1,11 @@
-import { BoardSize, CellState, Coordinate, Move, Player } from "./types";
+import { CellState, Coordinate, Move, Player } from "./types";
 
 // Same logic as in validator
-export function getAvailableCaptures(board: CellState[][], move: Move, player: Player): Coordinate[] {
+export function getAvailableCaptures(
+  board: CellState[][],
+  move: Move,
+  player: Player
+): Coordinate[] {
   const captures: Coordinate[] = [];
   const opponent = player === "attacker" ? ["defender", "king"] : ["attacker"];
 
@@ -11,6 +15,36 @@ export function getAvailableCaptures(board: CellState[][], move: Move, player: P
     { dx: -1, dy: 0 },
     { dx: 1, dy: 0 }
   ];
+
+  function kingWouldBeCaptured(x: number, y: number): boolean {
+    if (player !== "attacker") return false;
+
+    const checks = [
+      { dx: 0, dy: -1 },
+      { dx: 0, dy: 1 },
+      { dx: -1, dy: 0 },
+      { dx: 1, dy: 0 }
+    ];
+
+    let surrounded = 0;
+    for (const { dx, dy } of checks) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= 11 || ny >= 11) return false;
+
+      const cell = board[ny][nx];
+      let occ = cell.occupant;
+
+      if (nx === move.from.x && ny === move.from.y) occ = null;
+      if (nx === move.to.x && ny === move.to.y) occ = player;
+
+      if (cell.isThrone || cell.isCorner || occ === "attacker") {
+        surrounded++;
+      }
+    }
+
+    return surrounded >= 4;
+  }
 
   for (const { dx, dy } of directions) {
     const midX = move.to.x + dx;
@@ -26,7 +60,11 @@ export function getAvailableCaptures(board: CellState[][], move: Move, player: P
     const middle = board[midY][midX];
     const beyond = board[beyondY][beyondX];
 
-    if (
+    if (middle.occupant === "king") {
+      if (kingWouldBeCaptured(midX, midY)) {
+        captures.push({ x: midX, y: midY });
+      }
+    } else if (
       middle.occupant &&
       opponent.includes(middle.occupant) &&
       (beyond.occupant === player || beyond.isThrone || beyond.isCorner)

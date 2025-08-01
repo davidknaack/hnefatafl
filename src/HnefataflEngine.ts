@@ -77,7 +77,7 @@ export class HnefataflEngine {
     }
 
     // Check for win conditions
-    let newStatus = "in_progress";
+    let newStatus: GameState["status"] = "in_progress";
     if (isKingCaptured(board)) {
         newStatus = "attacker_win";
     } else if (piece === "king" && isKingEscaped(move.to)) {
