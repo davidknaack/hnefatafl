@@ -1,4 +1,4 @@
-import { createInitialBoard, STANDARD_BOARD } from "./board"
+import { createInitialBoard, STANDARD_BOARD, extractDefenderPosition } from "./board"
 import { validateMove as validateRawMove } from "./validator"
 import { parseMove } from "./parser"
 import { cloneBoard } from "./board"
@@ -19,11 +19,13 @@ export class HnefataflEngine {
     private state: GameState
 
     constructor() {
+        const board = createInitialBoard(STANDARD_BOARD)
         this.state = {
-            board: createInitialBoard(STANDARD_BOARD),
+            board,
             currentPlayer: Player.Defender,
             captured: { attacker: 0, defender: 0 },
             moveHistory: [],
+            defenderPositions: [extractDefenderPosition(board)],
             status: GameStatus.InProgress
         }
     }
@@ -40,7 +42,7 @@ export class HnefataflEngine {
         if (!move) 
             return { isValid: false, reason: "Invalid move format", expectedCaptures: [] }
 
-        return validateRawMove(this.state.board, this.state.currentPlayer, move)
+        return validateRawMove(this.state.board, this.state.currentPlayer, move, this.state.defenderPositions)
     }
 
     applyMove(moveStr: string): ApplyMoveResult {
@@ -51,7 +53,7 @@ export class HnefataflEngine {
         if (!move)
             return { success: false, error: "Invalid move format" }
 
-        const validation = validateRawMove(this.state.board, this.state.currentPlayer, move)
+        const validation = validateRawMove(this.state.board, this.state.currentPlayer, move, this.state.defenderPositions)
         if (!validation.isValid) 
             return { success: false, error: validation.reason }
 
@@ -67,12 +69,14 @@ export class HnefataflEngine {
                 return { success: false, error: `Invalid capture specified: ${coordToString(cap)}`}
         }
 
+        let defenderCaptures = 0
         for (const cap of move.captures) {
             const cell = board[cap.y][cap.x]
             if (cell.occupant === Piece.Attacker) {
                 this.state.captured.attacker++
             } else if (cell.occupant === Piece.Defender || cell.occupant === Piece.King) {
                 this.state.captured.defender++
+                defenderCaptures++
             }
             cell.occupant = null
         }
@@ -87,11 +91,20 @@ export class HnefataflEngine {
 
         const nextPlayer: Player = this.state.currentPlayer === Player.Attacker ? Player.Defender : Player.Attacker
 
+        let defenderPositions = [...this.state.defenderPositions]
+        if (defenderCaptures > 0) {
+            defenderPositions = []
+        }
+        if (defenderCaptures > 0 || this.state.currentPlayer === Player.Defender) {
+            defenderPositions.push(extractDefenderPosition(board))
+        }
+
         const newState: GameState = {
             board,
             currentPlayer: newStatus === GameStatus.InProgress ? nextPlayer : this.state.currentPlayer,
             captured: { ...this.state.captured },
             moveHistory: [...this.state.moveHistory, moveStr],
+            defenderPositions,
             status: newStatus
         }
 
@@ -111,11 +124,13 @@ export class HnefataflEngine {
     }
 
     reset(board: string[] = STANDARD_BOARD): void {
+        const newBoard = createInitialBoard(board)
         this.state = {
-            board: createInitialBoard(board),
+            board: newBoard,
             currentPlayer: Player.Defender,
             captured: { attacker: 0, defender: 0 },
             moveHistory: [],
+            defenderPositions: [extractDefenderPosition(newBoard)],
             status: GameStatus.InProgress
         }
     }

@@ -1,8 +1,27 @@
-import { CellState } from "./types";
+import { CellState, Move, Piece } from "./types";
 
 export function cloneBoard(board: CellState[][]): CellState[][] {
   return board.map(row =>
     row.map(cell => ({ ...cell }))
+  );
+}
+
+export function extractDefenderPosition(board: CellState[][], move?: Move): string[] {
+  return board.map((row, y) =>
+    row
+      .map((cell, x) => {
+        let occ = cell.occupant;
+
+        if (move) {
+          if (x === move.from.x && y === move.from.y) occ = null;
+          if (x === move.to.x && y === move.to.y) occ = board[move.from.y][move.from.x].occupant;
+        }
+
+        if (occ === Piece.Defender) return "D";
+        if (occ === Piece.King) return "K";
+        return " ";
+      })
+      .join("")
   );
 }
 
