@@ -1,0 +1,132 @@
+import { describe, expect, test } from 'vitest'
+import { createInitialBoard } from './board'
+import { validateMove } from './validator'
+import { Player } from './types'
+
+describe('Validator Tests', () => {
+
+    test('No kings on board fails', () => {
+        const boardLayout = [
+            "A D A",
+            "     ",
+            "     ",
+            "     ",
+            "     "
+        ]
+        expect(() => createInitialBoard(boardLayout)).toThrowError(/There must be exactly one king on the board/i)
+    })
+
+    test('Attacker blocked by piece', () => {
+        const boardLayout = [
+            "R  K ",
+            "     ",
+            "  A  ",
+            "  D  ",
+            "     "
+        ]
+        const board = createInitialBoard(boardLayout)
+        const move = {
+            from: { x: 2, y: 2 }, // attacker
+            to: { x: 2, y: 4 },   // try to move past defender
+            captures: []
+        }
+        const result = validateMove(board, Player.Attacker, move)
+
+        expect(result.isValid).toBe(false)
+        expect(result.reason).toContain("Path is blocked")
+    })
+
+    test('Moving to occupied cell fails', () => {
+        const boardLayout = [
+            "R K  ",
+            "     ",
+            "  A  ",
+            "  D  ",
+            "     "
+        ]
+        const board = createInitialBoard(boardLayout)
+        const move = {
+            from: { x: 2, y: 2 },
+            to: { x: 2, y: 3 }, // occupied by defender
+            captures: []
+        }
+        const result = validateMove(board, Player.Attacker, move)
+        expect(result.isValid).toBe(false)
+        expect(result.reason).toContain("Destination is occupied")
+    })
+
+    test('Moving non-owned piece fails', () => {
+        const boardLayout = [
+            "R K  ",
+            "     ",
+            "  A  ",
+            "  D  ",
+            "     "
+        ]
+        const board = createInitialBoard(boardLayout)
+        const move = {
+            from: { x: 2, y: 3 }, // defender
+            to: { x: 2, y: 4 },
+            captures: []
+        }
+        const result = validateMove(board, Player.Attacker, move)
+        expect(result.isValid).toBe(false)
+        expect(result.reason).toContain("Not your piece")
+    })
+
+    test('Moving to restricted square fails for non-king', () => {
+        const boardLayout = [
+            "  K  ",
+            "     ",
+            "R A  ",
+            "     ",
+            "     "
+        ]
+        const board = createInitialBoard(boardLayout)
+        const move = {
+            from: { x: 2, y: 2 }, // attacker
+            to: { x: 0, y: 2 },
+            captures: []
+        }
+        const result = validateMove(board, Player.Attacker, move)
+        expect(result.isValid).toBe(false)
+        expect(result.reason).toContain("Cannot move to restricted square")
+    })
+
+    test('Valid move for king to restricted square', () => {
+        const boardLayout = [
+            "R K  ",
+            "     ",
+            "     ",
+            "     ",
+            "     "
+        ]
+        const board = createInitialBoard(boardLayout)
+        const move = {
+            from: { x: 2, y: 0 }, // king
+            to: { x: 0, y: 0 },
+            captures: []
+        }
+        const result = validateMove(board, Player.Defender, move)
+        expect(result.isValid).toBe(true)
+    })
+
+    test('Moving across restricted square successful for non-king', () => {
+        const boardLayout = [
+            "  K  ",
+            "     ",
+            "  A  ",
+            "  R  ",
+            "     "
+        ]
+        const board = createInitialBoard(boardLayout)
+        const moveAttacker = {
+            from: { x: 2, y: 2 }, // attacker
+            to: { x: 2, y: 4 },
+            captures: []
+        }
+        const result = validateMove(board, Player.Attacker, moveAttacker)
+        expect(result.isValid).toBe(true)
+    })
+
+})
