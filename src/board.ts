@@ -1,63 +1,74 @@
 import { CellState } from "./types";
 
-export const BOARD_SIZE = 11;
-
 export function cloneBoard(board: CellState[][]): CellState[][] {
   return board.map(row =>
     row.map(cell => ({ ...cell }))
   );
 }
 
-export function createInitialBoard(): CellState[][] {
-  const emptyCell = (): CellState => ({
-    occupant: null,
-    isThrone: false,
-    isCorner: false
-  });
+export const STANDARD_BOARD = [
+  "R  AAAAA  R",
+  "     A     ",
+  "           ",
+  "A    D    A",
+  "A   DDD   A",
+  "AA DDKDD AA",
+  "A   DDD   A",
+  "A    D    A",
+  "           ",
+  "     A     ",
+  "R  AAAAA  R",
+]
 
-  const board: CellState[][] = Array.from({ length: BOARD_SIZE }, () =>
-    Array.from({ length: BOARD_SIZE }, emptyCell)
+export function createInitialBoard(boardLayout: string[]): CellState[][] {
+  // Validation
+  const size = boardLayout.length;
+  if (size === 0) throw new Error("boardLayout array must not be empty");
+  if (!boardLayout.every(row => row.length === size)) {
+    throw new Error("All boardLayout rows must be the same length and equal to the number of rows (square board)");
+  }
+
+  let kingCount = 0;
+  let restrictedCount = 0;
+  let thronePos: { x: number, y: number } | null = null;
+
+  // First pass: find king and restricted squares
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const c = boardLayout[y][x];
+      if (c === 'K') {
+        kingCount++;
+        thronePos = { x, y };
+      }
+      if (c === 'R') restrictedCount++;
+    }
+  }
+  if (kingCount !== 1) throw new Error("There must be exactly one king on the board");
+  if (restrictedCount < 1) throw new Error("There must be at least one restricted square (not counting throne)");
+
+  // Build board
+  const board: CellState[][] = Array.from({ length: size }, (_, y) =>
+    Array.from({ length: size }, (_, x) => {
+      const c = boardLayout[y][x];
+      let occupant: CellState["occupant"] = null;
+      let isThrone = false;
+      let isRestricted = false;
+      if (c === 'A') occupant = "attacker";
+      else if (c === 'D') occupant = "defender";
+      else if (c === 'K') {
+        occupant = "king";
+        isThrone = true;
+        isRestricted = true;
+      }
+      else if (c === 'R') {
+        isRestricted = true;
+      }
+      return {
+        occupant,
+        isThrone,
+        isRestricted
+      };
+    })
   );
-
-  const throne = { x: 5, y: 5 };
-  board[throne.y][throne.x].isThrone = true;
-
-  const corners = [
-    { x: 0, y: 0 }, { x: 0, y: 10 },
-    { x: 10, y: 0 }, { x: 10, y: 10 }
-  ];
-  corners.forEach(({ x, y }) => {
-    board[y][x].isCorner = true;
-  });
-
-  const king = { x: 5, y: 5 };
-  board[king.y][king.x].occupant = "king";
-
-  const defenders = [
-    { x: 5, y: 4 }, { x: 5, y: 6 },
-    { x: 4, y: 5 }, { x: 6, y: 5 },
-    { x: 5, y: 3 }, { x: 5, y: 7 },
-    { x: 3, y: 5 }, { x: 7, y: 5 },
-    { x: 4, y: 4 }, { x: 6, y: 4 },
-    { x: 4, y: 6 }, { x: 6, y: 6 }
-  ];
-  defenders.forEach(({ x, y }) => {
-    board[y][x].occupant = "defender";
-  });
-
-  const attackers = [
-    { x: 5, y: 0 }, { x: 5, y: 1 }, { x: 5, y: 2 },
-    { x: 0, y: 5 }, { x: 1, y: 5 }, { x: 2, y: 5 },
-    { x: 10, y: 5 }, { x: 9, y: 5 }, { x: 8, y: 5 },
-    { x: 5, y: 10 }, { x: 5, y: 9 }, { x: 5, y: 8 },
-    { x: 4, y: 1 }, { x: 6, y: 1 }, { x: 1, y: 4 },
-    { x: 1, y: 6 }, { x: 4, y: 9 }, { x: 6, y: 9 },
-    { x: 9, y: 4 }, { x: 9, y: 6 }, { x: 3, y: 0 },
-    { x: 7, y: 0 }, { x: 0, y: 3 }, { x: 0, y: 7 }
-  ];
-  attackers.forEach(({ x, y }) => {
-    board[y][x].occupant = "attacker";
-  });
-
   return board;
 }

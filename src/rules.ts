@@ -1,6 +1,5 @@
 import { CellState, Coordinate, Move, Player } from "./types";
 
-// Same logic as in validator
 export function getAvailableCaptures(
   board: CellState[][],
   move: Move,
@@ -18,7 +17,7 @@ export function getAvailableCaptures(
 
   const size = board.length;
 
-  function kingWouldBeCaptured(x: number, y: number): boolean {
+  function kingCanBeCaptured(x: number, y: number): boolean {
     if (player !== "attacker") return false;
 
     const checks = [
@@ -40,7 +39,7 @@ export function getAvailableCaptures(
       if (nx === move.from.x && ny === move.from.y) occ = null;
       if (nx === move.to.x && ny === move.to.y) occ = player;
 
-      if (cell.isThrone || cell.isCorner || occ === "attacker") {
+      if (cell.isThrone || cell.isRestricted || occ === "attacker") {
         surrounded++;
       }
     }
@@ -63,13 +62,13 @@ export function getAvailableCaptures(
     const beyond = board[beyondY][beyondX];
 
     if (middle.occupant === "king") {
-      if (kingWouldBeCaptured(midX, midY)) {
+      if (kingCanBeCaptured(midX, midY)) {
         captures.push({ x: midX, y: midY });
       }
     } else if (
       middle.occupant &&
       opponent.includes(middle.occupant) &&
-      (beyond.occupant === player || beyond.isThrone || beyond.isCorner)
+      (beyond.occupant === player || beyond.isThrone || beyond.isRestricted)
     ) {
       captures.push({ x: midX, y: midY });
     }

@@ -14,15 +14,3 @@ export function coordToString(coord: Coordinate): string {
   const rank = 11 - coord.y;
   return `${file}${rank}`;
 }
-
-export function isThrone(cell: CellState): boolean {
-  return cell.isThrone;
-}
-
-export function isCorner(cell: CellState): boolean {
-  return cell.isCorner;
-}
-
-export function deepClone<T>(obj: T): T {
-  return JSON.parse(JSON.stringify(obj));
-}

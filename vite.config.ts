@@ -8,5 +8,9 @@ export default defineConfig({
   build: {
     outDir: '../dist',
     emptyOutDir: true,
+  },
+  test: {
+    root: '.', // Use project root for tests
+    include: ['**/*.test.ts'],
   }
 });

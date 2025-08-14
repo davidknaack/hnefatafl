@@ -45,6 +45,10 @@ export function validateMove(board: CellState[][], player: Player, move: Move): 
     return { isValid: false, reason: "Path is blocked", expectedCaptures: [] };
   }
 
+  if (fromCell.occupant !== "king" && toCell.isRestricted) {
+    return { isValid: false, reason: "Cannot move to restricted square", expectedCaptures: [] };
+  }
+
   const expectedCaptures = getAvailableCaptures(board, move, player);
 
   for (const capture of move.captures) {
