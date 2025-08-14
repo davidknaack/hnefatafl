@@ -69,14 +69,12 @@ export class HnefataflEngine {
                 return { success: false, error: `Invalid capture specified: ${coordToString(cap)}`}
         }
 
-        let defenderCaptures = 0
         for (const cap of move.captures) {
             const cell = board[cap.y][cap.x]
             if (cell.occupant === Piece.Attacker) {
                 this.state.captured.attacker++
             } else if (cell.occupant === Piece.Defender || cell.occupant === Piece.King) {
                 this.state.captured.defender++
-                defenderCaptures++
             }
             cell.occupant = null
         }
@@ -92,10 +90,10 @@ export class HnefataflEngine {
         const nextPlayer: Player = this.state.currentPlayer === Player.Attacker ? Player.Defender : Player.Attacker
 
         let defenderPositions = [...this.state.defenderPositions]
-        if (defenderCaptures > 0) {
+        if (move.captures.length > 0) {
             defenderPositions = []
         }
-        if (defenderCaptures > 0 || this.state.currentPlayer === Player.Defender) {
+        if (move.captures.length > 0 || this.state.currentPlayer === Player.Defender) {
             defenderPositions.push(extractDefenderPosition(board))
         }
 
