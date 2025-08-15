@@ -1,7 +1,6 @@
-import { createInitialBoard, STANDARD_BOARD, extractDefenderPosition } from "./board"
+import { createInitialBoard, STANDARD_BOARD, extractDefenderPosition, movePiece } from "./board"
 import { validateMove as validateRawMove } from "./validator"
 import { parseMove } from "./parser"
-import { cloneBoard } from "./board"
 import { coordToString } from "./utils"
 import { getAvailableCaptures } from "./rules"
 import { isKingCaptured, isKingEscaped } from "./rules"
@@ -57,10 +56,8 @@ export class HnefataflEngine {
         if (!validation.isValid) 
             return { success: false, error: validation.reason }
 
-        const board = cloneBoard(this.state.board)
-        const piece = board[move.from.y][move.from.x].occupant
-        board[move.from.y][move.from.x].occupant = null
-        board[move.to.y][move.to.x].occupant = piece
+        const board = movePiece(this.state.board, move)
+        const piece = board[move.to.y][move.to.x].occupant
 
         const actualCaptures = getAvailableCaptures(board, move, this.state.currentPlayer)
         for (const cap of move.captures) {

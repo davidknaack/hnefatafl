@@ -6,6 +6,14 @@ export function cloneBoard(board: CellState[][]): CellState[][] {
   );
 }
 
+export function movePiece(board: CellState[][], move: Move): CellState[][] {
+  const newBoard = cloneBoard(board);
+  const piece = newBoard[move.from.y][move.from.x].occupant;
+  newBoard[move.from.y][move.from.x].occupant = null;
+  newBoard[move.to.y][move.to.x].occupant = piece;
+  return newBoard;
+}
+
 export function extractDefenderPosition(board: CellState[][], move?: Move): string[] {
   return board.map((row, y) =>
     row

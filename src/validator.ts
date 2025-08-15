@@ -1,7 +1,7 @@
 import { CellState, Coordinate, Move, MoveValidationResult, Player } from "./types";
 import { coordToString } from "./utils";
 import { getAvailableCaptures } from "./rules";
-import { cloneBoard, extractDefenderPosition } from "./board";
+import { extractDefenderPosition, movePiece } from "./board";
 
 function isSameCoord(a: Coordinate, b: Coordinate): boolean {
   return a.x === b.x && a.y === b.y;
@@ -69,10 +69,7 @@ export function validateMove(
   }
 
   if (player === "defender") {
-    const simulated = cloneBoard(board);
-    const piece = simulated[move.from.y][move.from.x].occupant;
-    simulated[move.from.y][move.from.x].occupant = null;
-    simulated[move.to.y][move.to.x].occupant = piece;
+    const simulated = movePiece(board, move);
     const pos = extractDefenderPosition(simulated);
     const repeat = defenderPositions.some(p => p.length === pos.length && p.every((r, i) => r === pos[i]));
     if (repeat) {
