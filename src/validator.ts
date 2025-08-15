@@ -1,6 +1,7 @@
 import { CellState, Coordinate, Move, MoveValidationResult, Player } from "./types";
 import { coordToString } from "./utils";
 import { getAvailableCaptures } from "./rules";
+import { cloneBoard, extractDefenderPosition } from "./board";
 
 function isSameCoord(a: Coordinate, b: Coordinate): boolean {
   return a.x === b.x && a.y === b.y;
@@ -25,7 +26,12 @@ function isPathClear(board: CellState[][], from: Coordinate, to: Coordinate): bo
 }
 
 
-export function validateMove(board: CellState[][], player: Player, move: Move): MoveValidationResult {
+export function validateMove(
+  board: CellState[][],
+  player: Player,
+  move: Move,
+  defenderPositions: string[][] = []
+): MoveValidationResult {
   const fromCell = board[move.from.y][move.from.x];
   const toCell = board[move.to.y][move.to.x];
 
@@ -57,6 +63,22 @@ export function validateMove(board: CellState[][], player: Player, move: Move): 
       return {
         isValid: false,
         reason: `Invalid capture at ${coordToString(capture)}`,
+        expectedCaptures
+      };
+    }
+  }
+
+  if (player === "defender") {
+    const simulated = cloneBoard(board);
+    const piece = simulated[move.from.y][move.from.x].occupant;
+    simulated[move.from.y][move.from.x].occupant = null;
+    simulated[move.to.y][move.to.x].occupant = piece;
+    const pos = extractDefenderPosition(simulated);
+    const repeat = defenderPositions.some(p => p.length === pos.length && p.every((r, i) => r === pos[i]));
+    if (repeat) {
+      return {
+        isValid: false,
+        reason: "Move would repeat defender board position",
         expectedCaptures
       };
     }

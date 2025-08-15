@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'vitest'
 import { createInitialBoard } from './board'
 import { validateMove } from './validator'
-import { Player } from './types'
+import { Player, Piece } from './types'
+import { extractDefenderPosition, cloneBoard } from './board'
 
 describe('Validator Tests', () => {
 
@@ -127,6 +128,40 @@ describe('Validator Tests', () => {
         }
         const result = validateMove(board, Player.Attacker, moveAttacker)
         expect(result.isValid).toBe(true)
+    })
+
+    test('Defender cannot repeat board position', () => {
+        const boardLayout = [
+            "R K  ",
+            "     ",
+            "  D  ",
+            "     ",
+            "     "
+        ]
+        const board = createInitialBoard(boardLayout)
+        const history = [extractDefenderPosition(board)]
+
+        const move1 = {
+            from: { x: 2, y: 2 },
+            to: { x: 2, y: 3 },
+            captures: []
+        }
+        const result1 = validateMove(board, Player.Defender, move1, history)
+        expect(result1.isValid).toBe(true)
+
+        const boardAfter = cloneBoard(board)
+        boardAfter[2][2].occupant = null
+        boardAfter[3][2].occupant = Piece.Defender
+        history.push(extractDefenderPosition(boardAfter))
+
+        const move2 = {
+            from: { x: 2, y: 3 },
+            to: { x: 2, y: 2 },
+            captures: []
+        }
+        const result2 = validateMove(boardAfter, Player.Defender, move2, history)
+        expect(result2.isValid).toBe(false)
+        expect(result2.reason).toContain('repeat')
     })
 
 })

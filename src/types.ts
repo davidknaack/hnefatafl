@@ -40,6 +40,7 @@ export interface GameState {
         defender: number
     }
     moveHistory: string[]
+    defenderPositions: string[][]
     status: GameStatus
 }
 
