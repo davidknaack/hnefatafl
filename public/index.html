@@ -194,10 +194,14 @@
                     div.className = 'cell';
                     if (cell.isThrone) div.classList.add('throne');
                     if (cell.isCorner) div.classList.add('corner');
-                    div.textContent =
-                    cell.occupant === 'attacker' ? 'A' :
-                    cell.occupant === 'defender' ? 'D' :
-                    cell.occupant === 'king' ? 'K' : '';
+                    if (cell.occupant) {
+                        if (cell.occupant.type === 'attacker') div.textContent = 'A';
+                        else if (cell.occupant.type === 'defender') div.textContent = 'D';
+                        else if (cell.occupant.type === 'king') div.textContent = 'K';
+                        else div.textContent = '';
+                    } else {
+                        div.textContent = '';
+                    }
                     div.addEventListener('click', () => {
                         const coord = coordToString(x, y);
                         if (!fromInput.value)

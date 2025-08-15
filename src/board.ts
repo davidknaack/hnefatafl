@@ -1,4 +1,4 @@
-import { CellState, Move, Piece } from "./types";
+import { CellState, Move, Piece, Player, PieceType } from "./types";
 
 export function cloneBoard(board: CellState[][]): CellState[][] {
   return board.map(row =>
@@ -17,8 +17,8 @@ export function extractDefenderPosition(board: CellState[][], move?: Move): stri
           if (x === move.to.x && y === move.to.y) occ = board[move.from.y][move.from.x].occupant;
         }
 
-        if (occ === Piece.Defender) return "D";
-        if (occ === Piece.King) return "K";
+        if (occ && occ.type === PieceType.Defender) return "D";
+        if (occ && occ.type === PieceType.King) return "K";
         return " ";
       })
       .join("")
@@ -72,10 +72,10 @@ export function createInitialBoard(boardLayout: string[]): CellState[][] {
       let occupant: CellState["occupant"] = null;
       let isThrone = false;
       let isRestricted = false;
-      if (c === 'A') occupant = "attacker";
-      else if (c === 'D') occupant = "defender";
+      if (c === 'A') occupant = { owner: Player.Attacker, type: PieceType.Attacker };
+      else if (c === 'D') occupant = { owner: Player.Defender, type: PieceType.Defender };
       else if (c === 'K') {
-        occupant = "king";
+        occupant = { owner: Player.Defender, type: PieceType.King };
         isThrone = true;
         isRestricted = true;
       }

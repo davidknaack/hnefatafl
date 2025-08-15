@@ -3,10 +3,15 @@ export enum Player {
     Defender = "defender"
 }
 
-export enum Piece {
+export enum PieceType {
     Attacker = "attacker",
     Defender = "defender",
     King = "king"
+}
+
+export interface Piece {
+    owner: Player;
+    type: PieceType;
 }
 
 export enum GameStatus {

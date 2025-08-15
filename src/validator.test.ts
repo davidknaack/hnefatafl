@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { createInitialBoard } from './board'
 import { validateMove } from './validator'
-import { Player, Piece } from './types'
+import { Player, Piece, PieceType } from './types'
 import { extractDefenderPosition, cloneBoard } from './board'
 
 describe('Validator Tests', () => {
@@ -151,7 +151,7 @@ describe('Validator Tests', () => {
 
         const boardAfter = cloneBoard(board)
         boardAfter[2][2].occupant = null
-        boardAfter[3][2].occupant = Piece.Defender
+        boardAfter[3][2].occupant = { owner: Player.Defender, type: PieceType.Defender }
         history.push(extractDefenderPosition(boardAfter))
 
         const move2 = {
@@ -163,5 +163,4 @@ describe('Validator Tests', () => {
         expect(result2.isValid).toBe(false)
         expect(result2.reason).toContain('repeat')
     })
-
 })

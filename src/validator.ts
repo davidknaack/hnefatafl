@@ -1,4 +1,4 @@
-import { CellState, Coordinate, Move, MoveValidationResult, Player } from "./types";
+import { CellState, Coordinate, Move, MoveValidationResult, Player, PieceType } from "./types";
 import { coordToString } from "./utils";
 import { getAvailableCaptures } from "./rules";
 import { cloneBoard, extractDefenderPosition } from "./board";
@@ -35,25 +35,20 @@ export function validateMove(
   const fromCell = board[move.from.y][move.from.x];
   const toCell = board[move.to.y][move.to.x];
 
-  if (!fromCell.occupant) {
+  if (!fromCell.occupant)
     return { isValid: false, reason: "No piece at source", expectedCaptures: [] };
-  }
 
-  if (fromCell.occupant !== player && !(player === "defender" && fromCell.occupant === "king")) {
+  if (fromCell.occupant.owner !== player && !(player === Player.Defender && fromCell.occupant.type === PieceType.King))
     return { isValid: false, reason: "Not your piece", expectedCaptures: [] };
-  }
 
-  if (toCell.occupant) {
+  if (toCell.occupant)
     return { isValid: false, reason: "Destination is occupied", expectedCaptures: [] };
-  }
 
-  if (!isPathClear(board, move.from, move.to)) {
+  if (!isPathClear(board, move.from, move.to))
     return { isValid: false, reason: "Path is blocked", expectedCaptures: [] };
-  }
 
-  if (fromCell.occupant !== "king" && toCell.isRestricted) {
+  if (fromCell.occupant.type !== PieceType.King && toCell.isRestricted)
     return { isValid: false, reason: "Cannot move to restricted square", expectedCaptures: [] };
-  }
 
   const expectedCaptures = getAvailableCaptures(board, move, player);
 

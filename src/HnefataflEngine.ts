@@ -6,26 +6,30 @@ import { coordToString } from "./utils"
 import { getAvailableCaptures } from "./rules"
 import { isKingCaptured, isKingEscaped } from "./rules"
 import {
-  ApplyMoveResult,
-  GameState,
-  MoveValidationResult,
-  Player,
-  Move,
-  GameStatus,
-  Piece
+    ApplyMoveResult,
+    GameState,
+    MoveValidationResult,
+    Player,
+    GameStatus,
+    Piece,
+    PieceType
 } from "./types"
 
 export class HnefataflEngine {
-    private state: GameState
+    private state!: GameState
 
     constructor() {
-        const board = createInitialBoard(STANDARD_BOARD)
+        this.reset()
+    }
+
+    reset(board: string[] = STANDARD_BOARD): void {
+        const newBoard = createInitialBoard(board)
         this.state = {
-            board,
+            board: newBoard,
             currentPlayer: Player.Defender,
             captured: { attacker: 0, defender: 0 },
             moveHistory: [],
-            defenderPositions: [extractDefenderPosition(board)],
+            defenderPositions: [extractDefenderPosition(newBoard)],
             status: GameStatus.InProgress
         }
     }
@@ -71,9 +75,9 @@ export class HnefataflEngine {
 
         for (const cap of move.captures) {
             const cell = board[cap.y][cap.x]
-            if (cell.occupant === Piece.Attacker) {
+            if (cell.occupant && cell.occupant.type === PieceType.Attacker) {
                 this.state.captured.attacker++
-            } else if (cell.occupant === Piece.Defender || cell.occupant === Piece.King) {
+            } else if (cell.occupant && (cell.occupant.type === PieceType.Defender || cell.occupant.type === PieceType.King)) {
                 this.state.captured.defender++
             }
             cell.occupant = null
@@ -83,7 +87,7 @@ export class HnefataflEngine {
         let newStatus: GameStatus = this.state.status
         if (isKingCaptured(board)) {
             newStatus = GameStatus.AttackerWin
-        } else if (piece === Piece.King && isKingEscaped(move.to)) {
+        } else if (piece && piece.type === PieceType.King && isKingEscaped(move.to)) {
             newStatus = GameStatus.DefenderWin
         }
 
@@ -119,17 +123,5 @@ export class HnefataflEngine {
                 return result
         }
         return { success: true, newState: this.state }
-    }
-
-    reset(board: string[] = STANDARD_BOARD): void {
-        const newBoard = createInitialBoard(board)
-        this.state = {
-            board: newBoard,
-            currentPlayer: Player.Defender,
-            captured: { attacker: 0, defender: 0 },
-            moveHistory: [],
-            defenderPositions: [extractDefenderPosition(newBoard)],
-            status: GameStatus.InProgress
-        }
     }
 }

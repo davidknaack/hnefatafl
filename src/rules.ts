@@ -1,4 +1,4 @@
-import { CellState, Coordinate, Move, Player } from "./types";
+import { CellState, Coordinate, Move, Player, PieceType } from "./types";
 
 export function getAvailableCaptures(
   board: CellState[][],
@@ -6,7 +6,7 @@ export function getAvailableCaptures(
   player: Player
 ): Coordinate[] {
   const captures: Coordinate[] = [];
-  const opponent = player === "attacker" ? ["defender", "king"] : ["attacker"];
+  const opponentTypes = player === Player.Attacker ? [PieceType.Defender, PieceType.King] : [PieceType.Attacker];
 
   const directions = [
     { dx: 0, dy: -1 },
@@ -18,7 +18,8 @@ export function getAvailableCaptures(
   const size = board.length;
 
   function kingCanBeCaptured(x: number, y: number): boolean {
-    if (player !== "attacker") return false;
+    if (player !== Player.Attacker) 
+      return false;
 
     const checks = [
       { dx: 0, dy: -1 },
@@ -36,12 +37,13 @@ export function getAvailableCaptures(
       const cell = board[ny][nx];
       let occ = cell.occupant;
 
-      if (nx === move.from.x && ny === move.from.y) occ = null;
-      if (nx === move.to.x && ny === move.to.y) occ = player;
+      if (nx === move.from.x && ny === move.from.y)
+        occ = null;
+      if (nx === move.to.x && ny === move.to.y) 
+        occ = { owner: player, type: player === Player.Attacker ? PieceType.Attacker : PieceType.Defender };
 
-      if (cell.isThrone || cell.isRestricted || occ === "attacker") {
+      if (cell.isThrone || cell.isRestricted || (occ && occ.type === PieceType.Attacker))
         surrounded++;
-      }
     }
 
     return surrounded >= 4;
@@ -61,14 +63,14 @@ export function getAvailableCaptures(
     const middle = board[midY][midX];
     const beyond = board[beyondY][beyondX];
 
-    if (middle.occupant === "king") {
+    if (middle.occupant && middle.occupant.type === PieceType.King) {
       if (kingCanBeCaptured(midX, midY)) {
         captures.push({ x: midX, y: midY });
       }
     } else if (
       middle.occupant &&
-      opponent.includes(middle.occupant) &&
-      (beyond.occupant === player || beyond.isThrone || beyond.isRestricted)
+      opponentTypes.includes(middle.occupant.type) &&
+      ((beyond.occupant && beyond.occupant.owner === player) || beyond.isThrone || beyond.isRestricted)
     ) {
       captures.push({ x: midX, y: midY });
     }
@@ -80,9 +82,8 @@ export function getAvailableCaptures(
 export function isKingCaptured(board: CellState[][]): boolean {
   for (const row of board) {
     for (const cell of row) {
-      if (cell.occupant === "king") {
+      if (cell.occupant && cell.occupant.type === PieceType.King)
         return false;
-      }
     }
   }
   return true;
