@@ -164,4 +164,60 @@ describe('Validator Tests', () => {
         expect(result2.reason).toContain('repeat')
     })
 
+    test('Diagonal move is invalid', () => {
+        const boardLayout = [
+            "R K  ",
+            "     ",
+            "  A  ",
+            "     ",
+            "R   R"
+        ]
+        const board = createInitialBoard(boardLayout)
+        const move = {
+            from: { x: 2, y: 2 },
+            to: { x: 3, y: 3 },
+            captures: []
+        }
+        const result = validateMove(board, Player.Attacker, move)
+        expect(result.isValid).toBe(false)
+    })
+
+    test('Throne occupied by king is not hostile to defenders', () => {
+        const boardLayout = [
+            "R   R",
+            "A    ",
+            " DK  ",
+            "     ",
+            "R   R"
+        ]
+        const board = createInitialBoard(boardLayout)
+        const move = {
+            from: { x: 0, y: 1 },
+            to: { x: 0, y: 2 },
+            captures: [{ x: 1, y: 2 }]
+        }
+        const result = validateMove(board, Player.Attacker, move)
+        expect(result.isValid).toBe(false)
+        expect(result.expectedCaptures).toEqual([])
+    })
+
+    test('Edge enclosure captures defenders', () => {
+        const boardLayout = [
+            "R   R",
+            "A    ",
+            "D K  ",
+            "A    ",
+            "RA  R"
+        ]
+        const board = createInitialBoard(boardLayout)
+        const move = {
+            from: { x: 1, y: 4 },
+            to: { x: 1, y: 2 },
+            captures: [{ x: 0, y: 2 }]
+        }
+        const result = validateMove(board, Player.Attacker, move)
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toContainEqual({ x: 0, y: 2 })
+    })
+
 })
