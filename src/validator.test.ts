@@ -415,4 +415,58 @@ describe('Validator Tests', () => {
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.InProgress)
     })
+
+    // test('King in a fort that cannot be captured wins the game', () => {
+    //     const boardLayout = [
+    //         "R         R",  
+    //         "           ",  
+    //         "           ",  
+    //         "           ",  
+    //         "           ",  
+    //         "     R     ",  
+    //         "           ",  
+    //         " A         ",  
+    //         "           ",  
+    //         "   D D     ",  
+    //         "R DK D    R"  
+    //     ]
+    //     const board = createInitialBoard(boardLayout)
+    //     board[5][5].isThrone = true;
+    //     board[10][3].isThrone = false;
+    //     const move = {
+    //         from: { x: 9, y: 5 },
+    //         to: { x: 9, y: 4 },
+    //         captures: []
+    //     }
+    //     const result = validateMove(board, Player.Defender, move)
+    //     expect(result.isValid).toBe(true)
+    //     expect(result.expectedCaptures).toEqual([])
+    //     expect(result.status).toBe(GameStatus.DefenderWin)
+    // })
+
+    test('Attackers win if defenders fully encircled', () => {
+        const boardLayout = [
+            "R         R",  
+            "     A     ",  
+            "           ",  
+            "    A A    ",  
+            "   A D A   ",  
+            "  A DKD A  ",  
+            "   A D A   ",  
+            "    A A    ",  
+            "     A     ",  
+            "           ",  
+            "R         R"  
+        ]
+        const board = createInitialBoard(boardLayout)
+        const move = {
+            from: { x: 5, y: 1 },
+            to: { x: 5, y: 2 },
+            captures: []
+        }
+        const result = validateMove(board, Player.Attacker, move)
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toEqual([])
+        expect(result.status).toBe(GameStatus.AttackerWin)
+    })
 })
