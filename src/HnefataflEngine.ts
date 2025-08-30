@@ -26,7 +26,7 @@ export class HnefataflEngine {
         const newBoard = createInitialBoard(board)
         this.state = {
             board: newBoard,
-            currentPlayer: Player.Defender,
+            currentPlayer: Player.Attacker,
             captured: { attacker: 0, defender: 0 },
             moveHistory: [],
             defenderPositions: [extractDefenderPosition(newBoard)],

@@ -222,21 +222,46 @@ describe('Validator Tests', () => {
 
     test('Edge enclosure captures defenders', () => {
         const boardLayout = [
-            "R   R",
-            "A    ",
-            "D K  ",
-            "A    ",
-            "RA  R"
+            "R     R",
+            "       ",
+            "A      ",
+            "DA K   ",
+            "D      ",
+            "A      ",
+            "RA    R"
         ]
         const board = createInitialBoard(boardLayout)
         const move = {
-            from: { x: 1, y: 4 },
-            to: { x: 1, y: 2 },
-            captures: [{ x: 0, y: 2 }]
+            from: { x: 1, y: 6 },
+            to: { x: 1, y: 4 },
+            captures: [{ x: 0, y: 3 },{ x: 0, y: 4 }]
         }
         const result = validateMove(board, Player.Attacker, move)
         expect(result.isValid).toBe(true)
-        expect(result.expectedCaptures).toContainEqual({ x: 0, y: 2 })
+        expect(result.expectedCaptures).toContainEqual({ x: 0, y: 3 })
+        expect(result.expectedCaptures).toContainEqual({ x: 0, y: 4 })
     })
 
+    test('Edge enclosure captures defenders using hostile restricted square', () => {
+        const boardLayout = [
+            "R     R",
+            "       ",
+            "A      ",
+            "DA K   ",
+            "DA     ",
+            "D      ",
+            "RA    R"
+        ]
+        const board = createInitialBoard(boardLayout)
+        const move = {
+            from: { x: 1, y: 6 },
+            to: { x: 1, y: 5 },
+            captures: [{ x: 0, y: 3 },{ x: 0, y: 4 },{ x: 0, y: 5 }]
+        }
+        const result = validateMove(board, Player.Attacker, move)
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toContainEqual({ x: 0, y: 3 })
+        expect(result.expectedCaptures).toContainEqual({ x: 0, y: 4 })
+        expect(result.expectedCaptures).toContainEqual({ x: 0, y: 5 })
+    })
 })

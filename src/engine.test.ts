@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { HnefataflEngine } from './HnefataflEngine'
-import { Player, Piece } from './types'
+import { Player, PieceType } from './types'
 
 describe('Engine initial state', () => {
     test('Attacker moves first', () => {
@@ -15,7 +15,7 @@ describe('Engine initial state', () => {
         const size = board.length
         const center = Math.floor(size / 2)
         const throne = board[center][center]
-        expect(throne.occupant).toBe(Piece.King)
+        expect(throne.occupant?.type).toBe(PieceType.King)
         expect(throne.isThrone).toBe(true)
         expect(throne.isRestricted).toBe(true)
     })
