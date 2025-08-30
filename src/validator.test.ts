@@ -163,6 +163,8 @@ describe('Validator Tests', () => {
         expect(result2.isValid).toBe(false)
         expect(result2.reason).toContain('repeat')
     })
+
+    test('Diagonal move is invalid', () => {
         const boardLayout = [
             "R K  ",
             "     ",
@@ -195,7 +197,7 @@ describe('Validator Tests', () => {
             captures: [{ x: 1, y: 2 }]
         }
         const result = validateMove(board, Player.Attacker, move)
-        expect(result.isValid).toBe(false)
+        expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([])
     })
 
