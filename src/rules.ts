@@ -93,7 +93,6 @@ export function getAvailableCaptures(
     ) continue;
 
     const middle = board[midY][midX];
-    const beyond = board[beyondY][beyondX];
 
     if (middle.occupant && middle.occupant.type === PieceType.King) {
       if (kingCanBeCaptured(midX, midY)) {
@@ -149,11 +148,6 @@ export function getAvailableCaptures(
 
     function isOpponentPieceAfter(c: Coordinate): boolean {
       const occ = getOccupantAfter(c.x, c.y);
-      return !!(occ && occ.owner === opponentOwner && occ.type !== PieceType.King);
-    }
-
-    function isOpponentPieceBefore(c: Coordinate): boolean {
-      const occ = board[c.y][c.x].occupant;
       return !!(occ && occ.owner === opponentOwner && occ.type !== PieceType.King);
     }
 
