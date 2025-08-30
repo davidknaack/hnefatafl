@@ -69,10 +69,42 @@ export function getAvailableCaptures(
       }
     } else if (
       middle.occupant &&
-      opponentTypes.includes(middle.occupant.type) &&
-      ((beyond.occupant && beyond.occupant.owner === player) || beyond.isThrone || beyond.isRestricted)
+      opponentTypes.includes(middle.occupant.type)
     ) {
-      captures.push({ x: midX, y: midY });
+      // Determine if the square beyond provides a hostile boundary to complete a capture.
+      // Rules:
+      // - Own piece beyond always counts.
+      // - Restricted squares (corners) are hostile to all.
+      // - Throne is hostile when empty; when occupied by the king, it is
+      //   NOT hostile to defender pieces but IS hostile to attacker pieces.
+      const beyondOcc = beyond.occupant;
+
+      let hostileBoundary = false;
+
+      if (beyondOcc && beyondOcc.owner === player) {
+        hostileBoundary = true;
+      } else if (beyond.isRestricted) {
+        if (beyond.isThrone) {
+          // Throne logic depends on occupancy when the king sits on it.
+          const throneOccupiedByKing = !!(beyondOcc && beyondOcc.type === PieceType.King);
+          if (throneOccupiedByKing) {
+            // Occupied throne is not hostile to defenders (so attackers cannot capture
+            // defenders against it), but remains hostile to attackers (so defenders can
+            // capture attackers against it).
+            hostileBoundary = (player === Player.Defender);
+          } else {
+            // Empty throne acts as hostile for both sides.
+            hostileBoundary = true;
+          }
+        } else {
+          // Non-throne restricted squares (corners) are hostile to both sides.
+          hostileBoundary = true;
+        }
+      }
+
+      if (hostileBoundary) {
+        captures.push({ x: midX, y: midY });
+      }
     }
   }
 

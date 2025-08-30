@@ -197,8 +197,27 @@ describe('Validator Tests', () => {
             captures: [{ x: 1, y: 2 }]
         }
         const result = validateMove(board, Player.Attacker, move)
-        expect(result.isValid).toBe(true)
-        expect(result.expectedCaptures).toEqual([])
+        expect(result.isValid).toBe(false) // Invalid capture, so move is invalid
+        expect(result.expectedCaptures).toEqual([]) // No expected captures
+    })
+
+    test('Throne occupied by king is hostile to attackers', () => {
+        const boardLayout = [
+            "R   R",
+            "D    ",
+            " AK  ",
+            "     ",
+            "R   R"
+        ]
+        const board = createInitialBoard(boardLayout)
+        const move = {
+            from: { x: 0, y: 1 },
+            to: { x: 0, y: 2 },
+            captures: [{ x: 1, y: 2 }]
+        }
+        const result = validateMove(board, Player.Defender, move)
+        expect(result.isValid).toBe(true) 
+        expect(result.expectedCaptures).toEqual([{ x: 1, y: 2 }]) 
     })
 
     test('Edge enclosure captures defenders', () => {
