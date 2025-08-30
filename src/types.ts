@@ -53,6 +53,7 @@ export interface MoveValidationResult {
     isValid: boolean
     reason?: string
     expectedCaptures: Coordinate[]
+    status: GameStatus
 }
 
 export interface ApplyMoveResult {

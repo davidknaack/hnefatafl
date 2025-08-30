@@ -1,4 +1,17 @@
-import { CellState, Coordinate, Move, Player, PieceType } from "./types";
+import { GameStatus, PieceType, Player, CellState, Move, Coordinate } from "./types";
+// Returns the game status after a move is applied
+export function getGameStatusAfterMove(board: CellState[][], move: Move, currentPlayer: Player): GameStatus {
+  // Be robust whether the board has been mutated yet or not
+  const piece =
+    board[move.to.y][move.to.x].occupant ||
+    board[move.from.y][move.from.x].occupant;
+  if (isKingCaptured(board)) {
+    return GameStatus.AttackerWin;
+  } else if (piece && piece.type === PieceType.King && isKingEscaped(move.to, board.length)) {
+    return GameStatus.DefenderWin;
+  }
+  return GameStatus.InProgress;
+}
 
 // Shared hostility rule (pure): determines if a square is hostile to an owner,
 // given the cell and its occupant. This encodes throne/restricted behavior and

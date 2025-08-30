@@ -1,17 +1,15 @@
-import { createInitialBoard, STANDARD_BOARD, extractDefenderPosition } from "./board"
+import { createInitialBoard, STANDARD_BOARD, extractDefenderPosition, applyMoveToBoard } from "./board"
 import { validateMove as validateRawMove } from "./validator"
 import { parseMove } from "./parser"
-import { cloneBoard } from "./board"
 import { coordToString } from "./utils"
 import { getAvailableCaptures } from "./rules"
-import { isKingCaptured, isKingEscaped } from "./rules"
+import { getGameStatusAfterMove } from "./rules"
 import {
     ApplyMoveResult,
     GameState,
     MoveValidationResult,
     Player,
     GameStatus,
-    Piece,
     PieceType
 } from "./types"
 
@@ -40,11 +38,11 @@ export class HnefataflEngine {
 
     validateMove(moveStr: string): MoveValidationResult {
         if (this.state.status !== GameStatus.InProgress) 
-            return { isValid: false, reason: "Game is not in progress", expectedCaptures: [] }
+            return { isValid: false, reason: "Game is not in progress", expectedCaptures: [], status: this.state.status }
 
         const move = parseMove(moveStr)
         if (!move) 
-            return { isValid: false, reason: "Invalid move format", expectedCaptures: [] }
+            return { isValid: false, reason: "Invalid move format", expectedCaptures: [], status: this.state.status }
 
         return validateRawMove(this.state.board, this.state.currentPlayer, move, this.state.defenderPositions)
     }
@@ -61,35 +59,31 @@ export class HnefataflEngine {
         if (!validation.isValid) 
             return { success: false, error: validation.reason }
 
-        const board = cloneBoard(this.state.board)
-        const piece = board[move.from.y][move.from.x].occupant
-        board[move.from.y][move.from.x].occupant = null
-        board[move.to.y][move.to.x].occupant = piece
+        // Compute available captures from the pre-move board
+        const actualCaptures = getAvailableCaptures(this.state.board, move, this.state.currentPlayer)
 
-        const actualCaptures = getAvailableCaptures(board, move, this.state.currentPlayer)
+        // Validate declared captures against available captures
         for (const cap of move.captures) {
             const matched = actualCaptures.find(c => c.x === cap.x && c.y === cap.y)
             if (!matched) 
                 return { success: false, error: `Invalid capture specified: ${coordToString(cap)}`}
         }
 
+        // Update capture counters based on pre-move board, then apply move + captures
         for (const cap of move.captures) {
-            const cell = board[cap.y][cap.x]
+            const cell = this.state.board[cap.y][cap.x]
             if (cell.occupant && cell.occupant.type === PieceType.Attacker) {
                 this.state.captured.attacker++
             } else if (cell.occupant && (cell.occupant.type === PieceType.Defender || cell.occupant.type === PieceType.King)) {
                 this.state.captured.defender++
             }
-            cell.occupant = null
         }
 
-        // Check for win conditions
-        let newStatus: GameStatus = this.state.status
-        if (isKingCaptured(board)) {
-            newStatus = GameStatus.AttackerWin
-        } else if (piece && piece.type === PieceType.King && isKingEscaped(move.to)) {
-            newStatus = GameStatus.DefenderWin
-        }
+        // Generate the next board state with the move applied and captures removed
+        const board = applyMoveToBoard(this.state.board, move, { applyCaptures: true })
+
+        // Check for win conditions using rules.ts
+        let newStatus: GameStatus = getGameStatusAfterMove(board, move, this.state.currentPlayer)
 
         const nextPlayer: Player = this.state.currentPlayer === Player.Attacker ? Player.Defender : Player.Attacker
 

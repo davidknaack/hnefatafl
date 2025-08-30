@@ -1,4 +1,4 @@
-import { CellState, Move, Piece, Player, PieceType } from "./types";
+import { CellState, Move, Piece, Player, PieceType, Coordinate } from "./types";
 
 export function cloneBoard(board: CellState[][]): CellState[][] {
   return board.map(row =>
@@ -25,6 +25,28 @@ export function extractDefenderPosition(board: CellState[][], move?: Move): stri
   );
 }
 
+// Create a new board with the move applied. Optionally remove captured pieces.
+export function applyMoveToBoard(
+  board: CellState[][],
+  move: Move,
+  options: { applyCaptures?: boolean } = {}
+): CellState[][] {
+  const { applyCaptures = true } = options;
+  const next = cloneBoard(board);
+
+  const moving = next[move.from.y][move.from.x].occupant;
+  next[move.from.y][move.from.x].occupant = null;
+  next[move.to.y][move.to.x].occupant = moving;
+
+  if (applyCaptures) {
+    for (const cap of move.captures) {
+      next[cap.y][cap.x].occupant = null;
+    }
+  }
+
+  return next;
+}
+
 export const STANDARD_BOARD = [
   "R  AAAAA  R",
   "     A     ",
@@ -49,7 +71,6 @@ export function createInitialBoard(boardLayout: string[]): CellState[][] {
 
   let kingCount = 0;
   let restrictedCount = 0;
-  let thronePos: { x: number, y: number } | null = null;
 
   // First pass: find king and restricted squares
   for (let y = 0; y < size; y++) {
@@ -57,7 +78,6 @@ export function createInitialBoard(boardLayout: string[]): CellState[][] {
       const c = boardLayout[y][x];
       if (c === 'K') {
         kingCount++;
-        thronePos = { x, y };
       }
       if (c === 'R') restrictedCount++;
     }

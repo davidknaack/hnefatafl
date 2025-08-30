@@ -1,7 +1,8 @@
-import { CellState, Coordinate, Move, MoveValidationResult, Player, PieceType } from "./types";
+import { CellState, Coordinate, Move, MoveValidationResult, Player, PieceType, GameStatus } from "./types";
 import { coordToString } from "./utils";
 import { getAvailableCaptures } from "./rules";
-import { extractDefenderPosition } from "./board";
+import { getGameStatusAfterMove } from "./rules";
+import { extractDefenderPosition, applyMoveToBoard } from "./board";
 
 function isSameCoord(a: Coordinate, b: Coordinate): boolean {
   return a.x === b.x && a.y === b.y;
@@ -36,19 +37,19 @@ export function validateMove(
   const toCell = board[move.to.y][move.to.x];
 
   if (!fromCell.occupant)
-    return { isValid: false, reason: "No piece at source", expectedCaptures: [] };
+    return { isValid: false, reason: "No piece at source", expectedCaptures: [], status: GameStatus.InProgress };
 
   if (fromCell.occupant.owner !== player && !(player === Player.Defender && fromCell.occupant.type === PieceType.King))
-    return { isValid: false, reason: "Not your piece", expectedCaptures: [] };
+    return { isValid: false, reason: "Not your piece", expectedCaptures: [], status: GameStatus.InProgress };
 
   if (toCell.occupant)
-    return { isValid: false, reason: "Destination is occupied", expectedCaptures: [] };
+    return { isValid: false, reason: "Destination is occupied", expectedCaptures: [], status: GameStatus.InProgress };
 
   if (!isPathClear(board, move.from, move.to))
-    return { isValid: false, reason: "Path is blocked", expectedCaptures: [] };
+    return { isValid: false, reason: "Path is blocked", expectedCaptures: [], status: GameStatus.InProgress };
 
   if (fromCell.occupant.type !== PieceType.King && toCell.isRestricted)
-    return { isValid: false, reason: "Cannot move to restricted square", expectedCaptures: [] };
+    return { isValid: false, reason: "Cannot move to restricted square", expectedCaptures: [], status: GameStatus.InProgress };
 
   const expectedCaptures = getAvailableCaptures(board, move, player);
 
@@ -58,7 +59,8 @@ export function validateMove(
       return {
         isValid: false,
         reason: `Invalid capture at ${coordToString(capture)}`,
-        expectedCaptures
+        expectedCaptures,
+        status: GameStatus.InProgress
       };
     }
   }
@@ -72,10 +74,14 @@ export function validateMove(
       return {
         isValid: false,
         reason: "Move would repeat defender board position",
-        expectedCaptures
+        expectedCaptures,
+        status: GameStatus.InProgress
       };
     }
   }
 
-  return { isValid: true, expectedCaptures };
+  // Determine status on a simulated post-move board (including captures)
+  const previewBoard = applyMoveToBoard(board, move, { applyCaptures: true });
+  const status = getGameStatusAfterMove(previewBoard, move, player);
+  return { isValid: true, expectedCaptures, status };
 }
