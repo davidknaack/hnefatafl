@@ -46,7 +46,7 @@ export class HnefataflEngine {
         if (!move) 
             return { isValid: false, reason: "Invalid move format", expectedCaptures: [], status: this.state.status }
 
-        return validateRawMove(this.state.board, this.state.currentPlayer, move, this.state.defenderPositions)
+        return validateRawMove(this.state.board, this.state.currentPlayer, move, this.edges, this.state.defenderPositions)
     }
 
     applyMove(moveStr: string): ApplyMoveResult {
@@ -57,7 +57,7 @@ export class HnefataflEngine {
         if (!move)
             return { success: false, error: "Invalid move format" }
 
-        const validation = validateRawMove(this.state.board, this.state.currentPlayer, move, this.state.defenderPositions)
+        const validation = validateRawMove(this.state.board, this.state.currentPlayer, move, this.edges, this.state.defenderPositions)
         if (!validation.isValid) 
             return { success: false, error: validation.reason }
 

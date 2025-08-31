@@ -31,6 +31,7 @@ export function validateMove(
   board: CellState[][],
   player: Player,
   move: Move,
+  edges: Set<string>,
   defenderPositions: string[][] = []
 ): MoveValidationResult {
   const fromCell = board[move.from.y][move.from.x];
@@ -51,7 +52,7 @@ export function validateMove(
   if (fromCell.occupant.type !== PieceType.King && toCell.isRestricted)
     return { isValid: false, reason: "Cannot move to restricted square", expectedCaptures: [], status: GameStatus.InProgress };
 
-  const expectedCaptures = getAvailableCaptures(board, move, player);
+  const expectedCaptures = getAvailableCaptures(board, move, player, edges);
 
   for (const capture of move.captures) {
     const found = expectedCaptures.some(exp => isSameCoord(exp, capture));
