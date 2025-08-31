@@ -1,4 +1,4 @@
-import { createInitialBoard, STANDARD_BOARD, extractDefenderPosition, applyMoveToBoard } from "./board"
+import { createInitialBoard, STANDARD_BOARD, extractDefenderPosition, applyMoveToBoard, BoardCreationResult } from "./board"
 import { validateMove as validateRawMove } from "./validator"
 import { parseMove } from "./parser"
 import { coordToString } from "./utils"
@@ -21,13 +21,13 @@ export class HnefataflEngine {
     }
 
     reset(board: string[] = STANDARD_BOARD): void {
-        const newBoard = createInitialBoard(board)
+        const result = createInitialBoard(board)
         this.state = {
-            board: newBoard,
+            board: result.board,
             currentPlayer: Player.Attacker,
             captured: { attacker: 0, defender: 0 },
             moveHistory: [],
-            defenderPositions: [extractDefenderPosition(newBoard)],
+            defenderPositions: [extractDefenderPosition(result.board)],
             status: GameStatus.InProgress
         }
     }

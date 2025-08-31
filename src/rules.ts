@@ -1,15 +1,28 @@
 import { GameStatus, PieceType, Player, CellState, Move, Coordinate } from "./types";
+import { defendersCanEscape } from "./utils";
+import { extractEdges } from "./board";
+
 // Returns the game status after a move is applied
 export function getGameStatusAfterMove(board: CellState[][], move: Move, currentPlayer: Player): GameStatus {
   // Be robust whether the board has been mutated yet or not
   const piece =
     board[move.to.y][move.to.x].occupant ||
     board[move.from.y][move.from.x].occupant;
+  
   if (isKingCaptured(board)) {
     return GameStatus.AttackerWin;
   } else if (piece && piece.type === PieceType.King && isKingEscaped(move.to, board.length)) {
     return GameStatus.DefenderWin;
   }
+
+  // Check for encirclement after attacker moves
+  if (currentPlayer === Player.Attacker) {
+    const edges = extractEdges(board);
+    if (!defendersCanEscape(board, edges)) {
+      return GameStatus.AttackerWin;
+    }
+  }
+  
   return GameStatus.InProgress;
 }
 

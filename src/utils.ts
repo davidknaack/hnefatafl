@@ -1,13 +1,16 @@
+import { Coordinate, CellState, Player, PieceType } from "./types";
+import { COORD_CAPTURE_RE } from "./patterns";
+
 /**
  * Checks if any defender can reach a board edge or non-throne restricted square.
  * Uses multi-start DFS from all defender positions.
  *
- * @param board 2D array representing the board state
+ * @param board CellState[][] representing the board state
  * @param edges Set of edge positions (or escape squares) as strings 'x,y'
  * @returns true if any defender can escape, false otherwise
  */
 export function defendersCanEscape(
-  board: any[][],
+  board: CellState[][],
   edges: Set<string>
 ): boolean {
   const visited = new Set<string>();
@@ -18,15 +21,21 @@ export function defendersCanEscape(
   for (const key of edges) {
     const [xStr, yStr] = key.split(",");
     const x = Number(xStr), y = Number(yStr);
-    if (board[y][x] !== 'attacker') {
+    const cell = board[y][x];
+    // Edge is valid if not occupied by an attacker
+    if (!cell.occupant || cell.occupant.owner !== Player.Attacker) {
       validEdges.add(key);
     }
   }
 
-  // Find all defender positions from the board
+  // Find all defender positions (including king) from the board
   for (let y = 0; y < board.length; y++) {
     for (let x = 0; x < board[0].length; x++) {
-      if (board[y][x] === 'defender') {
+      const cell = board[y][x];
+      if (cell.occupant && (
+        cell.occupant.type === PieceType.Defender ||
+        cell.occupant.type === PieceType.King
+      )) {
         const key = `${x},${y}`;
         stack.push({x, y});
         visited.add(key);
@@ -54,21 +63,20 @@ export function defendersCanEscape(
       const nx = current.x + dx;
       const ny = current.y + dy;
       const nkey = `${nx},${ny}`;
-      if (
-        inBounds(nx, ny) &&
-        !visited.has(nkey) &&
-        (board[ny][nx] === null || board[ny][nx] === 'defender')
-      ) {
-        stack.push({x: nx, y: ny});
-        visited.add(nkey);
+      if (inBounds(nx, ny) && !visited.has(nkey)) {
+        const cell = board[ny][nx];
+        // Can move through empty squares or squares with friendly pieces
+        if (!cell.occupant || 
+            cell.occupant.owner === Player.Defender) {
+          stack.push({x: nx, y: ny});
+          visited.add(nkey);
+        }
       }
     }
   }
   // If we exhaust all reachable squares and never touch an edge
   return false;
 }
-import { Coordinate, CellState } from "./types";
-import { COORD_CAPTURE_RE } from "./patterns";
 
 export function coordFromString(input: string): Coordinate | null {
   const match = COORD_CAPTURE_RE.exec(input.trim().toUpperCase());

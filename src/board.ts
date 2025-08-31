@@ -61,20 +61,88 @@ export const STANDARD_BOARD = [
   "R  AAAAA  R",
 ]
 
-export function createInitialBoard(boardLayout: string[]): CellState[][] {
-  // Validation
+export interface BoardCreationResult {
+  board: CellState[][];
+  edges: Set<string>;
+}
+
+export interface LayoutTransformOptions {
+  /** Custom character mappings for pieces (default: A=Attacker, D=Defender, K=King, R=Restricted) */
+  charMap?: Record<string, { 
+    occupant?: { owner: Player; type: PieceType }; 
+    isThrone?: boolean; 
+    isRestricted?: boolean; 
+  }>;
+}
+
+/**
+ * Core function to transform a layout string array into a CellState board.
+ * This is the single source of truth for layout-to-board transformation.
+ */
+export function transformLayoutToBoard(
+  boardLayout: string[], 
+  options: LayoutTransformOptions = {}
+): BoardCreationResult {
   const size = boardLayout.length;
   if (size === 0) throw new Error("boardLayout array must not be empty");
   if (!boardLayout.every(row => row.length === size)) {
     throw new Error("All boardLayout rows must be the same length and equal to the number of rows (square board)");
   }
 
+  // Default character mappings (production game format)
+  const defaultCharMap: Record<string, { 
+    occupant?: { owner: Player; type: PieceType }; 
+    isThrone?: boolean; 
+    isRestricted?: boolean; 
+  }> = {
+    'A': { occupant: { owner: Player.Attacker, type: PieceType.Attacker } },
+    'a': { occupant: { owner: Player.Attacker, type: PieceType.Attacker } },
+    'D': { occupant: { owner: Player.Defender, type: PieceType.Defender } },
+    'd': { occupant: { owner: Player.Defender, type: PieceType.Defender } },
+    'K': { 
+      occupant: { owner: Player.Defender, type: PieceType.King },
+      isThrone: true,
+      isRestricted: true
+    },
+    'R': { isRestricted: true },
+    ' ': {},
+    '.': {}
+  };
+
+  const charMap = { ...defaultCharMap, ...options.charMap };
+
+  // Build board
+  const board: CellState[][] = Array.from({ length: size }, (_, y) =>
+    Array.from({ length: size }, (_, x) => {
+      const c = boardLayout[y][x];
+      const mapping = charMap[c] || {};
+      
+      // Apply character mapping
+      let occupant: CellState["occupant"] = mapping.occupant || null;
+      let isThrone = mapping.isThrone || false;
+      let isRestricted = mapping.isRestricted || false;
+      
+      return {
+        occupant,
+        isThrone,
+        isRestricted
+      };
+    })
+  );
+
+  // Calculate edges: board perimeter + non-throne restricted squares
+  const edges = extractEdges(board);
+  return { board, edges };
+}
+
+export function createInitialBoard(boardLayout: string[]): BoardCreationResult {
+  // Validation for game boards
   let kingCount = 0;
   let restrictedCount = 0;
 
-  // First pass: find king and restricted squares
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
+  // Count kings and restricted squares
+  for (let y = 0; y < boardLayout.length; y++) {
+    for (let x = 0; x < boardLayout[y].length; x++) {
       const c = boardLayout[y][x];
       if (c === 'K') {
         kingCount++;
@@ -85,29 +153,32 @@ export function createInitialBoard(boardLayout: string[]): CellState[][] {
   if (kingCount !== 1) throw new Error("There must be exactly one king on the board");
   if (restrictedCount < 1) throw new Error("There must be at least one restricted square (not counting throne)");
 
-  // Build board
-  const board: CellState[][] = Array.from({ length: size }, (_, y) =>
-    Array.from({ length: size }, (_, x) => {
-      const c = boardLayout[y][x];
-      let occupant: CellState["occupant"] = null;
-      let isThrone = false;
-      let isRestricted = false;
-      if (c === 'A') occupant = { owner: Player.Attacker, type: PieceType.Attacker };
-      else if (c === 'D') occupant = { owner: Player.Defender, type: PieceType.Defender };
-      else if (c === 'K') {
-        occupant = { owner: Player.Defender, type: PieceType.King };
-        isThrone = true;
-        isRestricted = true;
+  const result = transformLayoutToBoard(boardLayout);
+  return result;
+}
+
+/**
+ * Extracts escape edges from a board: board perimeter + non-throne restricted squares
+ */
+export function extractEdges(board: CellState[][]): Set<string> {
+  const edges = new Set<string>();
+  const size = board.length;
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const cell = board[y][x];
+      
+      // Board perimeter
+      const isPerimeter = x === 0 || x === size - 1 || y === 0 || y === size - 1;
+      
+      // Non-throne restricted squares
+      const isNonThroneRestricted = cell.isRestricted && !cell.isThrone;
+      
+      if (isPerimeter || isNonThroneRestricted) {
+        edges.add(`${x},${y}`);
       }
-      else if (c === 'R') {
-        isRestricted = true;
-      }
-      return {
-        occupant,
-        isThrone,
-        isRestricted
-      };
-    })
-  );
-  return board;
+    }
+  }
+  
+  return edges;
 }

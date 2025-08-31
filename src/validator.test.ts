@@ -4,6 +4,12 @@ import { validateMove } from './validator'
 import { Player, Piece, PieceType, GameStatus } from './types'
 import { extractDefenderPosition, cloneBoard } from './board'
 
+// Helper function for validator tests - use the production board creation with validations
+// but extract just the board part for most tests that don't need the edges
+function createValidatorTestBoard(boardLayout: string[]) {
+    return createInitialBoard(boardLayout).board;
+}
+
 describe('Validator Tests', () => {
 
     test('No kings on board fails initial board creation', () => {
@@ -25,7 +31,7 @@ describe('Validator Tests', () => {
             "  D  ",
             "     "
         ]
-        const board = createInitialBoard(boardLayout)
+        const board = createValidatorTestBoard(boardLayout)
         const move = {
             from: { x: 2, y: 2 }, // attacker
             to: { x: 2, y: 4 },   // try to move past defender
@@ -46,7 +52,7 @@ describe('Validator Tests', () => {
             "  D  ",
             "     "
         ]
-        const board = createInitialBoard(boardLayout)
+        const board = createValidatorTestBoard(boardLayout)
         const move = {
             from: { x: 2, y: 2 },
             to: { x: 2, y: 3 }, // occupied by defender
@@ -66,7 +72,7 @@ describe('Validator Tests', () => {
             "  D  ",
             "     "
         ]
-        const board = createInitialBoard(boardLayout)
+        const board = createValidatorTestBoard(boardLayout)
         const move = {
             from: { x: 2, y: 3 }, // defender
             to: { x: 2, y: 4 },
@@ -86,7 +92,7 @@ describe('Validator Tests', () => {
             "     ",
             "     "
         ]
-        const board = createInitialBoard(boardLayout)
+        const board = createValidatorTestBoard(boardLayout)
         const move = {
             from: { x: 2, y: 2 }, // attacker
             to: { x: 0, y: 2 },
@@ -106,7 +112,7 @@ describe('Validator Tests', () => {
             "     ",
             "     "
         ]
-        const board = createInitialBoard(boardLayout)
+        const board = createValidatorTestBoard(boardLayout)
         const move = {
             from: { x: 2, y: 0 }, // king
             to: { x: 0, y: 0 },
@@ -125,7 +131,7 @@ describe('Validator Tests', () => {
             "  R  ",
             "     "
         ]
-        const board = createInitialBoard(boardLayout)
+        const board = createValidatorTestBoard(boardLayout)
         const moveAttacker = {
             from: { x: 2, y: 2 }, // attacker
             to: { x: 2, y: 4 },
@@ -144,7 +150,7 @@ describe('Validator Tests', () => {
             "     ",
             "     "
         ]
-        const board = createInitialBoard(boardLayout)
+        const board = createValidatorTestBoard(boardLayout)
         const history = [extractDefenderPosition(board)]
 
         const move1 = {
@@ -180,7 +186,7 @@ describe('Validator Tests', () => {
             "     ",
             "R   R"
         ]
-        const board = createInitialBoard(boardLayout)
+        const board = createValidatorTestBoard(boardLayout)
         const move = {
             from: { x: 2, y: 2 },
             to: { x: 3, y: 3 },
@@ -199,7 +205,7 @@ describe('Validator Tests', () => {
             "     ",
             "R   R"
         ]
-        const board = createInitialBoard(boardLayout)
+        const board = createValidatorTestBoard(boardLayout)
         const move = {
             from: { x: 0, y: 1 },
             to: { x: 0, y: 2 },
@@ -219,7 +225,7 @@ describe('Validator Tests', () => {
             "     ",
             "R   R"
         ]
-        const board = createInitialBoard(boardLayout)
+        const board = createValidatorTestBoard(boardLayout)
         const move = {
             from: { x: 0, y: 1 },
             to: { x: 0, y: 2 },
@@ -241,7 +247,7 @@ describe('Validator Tests', () => {
             "A      ",
             "RA    R"
         ]
-        const board = createInitialBoard(boardLayout)
+        const board = createValidatorTestBoard(boardLayout)
         const move = {
             from: { x: 1, y: 6 },
             to: { x: 1, y: 4 },
@@ -264,7 +270,7 @@ describe('Validator Tests', () => {
             "D      ",
             "RA    R"
         ]
-        const board = createInitialBoard(boardLayout)
+        const board = createValidatorTestBoard(boardLayout)
         const move = {
             from: { x: 1, y: 6 },
             to: { x: 1, y: 5 },
@@ -292,7 +298,7 @@ describe('Validator Tests', () => {
             "           ",  
             "R         R"  
         ]
-        const board = createInitialBoard(boardLayout)
+        const board = createValidatorTestBoard(boardLayout)
         const move = {
             from: { x: 3, y: 5 },
             to: { x: 4, y: 5 },
@@ -318,7 +324,7 @@ describe('Validator Tests', () => {
             "           ",  
             "R         R"  
         ]
-        const board = createInitialBoard(boardLayout)
+        const board = createValidatorTestBoard(boardLayout)
         board[5][5].isThrone = false;
         board[2][5].isThrone = true;
         const move = {
@@ -346,7 +352,7 @@ describe('Validator Tests', () => {
             "           ",  
             "R         R"  
         ]
-        const board = createInitialBoard(boardLayout)
+        const board = createValidatorTestBoard(boardLayout)
         board[5][5].isThrone = false;
         board[4][5].isThrone = true;
         const move = {
@@ -374,7 +380,7 @@ describe('Validator Tests', () => {
             "     A     ",  
             "R  A KA   R"  
         ]
-        const board = createInitialBoard(boardLayout)
+        const board = createValidatorTestBoard(boardLayout)
         board[5][5].isThrone = true;
         board[10][5].isThrone = false;
         const move = {
@@ -402,7 +408,7 @@ describe('Validator Tests', () => {
             " A         ",  
             "RK A      R"  
         ]
-        const board = createInitialBoard(boardLayout)
+        const board = createValidatorTestBoard(boardLayout)
         board[5][5].isThrone = true;
         board[10][1].isThrone = false;
         const move = {
@@ -430,7 +436,7 @@ describe('Validator Tests', () => {
     //         "   D D     ",  
     //         "R DK D    R"  
     //     ]
-    //     const board = createInitialBoard(boardLayout)
+    //     const board = createValidatorTestBoard(boardLayout)
     //     board[5][5].isThrone = true;
     //     board[10][3].isThrone = false;
     //     const move = {
@@ -458,7 +464,7 @@ describe('Validator Tests', () => {
             "           ",  
             "R         R"  
         ]
-        const board = createInitialBoard(boardLayout)
+        const board = createValidatorTestBoard(boardLayout)
         const move = {
             from: { x: 5, y: 1 },
             to: { x: 5, y: 2 },
