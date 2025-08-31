@@ -48,8 +48,9 @@ export function isSquareHostileTo(
 export function getAvailableCaptures(
   board: CellState[][],
   move: Move,
-  player: Player
-): Coordinate[] {
+  player: Player,
+  edges: Set<string>
+  ): Coordinate[] {
   const captures: Coordinate[] = [];
   const opponentTypes = player === Player.Attacker ? [PieceType.Defender, PieceType.King] : [PieceType.Attacker];
 
@@ -140,63 +141,53 @@ export function getAvailableCaptures(
 
   // Edge-enclosure captures: capture contiguous opponent lines on edges
   // Only if enclosure is created by this move.
-  function collectEdgeEnclosures() {
+  function collectEdgeEnclosuresFromSet() {
     const opponentOwner: Player = player === Player.Attacker ? Player.Defender : Player.Attacker;
 
-    type Edge = { kind: 'left'|'right'|'top'|'bottom', coords: (idx: number) => Coordinate, len: number, inward: (c: Coordinate) => Coordinate };
+    // For each edge coordinate, scan for contiguous opponent segments
+    // edges is a Set<string> of "x,y"
+    const edgeCoords: Coordinate[] = Array.from(edges).map(e => {
+      const [x, y] = e.split(",").map(Number);
+      return { x, y };
+    });
 
-    const edges: Edge[] = [
-      {
-        kind: 'left',
-        len: size,
-        coords: (i) => ({ x: 0, y: i }),
-        inward: (c) => ({ x: c.x + 1, y: c.y })
-      },
-      {
-        kind: 'right',
-        len: size,
-        coords: (i) => ({ x: size - 1, y: i }),
-        inward: (c) => ({ x: c.x - 1, y: c.y })
-      },
-      {
-        kind: 'top',
-        len: size,
-        coords: (i) => ({ x: i, y: 0 }),
-        inward: (c) => ({ x: c.x, y: c.y + 1 })
-      },
-      {
-        kind: 'bottom',
-        len: size,
-        coords: (i) => ({ x: i, y: size - 1 }),
-        inward: (c) => ({ x: c.x, y: c.y - 1 })
-      }
-    ];
-
-    function isOpponentPieceAfter(c: Coordinate): boolean {
-      const occ = getOccupantAfter(c.x, c.y);
-      return !!(occ && occ.owner === opponentOwner && occ.type !== PieceType.King);
+    // Group edgeCoords by row and column for scanning
+    const byRow: Map<number, Coordinate[]> = new Map();
+    const byCol: Map<number, Coordinate[]> = new Map();
+    for (const c of edgeCoords) {
+      if (!byRow.has(c.y)) byRow.set(c.y, []);
+      byRow.get(c.y)!.push(c);
+      if (!byCol.has(c.x)) byCol.set(c.x, []);
+      byCol.get(c.x)!.push(c);
     }
 
-    for (const edge of edges) {
+    // Helper to scan a line (row or col)
+    function scanLine(coords: Coordinate[], getInward: (c: Coordinate) => Coordinate) {
+      coords.sort((a, b) => getInward(a).x - getInward(b).x || getInward(a).y - getInward(b).y);
+      // Helper: isOpponentPieceAfter for this scan
+      function isOpponentPieceAfter(c: Coordinate): boolean {
+        const occ = getOccupantAfter(c.x, c.y);
+        return !!(occ && occ.owner === opponentOwner && occ.type !== PieceType.King);
+      }
       let i = 0;
-      while (i < edge.len) {
+      while (i < coords.length) {
         // Find start of opponent segment after move
-        while (i < edge.len && !isOpponentPieceAfter(edge.coords(i))) i++;
-        if (i >= edge.len) break;
+        while (i < coords.length && !isOpponentPieceAfter(coords[i])) i++;
+        if (i >= coords.length) break;
         const start = i;
-        while (i < edge.len && isOpponentPieceAfter(edge.coords(i))) i++;
+        while (i < coords.length && isOpponentPieceAfter(coords[i])) i++;
         const end = i - 1;
 
         // Build the set of adjacency squares to check for hostility (after and before)
         const segment: Coordinate[] = [];
-        for (let j = start; j <= end; j++) segment.push(edge.coords(j));
+        for (let j = start; j <= end; j++) segment.push(coords[j]);
 
         const adjAfter: Coordinate[] = [];
         const adjBefore: Coordinate[] = [];
 
         // Inward neighbors for all in segment
         for (const c of segment) {
-          const inward = edge.inward(c);
+          const inward = getInward(c);
           adjAfter.push(inward);
           adjBefore.push(inward);
         }
@@ -205,17 +196,16 @@ export function getAvailableCaptures(
         const startNeighbor = start - 1;
         const endNeighbor = end + 1;
         if (startNeighbor >= 0) {
-          adjAfter.push(edge.coords(startNeighbor));
-          adjBefore.push(edge.coords(startNeighbor));
+          adjAfter.push(coords[startNeighbor]);
+          adjBefore.push(coords[startNeighbor]);
         }
-        if (endNeighbor < edge.len) {
-          adjAfter.push(edge.coords(endNeighbor));
-          adjBefore.push(edge.coords(endNeighbor));
+        if (endNeighbor < coords.length) {
+          adjAfter.push(coords[endNeighbor]);
+          adjBefore.push(coords[endNeighbor]);
         }
 
         // Check enclosure after the move
         const enclosedAfter = adjAfter.every((a) => isHostileTo(opponentOwner, a.x, a.y));
-
         if (!enclosedAfter) continue;
 
         // Check enclosure before the move: simulate pre-move hostility
@@ -234,7 +224,6 @@ export function getAvailableCaptures(
         }
 
         const enclosedBefore = adjBefore.every((a) => isHostileToBefore(opponentOwner, a.x, a.y));
-
         if (!enclosedBefore) {
           // Newly enclosed by this move -> capture all in segment
           for (const c of segment) {
@@ -243,9 +232,18 @@ export function getAvailableCaptures(
         }
       }
     }
+
+    // Scan all rows (horizontal edges)
+    for (const [y, coords] of byRow.entries()) {
+      scanLine(coords, c => ({ x: c.x, y: c.y === 0 ? c.y + 1 : c.y - 1 }));
+    }
+    // Scan all columns (vertical edges)
+    for (const [x, coords] of byCol.entries()) {
+      scanLine(coords, c => ({ x: c.x === 0 ? c.x + 1 : c.x - 1, y: c.y }));
+    }
   }
 
-  collectEdgeEnclosures();
+  collectEdgeEnclosuresFromSet();
 
   return captures;
 }

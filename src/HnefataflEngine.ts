@@ -1,4 +1,4 @@
-import { createInitialBoard, STANDARD_BOARD, extractDefenderPosition, applyMoveToBoard, BoardCreationResult } from "./board"
+import { createInitialBoard, STANDARD_BOARD, extractDefenderPosition, applyMoveToBoard, BoardCreationResult, extractEdges } from "./board"
 import { validateMove as validateRawMove } from "./validator"
 import { parseMove } from "./parser"
 import { coordToString } from "./utils"
@@ -15,6 +15,7 @@ import {
 
 export class HnefataflEngine {
     private state!: GameState
+    private edges!: Set<string>
 
     constructor() {
         this.reset()
@@ -22,6 +23,7 @@ export class HnefataflEngine {
 
     reset(board: string[] = STANDARD_BOARD): void {
         const result = createInitialBoard(board)
+        this.edges = result.edges
         this.state = {
             board: result.board,
             currentPlayer: Player.Attacker,
@@ -59,8 +61,8 @@ export class HnefataflEngine {
         if (!validation.isValid) 
             return { success: false, error: validation.reason }
 
-        // Compute available captures from the pre-move board
-        const actualCaptures = getAvailableCaptures(this.state.board, move, this.state.currentPlayer)
+    // Compute available captures from the pre-move board
+    const actualCaptures = getAvailableCaptures(this.state.board, move, this.state.currentPlayer, this.edges)
 
         // Validate declared captures against available captures
         for (const cap of move.captures) {
@@ -94,6 +96,9 @@ export class HnefataflEngine {
         if (move.captures.length > 0 || this.state.currentPlayer === Player.Defender) {
             defenderPositions.push(extractDefenderPosition(board))
         }
+
+        // Update edges if the board size/layout changes (not typical, but for completeness)
+        this.edges = extractEdges(board)
 
         const newState: GameState = {
             board,
