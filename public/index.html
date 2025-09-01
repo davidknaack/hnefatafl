@@ -188,7 +188,6 @@
                     li.onclick = () => {
                         fromInput.value = from;
                         toInput.value = to;
-                        // Captures are now automatically handled
                     };
                 }
                 listEl.appendChild(li);
@@ -220,7 +219,6 @@
                             fromInput.value = coord;
                         else if (!toInput.value)
                             toInput.value = coord;
-                        // No capture input field anymore as captures are automatic
                     });
                     boardEl.appendChild(div);
                 });
@@ -241,7 +239,6 @@
         }
 
         validateBtn.onclick = () => {
-            // Note: Captures are now automatically handled, so we only need the from-to coordinates
             const move = `${fromInput.value}-${toInput.value}`;
             const result = engine.validateMove(move);
             
@@ -255,7 +252,6 @@
         };
 
         applyBtn.onclick = () => {
-            // Note: Captures are now automatically handled
             const move = `${fromInput.value}-${toInput.value}`;
             const result = engine.applyMove(move);
             logEl.textContent = JSON.stringify(result, null, 2);

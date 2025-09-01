@@ -1,14 +1,14 @@
-import { CellState, Coordinate, Move, MoveValidationResult, Player, PieceType, GameStatus } from "./types";
+import { Square, Coordinate, Move, MoveValidationResult, Player, PieceType, GameStatus } from "./types";
 import { coordToString } from "./utils";
 import { getAvailableCaptures } from "./rules";
 import { getGameStatusAfterMove } from "./rules";
-import { extractDefenderPosition, applyMoveToBoard } from "./board";
+import { extractDefenderPosition, applyMoveToPosition } from "./board";
 
 function isSameCoord(a: Coordinate, b: Coordinate): boolean {
   return a.x === b.x && a.y === b.y;
 }
 
-function isPathClear(board: CellState[][], from: Coordinate, to: Coordinate): boolean {
+function isPathClear(position: Square[][], from: Coordinate, to: Coordinate): boolean {
   if (from.x !== to.x && from.y !== to.y) return false; // not orthogonal
 
   const dx = Math.sign(to.x - from.x);
@@ -18,7 +18,7 @@ function isPathClear(board: CellState[][], from: Coordinate, to: Coordinate): bo
   let y = from.y + dy;
 
   while (x !== to.x || y !== to.y) {
-    if (board[y][x].occupant) return false;
+    if (position[y][x].occupant) return false;
     x += dx;
     y += dy;
   }
@@ -28,31 +28,31 @@ function isPathClear(board: CellState[][], from: Coordinate, to: Coordinate): bo
 
 
 export function validateMove(
-  board: CellState[][],
+  position: Square[][],
   player: Player,
   move: Move,
-  edges: Set<string>,
+  escapePoints: Set<string>,
   defenderPositions: string[][] = []
 ): MoveValidationResult {
-  const fromCell = board[move.from.y][move.from.x];
-  const toCell = board[move.to.y][move.to.x];
+  const fromSquare = position[move.from.y][move.from.x];
+  const toSquare = position[move.to.y][move.to.x];
 
-  if (!fromCell.occupant)
+  if (!fromSquare.occupant)
     return { isValid: false, reason: "No piece at source", expectedCaptures: [], status: GameStatus.InProgress };
 
-  if (fromCell.occupant.owner !== player && !(player === Player.Defender && fromCell.occupant.type === PieceType.King))
+  if (fromSquare.occupant.owner !== player && !(player === Player.Defender && fromSquare.occupant.type === PieceType.King))
     return { isValid: false, reason: "Not your piece", expectedCaptures: [], status: GameStatus.InProgress };
 
-  if (toCell.occupant)
+  if (toSquare.occupant)
     return { isValid: false, reason: "Destination is occupied", expectedCaptures: [], status: GameStatus.InProgress };
 
-  if (!isPathClear(board, move.from, move.to))
+  if (!isPathClear(position, move.from, move.to))
     return { isValid: false, reason: "Path is blocked", expectedCaptures: [], status: GameStatus.InProgress };
 
-  if (fromCell.occupant.type !== PieceType.King && toCell.isRestricted)
+  if (fromSquare.occupant.type !== PieceType.King && toSquare.isRestricted)
     return { isValid: false, reason: "Cannot move to restricted square", expectedCaptures: [], status: GameStatus.InProgress };
 
-  const expectedCaptures = getAvailableCaptures(board, move, player, edges);
+  const expectedCaptures = getAvailableCaptures(position, move, player, escapePoints);
 
   // If captures were explicitly provided, validate them
   if (move.captures.length > 0) {
@@ -86,7 +86,7 @@ export function validateMove(
   // At this point, either no captures were provided, or they exactly match the expected captures
 
   if (player === "defender") {
-    const pos = extractDefenderPosition(board, move);
+    const pos = extractDefenderPosition(position, move);
     const repeat = defenderPositions.some(
       p => p.length === pos.length && p.every((r, i) => r === pos[i])
     );
@@ -101,7 +101,7 @@ export function validateMove(
   }
 
   // Determine status on a simulated post-move board (including captures)
-  const previewBoard = applyMoveToBoard(board, move, { applyCaptures: true });
-  const status = getGameStatusAfterMove(previewBoard, move, player);
+  const previewPosition = applyMoveToPosition(position, move, { applyCaptures: true });
+  const status = getGameStatusAfterMove(previewPosition, move, player);
   return { isValid: true, expectedCaptures, status };
 }

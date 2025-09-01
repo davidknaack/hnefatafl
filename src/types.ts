@@ -31,14 +31,14 @@ export interface Move {
     captures: Coordinate[]
 }
 
-export interface CellState {
+export interface Square {
     occupant: Piece | null
     isThrone: boolean
     isRestricted: boolean
 }
 
 export interface GameState {
-    board: CellState[][]
+    position: Square[][]
     currentPlayer: Player
     captured: {
         attacker: number

@@ -1,20 +1,20 @@
-import { CellState, Move, Piece, Player, PieceType, Coordinate } from "./types";
+import { Square, Move, Piece, Player, PieceType, Coordinate } from "./types";
 
-export function cloneBoard(board: CellState[][]): CellState[][] {
-  return board.map(row =>
-    row.map(cell => ({ ...cell }))
+export function clonePosition(position: Square[][]): Square[][] {
+  return position.map(row =>
+    row.map(square => ({ ...square }))
   );
 }
 
-export function extractDefenderPosition(board: CellState[][], move?: Move): string[] {
-  return board.map((row, y) =>
+export function extractDefenderPosition(position: Square[][], move?: Move): string[] {
+  return position.map((row, y) =>
     row
-      .map((cell, x) => {
-        let occ = cell.occupant;
+      .map((square, x) => {
+        let occ = square.occupant;
 
         if (move) {
           if (x === move.from.x && y === move.from.y) occ = null;
-          if (x === move.to.x && y === move.to.y) occ = board[move.from.y][move.from.x].occupant;
+          if (x === move.to.x && y === move.to.y) occ = position[move.from.y][move.from.x].occupant;
         }
 
         if (occ && occ.type === PieceType.Defender) return "D";
@@ -25,14 +25,14 @@ export function extractDefenderPosition(board: CellState[][], move?: Move): stri
   );
 }
 
-// Create a new board with the move applied. Optionally remove captured pieces.
-export function applyMoveToBoard(
-  board: CellState[][],
+// Create a new position with the move applied. Optionally remove captured pieces.
+export function applyMoveToPosition(
+  position: Square[][],
   move: Move,
   options: { applyCaptures?: boolean } = {}
-): CellState[][] {
+): Square[][] {
   const { applyCaptures = true } = options;
-  const next = cloneBoard(board);
+  const next = clonePosition(position);
 
   const moving = next[move.from.y][move.from.x].occupant;
   next[move.from.y][move.from.x].occupant = null;
@@ -61,9 +61,9 @@ export const STANDARD_BOARD = [
   "R  AAAAA  R",
 ]
 
-export interface BoardCreationResult {
-  board: CellState[][];
-  edges: Set<string>;
+export interface GameSetup {
+  position: Square[][];
+  escapePoints: Set<string>;
 }
 
 export interface LayoutTransformOptions {
@@ -76,13 +76,13 @@ export interface LayoutTransformOptions {
 }
 
 /**
- * Core function to transform a layout string array into a CellState board.
- * This is the single source of truth for layout-to-board transformation.
+ * Core function to transform a layout string array into a game position.
+ * This is the single source of truth for layout-to-position transformation.
  */
-export function transformLayoutToBoard(
+export function transformLayoutToPosition(
   boardLayout: string[], 
   options: LayoutTransformOptions = {}
-): BoardCreationResult {
+): GameSetup {
   const size = boardLayout.length;
   if (size === 0) throw new Error("boardLayout array must not be empty");
   if (!boardLayout.every(row => row.length === size)) {
@@ -111,14 +111,14 @@ export function transformLayoutToBoard(
 
   const charMap = { ...defaultCharMap, ...options.charMap };
 
-  // Build board
-  const board: CellState[][] = Array.from({ length: size }, (_, y) =>
+  // Build position
+  const position: Square[][] = Array.from({ length: size }, (_, y) =>
     Array.from({ length: size }, (_, x) => {
       const c = boardLayout[y][x];
       const mapping = charMap[c] || {};
       
       // Apply character mapping
-      let occupant: CellState["occupant"] = mapping.occupant || null;
+      let occupant: Square["occupant"] = mapping.occupant || null;
       let isThrone = mapping.isThrone || false;
       let isRestricted = mapping.isRestricted || false;
       
@@ -130,12 +130,12 @@ export function transformLayoutToBoard(
     })
   );
 
-  // Calculate edges: board perimeter + non-throne restricted squares
-  const edges = extractEdges(board);
-  return { board, edges };
+  // Calculate escape points: board perimeter + non-throne restricted squares
+  const escapePoints = extractEscapePoints(position);
+  return { position, escapePoints };
 }
 
-export function createInitialBoard(boardLayout: string[]): BoardCreationResult {
+export function initializeGame(boardLayout: string[]): GameSetup {
   // Validation for game boards
   let kingCount = 0;
   let restrictedCount = 0;
@@ -147,38 +147,36 @@ export function createInitialBoard(boardLayout: string[]): BoardCreationResult {
       if (c === 'K') {
         kingCount++;
       }
-      if (c === 'R') restrictedCount++;
     }
   }
   if (kingCount !== 1) throw new Error("There must be exactly one king on the board");
-  if (restrictedCount < 1) throw new Error("There must be at least one restricted square (not counting throne)");
 
-  const result = transformLayoutToBoard(boardLayout);
-  return result;
+  const gameSetup = transformLayoutToPosition(boardLayout);
+  return gameSetup;
 }
 
 /**
- * Extracts escape edges from a board: board perimeter + non-throne restricted squares
+ * Extracts escape points from a position: board perimeter + non-throne restricted squares
  */
-export function extractEdges(board: CellState[][]): Set<string> {
-  const edges = new Set<string>();
-  const size = board.length;
+export function extractEscapePoints(position: Square[][]): Set<string> {
+  const escapePoints = new Set<string>();
+  const size = position.length;
 
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
-      const cell = board[y][x];
+      const square = position[y][x];
       
       // Board perimeter
       const isPerimeter = x === 0 || x === size - 1 || y === 0 || y === size - 1;
       
       // Non-throne restricted squares
-      const isNonThroneRestricted = cell.isRestricted && !cell.isThrone;
+      const isNonThroneRestricted = square.isRestricted && !square.isThrone;
       
       if (isPerimeter || isNonThroneRestricted) {
-        edges.add(`${x},${y}`);
+        escapePoints.add(`${x},${y}`);
       }
     }
   }
   
-  return edges;
+  return escapePoints;
 }

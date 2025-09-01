@@ -1,14 +1,14 @@
 import { describe, test, expect } from 'vitest';
 import { defendersCanEscape } from './utils';
-import { transformLayoutToBoard, extractEdges } from './board';
-import { CellState, Player, PieceType } from './types';
+import { transformLayoutToPosition, extractEscapePoints, GameSetup } from './board';
+import { Square, Player, PieceType } from './types';
 
 // Helper to create a test board with the specified layout
-function createTestBoardAndEdges(layout: string[]): { board: CellState[][], edges: Set<string> } {
+function createTestBoardAndEdges(layout: string[]): GameSetup {
     // Use the shared transformation function with test-specific options
-    const board = transformLayoutToBoard(layout);
+    const gameSetup = transformLayoutToPosition(layout);
 
-    return board;
+    return gameSetup;
 }
 
 // Helper to render the board as text for debugging
@@ -16,20 +16,20 @@ function createTestBoardAndEdges(layout: string[]): { board: CellState[][], edge
 // then the occupied piece type is rendered as uppercase,
 // indicating a defender (D/d) or attacker (A/a) that is on
 // an edge square.
-function renderBoard(board: CellState[][], edges: Set<string>) {
+function renderBoard(position: Square[][], escapePoints: Set<string>) {
     let out = '';
-    for (let y = 0; y < board.length; y++) {
-        for (let x = 0; x < board[0].length; x++) {
+    for (let y = 0; y < position.length; y++) {
+        for (let x = 0; x < position[0].length; x++) {
             const key = `${x},${y}`;
-            const isEdge = edges.has(key);
-            const cell = board[y][x];
+            const isEscape = escapePoints.has(key);
+            const cell = position[y][x];
             
             if (cell.occupant?.type === PieceType.Defender || cell.occupant?.type === PieceType.King) {
-                out += isEdge ? 'D' : 'd';
+                out += isEscape ? 'D' : 'd';
             } else if (cell.occupant?.type === PieceType.Attacker) {
-                out += isEdge ? 'A' : 'a';
+                out += isEscape ? 'A' : 'a';
             } else {
-                out += isEdge ? 'e' : '.';
+                out += isEscape ? 'e' : '.';
             }
         }
         out += '\n';
@@ -39,67 +39,67 @@ function renderBoard(board: CellState[][], edges: Set<string>) {
 
 describe('defendersCanEscape', () => {
   test('returns true when a defender is on the edge', () => {
-    const { board, edges } = createTestBoardAndEdges([
+    const { position, escapePoints } = createTestBoardAndEdges([
       'D....',
       '.....',
       '.....',
       '.....',
       '.....'
     ]);
-    console.log(renderBoard(board, edges));
-    expect(defendersCanEscape(board, edges)).toBe(true);
+    console.log(renderBoard(position, escapePoints));
+    expect(defendersCanEscape(position, escapePoints)).toBe(true);
   });
 
   test('returns false when an attacker is on the top edge', () => {
-    const { board, edges } = createTestBoardAndEdges([
+    const { position, escapePoints } = createTestBoardAndEdges([
       'aaaaa',
       'a.d.a',
       'a...a',
       'a...a',
       'aaaaa'
     ]);
-    console.log(renderBoard(board, edges));
-    expect(defendersCanEscape(board, edges)).toBe(false);
+    console.log(renderBoard(position, escapePoints));
+    expect(defendersCanEscape(position, escapePoints)).toBe(false);
   });
 
   test('returns false when an attacker is on the right edge', () => {
-    const { board, edges } = createTestBoardAndEdges([
+    const { position, escapePoints } = createTestBoardAndEdges([
       'aaaaa',
       'a.d.a',
       'a...a',
       'a...a',
       'aaaaa'
     ]);
-    console.log(renderBoard(board, edges));
-    expect(defendersCanEscape(board, edges)).toBe(false);
+    console.log(renderBoard(position, escapePoints));
+    expect(defendersCanEscape(position, escapePoints)).toBe(false);
   });
 
   test('returns true when a defender can reach the edge', () => {
-    const { board, edges } = createTestBoardAndEdges([
+    const { position, escapePoints } = createTestBoardAndEdges([
       '.....',
       '.....',
       '..d..',
       '.....',
       '.....'
     ]);
-    console.log(renderBoard(board, edges));
-    expect(defendersCanEscape(board, edges)).toBe(true);
+    console.log(renderBoard(position, escapePoints));
+    expect(defendersCanEscape(position, escapePoints)).toBe(true);
   });
 
   test('returns false when defenders are completely surrounded', () => {
-    const { board, edges } = createTestBoardAndEdges([
+    const { position, escapePoints } = createTestBoardAndEdges([
       '.....',
       '.aaa.',
       '.ada.',
       '.aaa.',
       '.....'
     ]);
-    console.log(renderBoard(board, edges));
-    expect(defendersCanEscape(board, edges)).toBe(false);
+    console.log(renderBoard(position, escapePoints));
+    expect(defendersCanEscape(position, escapePoints)).toBe(false);
   });
 
   test('returns false when multiple defenders are surrounded', (context) => {
-    const { board, edges } = createTestBoardAndEdges([
+    const { position, escapePoints } = createTestBoardAndEdges([
       'aaaaa',
       'aaaa.',
       'a.dda',
@@ -107,20 +107,20 @@ describe('defendersCanEscape', () => {
       'aaaaa'
     ]);
     console.log(context.task.name);
-    console.log(renderBoard(board, edges));
-    expect(defendersCanEscape(board, edges)).toBe(false);
+    console.log(renderBoard(position, escapePoints));
+    expect(defendersCanEscape(position, escapePoints)).toBe(false);
   });
 
   test('returns true for a winding path to the edge', () => {
-    const { board, edges } = createTestBoardAndEdges([
+    const { position, escapePoints } = createTestBoardAndEdges([
       '.....',
       '.....',
       '..d..',
       '.....',
       '.....'
     ]);
-    console.log(renderBoard(board, edges));
-    expect(defendersCanEscape(board, edges)).toBe(true);
+    console.log(renderBoard(position, escapePoints));
+    expect(defendersCanEscape(position, escapePoints)).toBe(true);
   });
 
   test('returns false for a large board with isolated defenders', () => {
@@ -136,32 +136,32 @@ describe('defendersCanEscape', () => {
       }).join('')
     );
     
-    const { board, edges } = createTestBoardAndEdges(layout);
-    console.log(renderBoard(board, edges));
-    expect(defendersCanEscape(board, edges)).toBe(false);
+    const { position, escapePoints } = createTestBoardAndEdges(layout);
+    console.log(renderBoard(position, escapePoints));
+    expect(defendersCanEscape(position, escapePoints)).toBe(false);
   });
 
   test('returns true for multiple defenders with one escape route', () => {
-    const { board, edges } = createTestBoardAndEdges([
+    const { position, escapePoints } = createTestBoardAndEdges([
       '.....',
       '.....',
       '..dd.',
       '.aa.a',
       '.....'
     ]);
-    console.log(renderBoard(board, edges));
-    expect(defendersCanEscape(board, edges)).toBe(true);
+    console.log(renderBoard(position, escapePoints));
+    expect(defendersCanEscape(position, escapePoints)).toBe(true);
   });
 
   test('returns false when edges are blocked', () => {
-    const { board, edges } = createTestBoardAndEdges([
+    const { position, escapePoints} = createTestBoardAndEdges([
       'aaaaa',
       'a..da',
       'a.d.a',
       'aa.aa',
       'aaaaa'
     ]);
-    console.log(renderBoard(board, edges));
-    expect(defendersCanEscape(board, edges)).toBe(false);
+    console.log(renderBoard(position, escapePoints));
+    expect(defendersCanEscape(position, escapePoints)).toBe(false);
   });
 });

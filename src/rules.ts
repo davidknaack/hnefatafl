@@ -1,24 +1,24 @@
-import { GameStatus, PieceType, Player, CellState, Move, Coordinate } from "./types";
+import { GameStatus, PieceType, Player, Square, Move, Coordinate } from "./types";
 import { defendersCanEscape } from "./utils";
-import { extractEdges } from "./board";
+import { extractEscapePoints } from "./board";
 
 // Returns the game status after a move is applied
-export function getGameStatusAfterMove(board: CellState[][], move: Move, currentPlayer: Player): GameStatus {
-  // Be robust whether the board has been mutated yet or not
+export function getGameStatusAfterMove(position: Square[][], move: Move, currentPlayer: Player): GameStatus {
+  // Be robust whether the position has been mutated yet or not
   const piece =
-    board[move.to.y][move.to.x].occupant ||
-    board[move.from.y][move.from.x].occupant;
+    position[move.to.y][move.to.x].occupant ||
+    position[move.from.y][move.from.x].occupant;
   
-  if (isKingCaptured(board)) {
+  if (isKingCaptured(position)) {
     return GameStatus.AttackerWin;
-  } else if (piece && piece.type === PieceType.King && isKingEscaped(move.to, board.length)) {
+  } else if (piece && piece.type === PieceType.King && isKingEscaped(move.to, position.length)) {
     return GameStatus.DefenderWin;
   }
 
   // Check for encirclement after attacker moves
   if (currentPlayer === Player.Attacker) {
-    const edges = extractEdges(board);
-    if (!defendersCanEscape(board, edges)) {
+    const escapePoints = extractEscapePoints(position);
+    if (!defendersCanEscape(position, escapePoints)) {
       return GameStatus.AttackerWin;
     }
   }
@@ -30,12 +30,12 @@ export function getGameStatusAfterMove(board: CellState[][], move: Move, current
 // given the cell and its occupant. This encodes throne/restricted behavior and
 // opponent occupancy, and should be the single source of truth for hostility.
 export function isSquareHostileTo(
-  cell: CellState,
+  square: Square,
   owner: Player,
-  occupant: CellState["occupant"]
+  occupant: Square["occupant"]
 ): boolean {
-  if (cell.isRestricted) {
-    if (cell.isThrone && occupant && occupant.type === PieceType.King) {
+  if (square.isRestricted) {
+    if (square.isThrone && occupant && occupant.type === PieceType.King) {
       // Occupied throne is not hostile to defenders
       return owner === Player.Attacker;
     }
@@ -46,48 +46,48 @@ export function isSquareHostileTo(
 }
 
 export function getAvailableCaptures(
-  board: CellState[][],
+  position: Square[][],
   move: Move,
   player: Player,
   edges: Set<string>
 ): Coordinate[] {
   const captures: Coordinate[] = [];
-  const size = board.length;
+  const size = position.length;
 
   // Helper: occupant as if the move has been applied
-  function getOccupantAfter(x: number, y: number): CellState["occupant"] {
+  function getOccupantAfter(x: number, y: number): Square["occupant"] {
     if (x === move.from.x && y === move.from.y) return null;
     if (x === move.to.x && y === move.to.y) {
-      return board[move.from.y][move.from.x].occupant!;
+      return position[move.from.y][move.from.x].occupant!;
     }
-    return board[y][x].occupant;
+    return position[y][x].occupant;
   }
 
   // Helper: determine if a cell is hostile to a given owner after applying move
   function isHostileTo(owner: Player, x: number, y: number): boolean {
     if (x < 0 || y < 0 || x >= size || y >= size) return false;
-    const cell = board[y][x];
+    const cell = position[y][x];
     const occ = getOccupantAfter(x, y);
     return isSquareHostileTo(cell, owner, occ);
   }
 
   // Get standard captures (orthogonal sandwiching)
-  const standardCaptures = getStandardCaptures(board, move, player, isHostileTo, getOccupantAfter);
+  const standardCaptures = getStandardCaptures(position, move, player, isHostileTo, getOccupantAfter);
   captures.push(...standardCaptures);
 
   // Get edge-enclosure captures
-  const edgeCaptures = getEdgeEnclosureCaptures(board, move, player, edges, isHostileTo, getOccupantAfter);
+  const edgeCaptures = getEdgeEnclosureCaptures(position, move, player, edges, isHostileTo, getOccupantAfter);
   captures.push(...edgeCaptures);
 
   return captures;
 }
 
 function getStandardCaptures(
-  board: CellState[][],
+  position: Square[][],
   move: Move,
   player: Player,
   isHostileTo: (owner: Player, x: number, y: number) => boolean,
-  getOccupantAfter: (x: number, y: number) => CellState["occupant"]
+  getOccupantAfter: (x: number, y: number) => Square["occupant"]
 ): Coordinate[] {
   const captures: Coordinate[] = [];
   const opponentTypes = player === Player.Attacker ? [PieceType.Defender, PieceType.King] : [PieceType.Attacker];
@@ -97,7 +97,7 @@ function getStandardCaptures(
     { dx: -1, dy: 0 },
     { dx: 1, dy: 0 }
   ];
-  const size = board.length;
+  const size = position.length;
 
   for (const { dx, dy } of directions) {
     const midX = move.to.x + dx;
@@ -108,11 +108,10 @@ function getStandardCaptures(
     if (midX < 0 || midX >= size || midY < 0 || midY >= size ||
         beyondX < 0 || beyondX >= size || beyondY < 0 || beyondY >= size) continue;
 
-    const middle = board[midY][midX];
     const midOccupant = getOccupantAfter(midX, midY);
 
     if (midOccupant && midOccupant.type === PieceType.King && player === Player.Attacker) {
-      if (isKingCapturable(midX, midY, board, getOccupantAfter)) {
+      if (isKingCapturable(midX, midY, position, getOccupantAfter)) {
         captures.push({ x: midX, y: midY });
       }
     } else if (midOccupant && opponentTypes.includes(midOccupant.type)) {
@@ -129,10 +128,10 @@ function getStandardCaptures(
 function isKingCapturable(
   x: number,
   y: number,
-  board: CellState[][],
-  getOccupantAfter: (x: number, y: number) => CellState["occupant"]
+  position: Square[][],
+  getOccupantAfter: (x: number, y: number) => Square["occupant"]
 ): boolean {
-  const size = board.length;
+  const size = position.length;
   const directions = [
     { dx: 0, dy: -1 },
     { dx: 0, dy: 1 },
@@ -146,7 +145,7 @@ function isKingCapturable(
     const ny = y + dy;
     if (nx < 0 || ny < 0 || nx >= size || ny >= size) return false;
 
-    const cell = board[ny][nx];
+    const cell = position[ny][nx];
     const occ = getOccupantAfter(nx, ny);
 
     if (cell.isThrone || cell.isRestricted || (occ && occ.owner === Player.Attacker)) {
@@ -158,22 +157,22 @@ function isKingCapturable(
 }
 
 function getEdgeEnclosureCaptures(
-  board: CellState[][],
+  position: Square[][],
   move: Move,
   player: Player,
   edges: Set<string>,
   isHostileTo: (owner: Player, x: number, y: number) => boolean,
-  getOccupantAfter: (x: number, y: number) => CellState["occupant"]
+  getOccupantAfter: (x: number, y: number) => Square["occupant"]
 ): Coordinate[] {
   const captures: Coordinate[] = [];
-  const size = board.length;
+  const size = position.length;
   const opponentOwner: Player = player === Player.Attacker ? Player.Defender : Player.Attacker;
 
   // Helper for pre-move hostility
   function isHostileToBefore(owner: Player, x: number, y: number): boolean {
     if (x < 0 || y < 0 || x >= size || y >= size) return false;
-    const cell = board[y][x];
-    const occ = board[y][x].occupant;
+    const cell = position[y][x];
+    const occ = position[y][x].occupant;
     return isSquareHostileTo(cell, owner, occ);
   }
 
@@ -243,10 +242,10 @@ function getEdgeEnclosureCaptures(
   return captures;
 }
 
-export function isKingCaptured(board: CellState[][]): boolean {
-  for (const row of board) {
-    for (const cell of row) {
-      if (cell.occupant && cell.occupant.type === PieceType.King)
+export function isKingCaptured(position: Square[][]): boolean {
+  for (const row of position) {
+    for (const square of row) {
+      if (square.occupant && square.occupant.type === PieceType.King)
         return false;
     }
   }

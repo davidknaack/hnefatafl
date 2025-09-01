@@ -1,40 +1,40 @@
-import { Coordinate, CellState, Player, PieceType } from "./types";
+import { Coordinate, Square, Player, PieceType } from "./types";
 import { COORD_CAPTURE_RE } from "./patterns";
 
 /**
  * Checks if any defender can reach a board edge or non-throne restricted square.
  * Uses multi-start DFS from all defender positions.
  *
- * @param board CellState[][] representing the board state
- * @param edges Set of edge positions (or escape squares) as strings 'x,y'
+ * @param position Square[][] representing the game position
+ * @param escapePoints Set of edge positions (or escape squares) as strings 'x,y'
  * @returns true if any defender can escape, false otherwise
  */
 export function defendersCanEscape(
-  board: CellState[][],
-  edges: Set<string>
+  position: Square[][],
+  escapePoints: Set<string>
 ): boolean {
   const visited = new Set<string>();
   const stack: {x: number, y: number}[] = [];
 
   // Efficiently filter out edge squares occupied by attackers
   const validEdges = new Set<string>();
-  for (const key of edges) {
+  for (const key of escapePoints) {
     const [xStr, yStr] = key.split(",");
     const x = Number(xStr), y = Number(yStr);
-    const cell = board[y][x];
+    const square = position[y][x];
     // Edge is valid if not occupied by an attacker
-    if (!cell.occupant || cell.occupant.owner !== Player.Attacker) {
+    if (!square.occupant || square.occupant.owner !== Player.Attacker) {
       validEdges.add(key);
     }
   }
 
-  // Find all defender positions (including king) from the board
-  for (let y = 0; y < board.length; y++) {
-    for (let x = 0; x < board[0].length; x++) {
-      const cell = board[y][x];
-      if (cell.occupant && (
-        cell.occupant.type === PieceType.Defender ||
-        cell.occupant.type === PieceType.King
+  // Find all defender positions (including king) from the position
+  for (let y = 0; y < position.length; y++) {
+    for (let x = 0; x < position[0].length; x++) {
+      const square = position[y][x];
+      if (square.occupant && (
+        square.occupant.type === PieceType.Defender ||
+        square.occupant.type === PieceType.King
       )) {
         const key = `${x},${y}`;
         stack.push({x, y});
@@ -51,7 +51,7 @@ export function defendersCanEscape(
   ];
 
   const inBounds = (x: number, y: number) =>
-    y >= 0 && y < board.length && x >= 0 && x < board[0].length;
+    y >= 0 && y < position.length && x >= 0 && x < position[0].length;
 
   while (stack.length > 0) {
     const current = stack.pop()!;
@@ -64,10 +64,10 @@ export function defendersCanEscape(
       const ny = current.y + dy;
       const nkey = `${nx},${ny}`;
       if (inBounds(nx, ny) && !visited.has(nkey)) {
-        const cell = board[ny][nx];
+        const square = position[ny][nx];
         // Can move through empty squares or squares with friendly pieces
-        if (!cell.occupant || 
-            cell.occupant.owner === Player.Defender) {
+        if (!square.occupant || 
+            square.occupant.owner === Player.Defender) {
           stack.push({x: nx, y: ny});
           visited.add(nkey);
         }

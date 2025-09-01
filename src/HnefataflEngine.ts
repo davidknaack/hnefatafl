@@ -1,8 +1,7 @@
-import { createInitialBoard, STANDARD_BOARD, extractDefenderPosition, applyMoveToBoard, BoardCreationResult, extractEdges } from "./board"
+import { initializeGame, STANDARD_BOARD, extractDefenderPosition, applyMoveToPosition, GameSetup, extractEscapePoints } from "./board"
 import { validateMove as validateRawMove } from "./validator"
 import { parseMove } from "./parser"
 import { coordToString } from "./utils"
-import { getAvailableCaptures } from "./rules"
 import { getGameStatusAfterMove } from "./rules"
 import {
     ApplyMoveResult,
@@ -21,15 +20,15 @@ export class HnefataflEngine {
         this.reset()
     }
 
-    reset(board: string[] = STANDARD_BOARD): void {
-        const result = createInitialBoard(board)
-        this.edges = result.edges
+    reset(boardLayout: string[] = STANDARD_BOARD): void {
+        const gameSetup = initializeGame(boardLayout)
+        this.edges = gameSetup.escapePoints
         this.state = {
-            board: result.board,
+            position: gameSetup.position,
             currentPlayer: Player.Attacker,
             captured: { attacker: 0, defender: 0 },
             moveHistory: [],
-            defenderPositions: [extractDefenderPosition(result.board)],
+            defenderPositions: [extractDefenderPosition(gameSetup.position)],
             status: GameStatus.InProgress
         }
     }
@@ -46,7 +45,7 @@ export class HnefataflEngine {
         if (!move) 
             return { isValid: false, reason: "Invalid move format", expectedCaptures: [], status: this.state.status }
 
-        return validateRawMove(this.state.board, this.state.currentPlayer, move, this.edges, this.state.defenderPositions)
+        return validateRawMove(this.state.position, this.state.currentPlayer, move, this.edges, this.state.defenderPositions)
     }
 
     applyMove(moveStr: string): ApplyMoveResult {
@@ -57,7 +56,7 @@ export class HnefataflEngine {
         if (!move)
             return { success: false, error: "Invalid move format" }
 
-        const validation = validateRawMove(this.state.board, this.state.currentPlayer, move, this.edges, this.state.defenderPositions)
+        const validation = validateRawMove(this.state.position, this.state.currentPlayer, move, this.edges, this.state.defenderPositions)
         if (!validation.isValid) 
             return { success: false, error: validation.reason }
 
@@ -73,19 +72,19 @@ export class HnefataflEngine {
         
         // Update capture counters based on expected captures
         for (const cap of expectedCaptures) {
-            const cell = this.state.board[cap.y][cap.x]
-            if (cell.occupant && cell.occupant.type === PieceType.Attacker) {
+            const square = this.state.position[cap.y][cap.x]
+            if (square.occupant && square.occupant.type === PieceType.Attacker) {
                 this.state.captured.attacker++
-            } else if (cell.occupant && (cell.occupant.type === PieceType.Defender || cell.occupant.type === PieceType.King)) {
+            } else if (square.occupant && (square.occupant.type === PieceType.Defender || square.occupant.type === PieceType.King)) {
                 this.state.captured.defender++
             }
         }
 
-        // Generate the next board state with the move applied and captures removed
-        const board = applyMoveToBoard(this.state.board, moveWithCaptures, { applyCaptures: true })
+        // Generate the next position with the move applied and captures removed
+        const position = applyMoveToPosition(this.state.position, moveWithCaptures, { applyCaptures: true })
 
         // Check for win conditions
-        let newStatus: GameStatus = getGameStatusAfterMove(board, move, this.state.currentPlayer)
+        let newStatus: GameStatus = getGameStatusAfterMove(position, move, this.state.currentPlayer)
 
         const nextPlayer: Player = this.state.currentPlayer === Player.Attacker ? Player.Defender : Player.Attacker
 
@@ -94,7 +93,7 @@ export class HnefataflEngine {
             defenderPositions = []
         }
         if (expectedCaptures.length > 0 || this.state.currentPlayer === Player.Defender) {
-            defenderPositions.push(extractDefenderPosition(board))
+            defenderPositions.push(extractDefenderPosition(position))
         }
 
         // Create a move string that includes captures if they occurred
@@ -109,7 +108,7 @@ export class HnefataflEngine {
         }
 
         const newState: GameState = {
-            board,
+            position,
             currentPlayer: newStatus === GameStatus.InProgress ? nextPlayer : this.state.currentPlayer,
             captured: { ...this.state.captured },
             moveHistory: [...this.state.moveHistory, moveStrWithCaptures],

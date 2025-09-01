@@ -11,10 +11,10 @@ describe('Engine initial state', () => {
 
     test('King starts on throne which is restricted', () => {
         const engine = new HnefataflEngine()
-        const board = engine.getState().board
-        const size = board.length
+        const position = engine.getState().position
+        const size = position.length
         const center = Math.floor(size / 2)
-        const throne = board[center][center]
+        const throne = position[center][center]
         expect(throne.occupant?.type).toBe(PieceType.King)
         expect(throne.isThrone).toBe(true)
         expect(throne.isRestricted).toBe(true)
