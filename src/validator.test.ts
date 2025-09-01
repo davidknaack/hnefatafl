@@ -845,7 +845,7 @@ describe('Validator Tests', () => {
             " A DD D    ",
             "   DkD     ",
             "  DDADD    ",
-            "R DD DD   R"
+            "R DDADD   R"
         ]
         const gameSetup = transformLayoutToPosition(boardLayout)
         const move = {
