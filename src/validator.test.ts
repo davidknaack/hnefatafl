@@ -20,7 +20,7 @@ describe('Validator Tests', () => {
             to: { x: 2, y: 4 },   // try to move past defender
             captures: []
         }
-        const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.escapePoints)
+    const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.edgeSquares)
 
         expect(result.isValid).toBe(false)
         expect(result.reason).toContain("Path is blocked")
@@ -41,7 +41,7 @@ describe('Validator Tests', () => {
             to: { x: 2, y: 3 }, // occupied by defender
             captures: []
         }
-        const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.escapePoints)
+    const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.edgeSquares)
         expect(result.isValid).toBe(false)
         expect(result.reason).toContain("Destination is occupied")
         expect(result.status).toBe(GameStatus.InProgress)
@@ -61,7 +61,7 @@ describe('Validator Tests', () => {
             to: { x: 2, y: 4 },
             captures: []
         }
-        const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.escapePoints)
+    const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.edgeSquares)
         expect(result.isValid).toBe(false)
         expect(result.reason).toContain("Not your piece")
         expect(result.status).toBe(GameStatus.InProgress)
@@ -81,7 +81,7 @@ describe('Validator Tests', () => {
             to: { x: 0, y: 2 },
             captures: []
         }
-        const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.escapePoints)
+    const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.edgeSquares)
         expect(result.isValid).toBe(false)
         expect(result.reason).toContain("Cannot move to restricted square")
         expect(result.status).toBe(GameStatus.InProgress)
@@ -101,7 +101,7 @@ describe('Validator Tests', () => {
             to: { x: 0, y: 0 },
             captures: []
         }
-        const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.escapePoints)
+    const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
         expect(result.isValid).toBe(true)
         expect(result.status).toBe(GameStatus.DefenderWin)
     })
@@ -120,7 +120,7 @@ describe('Validator Tests', () => {
             to: { x: 2, y: 4 },
             captures: []
         }
-        const result = validateMove(gameSetup.position, Player.Attacker, moveAttacker, gameSetup.escapePoints)
+    const result = validateMove(gameSetup.position, Player.Attacker, moveAttacker, gameSetup.edgeSquares)
         expect(result.isValid).toBe(true)
         expect(result.status).toBe(GameStatus.InProgress)
     })
@@ -141,7 +141,7 @@ describe('Validator Tests', () => {
             to: { x: 2, y: 3 },
             captures: []
         }
-        const result1 = validateMove(gameSetup.position, Player.Defender, move1, gameSetup.escapePoints, history)
+    const result1 = validateMove(gameSetup.position, Player.Defender, move1, gameSetup.edgeSquares, history)
         expect(result1.isValid).toBe(true)
         expect(result1.status).toBe(GameStatus.InProgress)
 
@@ -155,7 +155,7 @@ describe('Validator Tests', () => {
             to: { x: 2, y: 2 },
             captures: []
         }
-        const result2 = validateMove(boardAfter, Player.Defender, move2, gameSetup.escapePoints, history)
+    const result2 = validateMove(boardAfter, Player.Defender, move2, gameSetup.edgeSquares, history)
         expect(result2.isValid).toBe(false)
         expect(result2.reason).toContain('repeat')
         expect(result2.status).toBe(GameStatus.InProgress)
@@ -175,7 +175,7 @@ describe('Validator Tests', () => {
             to: { x: 3, y: 3 },
             captures: []
         }
-        const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.escapePoints)
+    const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.edgeSquares)
         expect(result.isValid).toBe(false)
         expect(result.status).toBe(GameStatus.InProgress)
     })
@@ -194,7 +194,7 @@ describe('Validator Tests', () => {
             to: { x: 0, y: 2 },
             captures: [{ x: 1, y: 2 }]
         }
-        const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.escapePoints)
+    const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.edgeSquares)
         expect(result.isValid).toBe(false)
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.InProgress)
@@ -214,7 +214,7 @@ describe('Validator Tests', () => {
             to: { x: 0, y: 2 },
             captures: [{ x: 1, y: 2 }]
         }
-        const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.escapePoints)
+    const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([{ x: 1, y: 2 }])
         expect(result.status).toBe(GameStatus.InProgress)
@@ -235,7 +235,7 @@ describe('Validator Tests', () => {
             to: { x: 0, y: 2 },
             captures: [{ x: 2, y: 2 }] // Incorrect capture specified, should be { x: 1, y: 2 }
         }
-        const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.escapePoints)
+    const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
         expect(result.isValid).toBe(false)
         expect(result.reason).toContain("Invalid captures")
         expect(result.expectedCaptures).toEqual([{ x: 1, y: 2 }])
@@ -259,7 +259,7 @@ describe('Validator Tests', () => {
             to: { x: 1, y: 4 },
             captures: [{ x: 0, y: 3 },{ x: 0, y: 4 }]
         }
-        const resultComplete = validateMove(gameSetup.position, Player.Attacker, moveComplete, gameSetup.escapePoints)
+    const resultComplete = validateMove(gameSetup.position, Player.Attacker, moveComplete, gameSetup.edgeSquares)
         expect(resultComplete.isValid).toBe(true)
         expect(resultComplete.expectedCaptures).toContainEqual({ x: 0, y: 3 })
         expect(resultComplete.expectedCaptures).toContainEqual({ x: 0, y: 4 })
@@ -271,7 +271,7 @@ describe('Validator Tests', () => {
             to: { x: 1, y: 4 },
             captures: [{ x: 0, y: 3 }] // Only one of the two captures
         }
-        const resultIncomplete = validateMove(gameSetup.position, Player.Attacker, moveIncomplete, gameSetup.escapePoints)
+    const resultIncomplete = validateMove(gameSetup.position, Player.Attacker, moveIncomplete, gameSetup.edgeSquares)
         expect(resultIncomplete.isValid).toBe(false)
         expect(resultIncomplete.reason).toContain("Invalid captures")
         expect(resultIncomplete.expectedCaptures).toContainEqual({ x: 0, y: 3 })
@@ -295,7 +295,7 @@ describe('Validator Tests', () => {
             to: { x: 1, y: 5 },
             captures: [{ x: 0, y: 3 },{ x: 0, y: 4 },{ x: 0, y: 5 }]
         }
-        const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.escapePoints)
+    const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.edgeSquares)
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toContainEqual({ x: 0, y: 3 })
         expect(result.expectedCaptures).toContainEqual({ x: 0, y: 4 })
@@ -319,7 +319,7 @@ describe('Validator Tests', () => {
             to: { x: 5, y: 4 },
             captures: [{ x: 6, y: 3 },{ x: 6, y: 4 }]
         }
-        const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.escapePoints)
+    const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.edgeSquares)
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toContainEqual({ x: 6, y: 3 })
         expect(result.expectedCaptures).toContainEqual({ x: 6, y: 4 })
@@ -342,7 +342,7 @@ describe('Validator Tests', () => {
             to: { x: 1, y: 5 },
             captures: [{ x: 0, y: 3 },{ x: 0, y: 4 },{ x: 0, y: 5 }]
         }
-        const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.escapePoints)
+    const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.edgeSquares)
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toContainEqual({ x: 0, y: 3 })
         expect(result.expectedCaptures).toContainEqual({ x: 0, y: 4 })
@@ -370,7 +370,7 @@ describe('Validator Tests', () => {
             to: { x: 4, y: 5 },
             captures: [{ x: 5, y: 5 }]
         }
-        const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.escapePoints)
+    const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.edgeSquares)
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toContainEqual({ x: 5, y: 5 })
         expect(result.status).toBe(GameStatus.AttackerWin)
@@ -398,7 +398,7 @@ describe('Validator Tests', () => {
             to: { x: 4, y: 5 },
             captures: [{ x: 5, y: 5 }]
         }
-        const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.escapePoints)
+    const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.edgeSquares)
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toContainEqual({ x: 5, y: 5 })
         expect(result.status).toBe(GameStatus.AttackerWin)
@@ -426,7 +426,7 @@ describe('Validator Tests', () => {
             to: { x: 4, y: 5 },
             captures: [{ x: 5, y: 5 }]
         }
-        const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.escapePoints)
+    const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.edgeSquares)
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toContainEqual({ x: 5, y: 5 })
         expect(result.status).toBe(GameStatus.AttackerWin)
@@ -454,7 +454,7 @@ describe('Validator Tests', () => {
             to: { x: 10, y: 4 },
             captures: [{ x: 10, y: 5 }]
         }
-        const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.escapePoints)
+    const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.edgeSquares)
         expect(result.isValid).toBe(false)
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.InProgress)
@@ -482,7 +482,7 @@ describe('Validator Tests', () => {
             to: { x: 10, y: 2 },
             captures: [{ x: 10, y: 1 }]
         }
-        const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.escapePoints)
+    const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.edgeSquares)
         expect(result.isValid).toBe(false)
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.InProgress)
@@ -510,7 +510,7 @@ describe('Validator Tests', () => {
     //         to: { x: 9, y: 4 },
     //         captures: []
     //     }
-    //     const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.escapePoints)
+    //     const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
     //     expect(result.isValid).toBe(true)
     //     expect(result.expectedCaptures).toEqual([])
     //     expect(result.status).toBe(GameStatus.DefenderWin)
@@ -536,7 +536,7 @@ describe('Validator Tests', () => {
             to: { x: 5, y: 2 },
             captures: []
         }
-        const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.escapePoints)
+    const result = validateMove(gameSetup.position, Player.Attacker, move, gameSetup.edgeSquares)
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.AttackerWin)

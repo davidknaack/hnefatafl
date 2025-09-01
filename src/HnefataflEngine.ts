@@ -1,4 +1,4 @@
-import { initializeGame, STANDARD_BOARD, extractDefenderPosition, applyMoveToPosition, GameSetup, extractEscapePoints } from "./board"
+import { initializeGame, STANDARD_BOARD, extractDefenderPosition, applyMoveToPosition, GameSetup, extractEdgeSquares } from "./board"
 import { validateMove as validateRawMove } from "./validator"
 import { parseMove } from "./parser"
 import { coordToString } from "./utils"
@@ -15,7 +15,7 @@ import {
 
 export class HnefataflEngine {
     private gameState!: GameState
-    private escapePoints!: Set<Coordinate>
+    private edgeSquares!: Set<Coordinate>
 
     constructor() {
         this.reset()
@@ -23,7 +23,7 @@ export class HnefataflEngine {
 
     reset(boardLayout: string[] = STANDARD_BOARD): void {
         const gameSetup = initializeGame(boardLayout)
-        this.escapePoints = gameSetup.escapePoints
+    this.edgeSquares = gameSetup.edgeSquares
         this.gameState = {
             position: gameSetup.position,
             currentPlayer: Player.Attacker,
@@ -46,7 +46,7 @@ export class HnefataflEngine {
         if (!move) 
             return { isValid: false, reason: "Invalid move format", expectedCaptures: [], status: this.gameState.status }
 
-        return validateRawMove(this.gameState.position, this.gameState.currentPlayer, move, this.escapePoints, this.gameState.defenderPositions)
+    return validateRawMove(this.gameState.position, this.gameState.currentPlayer, move, this.edgeSquares, this.gameState.defenderPositions)
     }
 
     applyMove(moveStr: string): ApplyMoveResult {
@@ -57,7 +57,7 @@ export class HnefataflEngine {
         if (!move)
             return { success: false, error: "Invalid move format" }
 
-        const validation = validateRawMove(this.gameState.position, this.gameState.currentPlayer, move, this.escapePoints, this.gameState.defenderPositions)
+    const validation = validateRawMove(this.gameState.position, this.gameState.currentPlayer, move, this.edgeSquares, this.gameState.defenderPositions)
         if (!validation.isValid) 
             return { success: false, error: validation.reason }
 

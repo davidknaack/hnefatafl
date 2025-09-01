@@ -31,7 +31,7 @@ export function validateMove(
   position: Square[][],
   player: Player,
   move: Move,
-  escapePoints: Set<Coordinate>,
+  edgeSquares: Set<Coordinate>,
   defenderPositions: string[][] = []
 ): MoveValidationResult {
   const fromSquare = position[move.from.y][move.from.x];
@@ -52,7 +52,7 @@ export function validateMove(
   if (fromSquare.occupant.type !== PieceType.King && toSquare.isRestricted)
     return { isValid: false, reason: "Cannot move to restricted square", expectedCaptures: [], status: GameStatus.InProgress };
 
-  const expectedCaptures = getAvailableCaptures(position, move, player, escapePoints);
+  const expectedCaptures = getAvailableCaptures(position, move, player, edgeSquares);
 
   // If captures were explicitly provided, validate them
   if (move.captures.length > 0) {

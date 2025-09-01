@@ -63,7 +63,7 @@ export const STANDARD_BOARD = [
 
 export interface GameSetup {
   position: Square[][];
-  escapePoints: Set<Coordinate>;
+  edgeSquares: Set<Coordinate>;
 }
 
 export interface LayoutTransformOptions {
@@ -130,9 +130,9 @@ export function transformLayoutToPosition(
     })
   );
 
-  // Calculate escape points: board perimeter + non-throne restricted squares
-  const escapePoints = extractEscapePoints(position);
-  return { position, escapePoints };
+  // Calculate edge squares: board perimeter + non-throne restricted squares
+  const edgeSquares = extractEdgeSquares(position);
+  return { position, edgeSquares };
 }
 
 export function initializeGame(boardLayout: string[]): GameSetup {
@@ -155,27 +155,30 @@ export function initializeGame(boardLayout: string[]): GameSetup {
 }
 
 /**
- * Extracts escape points from a position: board perimeter + non-throne restricted squares
+ * Extracts edges points from a position: board perimeter + non-throne restricted squares
  */
-export function extractEscapePoints(position: Square[][]): Set<Coordinate> {
-  const escapePoints = new Set<Coordinate>();
+export function extractEdgeSquares(position: Square[][]): Set<Coordinate> {
+  const edgeSquares = new Set<Coordinate>();
   const size = position.length;
 
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const square = position[y][x];
-      
+
       // Board perimeter
       const isPerimeter = x === 0 || x === size - 1 || y === 0 || y === size - 1;
-      
+
       // Non-throne restricted squares
       const isNonThroneRestricted = square.isRestricted && !square.isThrone;
-      
+
       if (isPerimeter || isNonThroneRestricted) {
-        escapePoints.add({ x, y });
+        edgeSquares.add({ x, y });
       }
     }
   }
-  
-  return escapePoints;
+
+  return edgeSquares;
 }
+
+// Backward-compatibility alias: older code used "extractEscapePoints"
+export const extractEscapePoints = extractEdgeSquares;

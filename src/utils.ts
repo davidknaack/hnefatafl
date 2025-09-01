@@ -6,19 +6,19 @@ import { COORD_CAPTURE_RE } from "./patterns";
  * Uses multi-start DFS from all defender positions.
  *
  * @param position Square[][] representing the game position
- * @param escapePoints Set of edge positions (or escape squares) as strings 'x,y'
- * @returns true if any defender can escape, false otherwise
+ * @param edgeSquares Set of edge positions as Coordinate objects
+ * @returns true if any defender can reach an edge square, false otherwise
  */
 export function defendersCanEscape(
   position: Square[][],
-  escapePoints: Set<Coordinate>
+  edgeSquares: Set<Coordinate>
 ): boolean {
   const visited = new Set<string>();
   const stack: {x: number, y: number}[] = [];
 
   // Efficiently filter out edge squares occupied by attackers
   const validEdges = new Set<string>();
-  for (const coord of escapePoints) {
+  for (const coord of edgeSquares) {
     const x = coord.x, y = coord.y;
     const square = position[y][x];
     // Edge is valid if not occupied by an attacker

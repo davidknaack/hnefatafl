@@ -1,6 +1,6 @@
 import { GameStatus, PieceType, Player, Square, Move, Coordinate } from "./types";
 import { defendersCanEscape } from "./utils";
-import { extractEscapePoints } from "./board";
+import { extractEdgeSquares } from "./board";
 
 // Returns the game status after a move is applied
 export function getGameStatusAfterMove(position: Square[][], move: Move, currentPlayer: Player): GameStatus {
@@ -17,8 +17,8 @@ export function getGameStatusAfterMove(position: Square[][], move: Move, current
 
   // Check for encirclement after attacker moves
   if (currentPlayer === Player.Attacker) {
-    const escapePoints = extractEscapePoints(position);
-    if (!defendersCanEscape(position, escapePoints)) {
+  const edgeSquares = extractEdgeSquares(position);
+  if (!defendersCanEscape(position, edgeSquares)) {
       return GameStatus.AttackerWin;
     }
   }
@@ -49,7 +49,7 @@ export function getAvailableCaptures(
   position: Square[][],
   move: Move,
   player: Player,
-  edges: Set<Coordinate>
+  edgeSquares: Set<Coordinate>
 ): Coordinate[] {
   const captures: Coordinate[] = [];
   const size = position.length;
@@ -76,7 +76,7 @@ export function getAvailableCaptures(
   captures.push(...standardCaptures);
 
   // Get edge-enclosure captures
-  const edgeCaptures = getEdgeEnclosureCaptures(position, move, player, edges, isHostileTo, getOccupantAfter);
+  const edgeCaptures = getEdgeEnclosureCaptures(position, move, player, edgeSquares, isHostileTo, getOccupantAfter);
   captures.push(...edgeCaptures);
 
   return captures;
@@ -160,7 +160,7 @@ function getEdgeEnclosureCaptures(
   position: Square[][],
   move: Move,
   player: Player,
-  edges: Set<Coordinate>,
+  edgeSquares: Set<Coordinate>,
   isHostileTo: (owner: Player, x: number, y: number) => boolean,
   getOccupantAfter: (x: number, y: number) => Square["occupant"]
 ): Coordinate[] {
@@ -176,8 +176,8 @@ function getEdgeEnclosureCaptures(
     return isSquareHostileTo(cell, owner, occ);
   }
 
-  // Convert edges to coordinates
-  const edgeCoords: Coordinate[] = Array.from(edges).map(e => ({ x: e.x, y: e.y }));
+  // Convert edgeSquares to coordinates
+  const edgeCoords: Coordinate[] = Array.from(edgeSquares).map(e => ({ x: e.x, y: e.y }));
 
   // Group by row and column
   const byRow: Map<number, Coordinate[]> = new Map();
