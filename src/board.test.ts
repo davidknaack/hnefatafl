@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'vitest'
-import { initializeGame, transformLayoutToPosition } from './board'
+import { initializeGame } from './board'
 
 describe('Validator Tests', () => {
-
     test('No kings on board fails initial board creation', () => {
+        // prettier-ignore
         const boardLayout = [
             "A D A",
             "     ",
@@ -11,6 +11,8 @@ describe('Validator Tests', () => {
             "     ",
             "     "
         ]
-        expect(() => initializeGame(boardLayout)).toThrowError(/There must be exactly one king on the board/i)
+        expect(() => initializeGame(boardLayout)).toThrowError(
+            /There must be exactly one king on the board/i
+        )
     })
-});
+})

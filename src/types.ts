@@ -1,23 +1,23 @@
 export enum Player {
-    Attacker = "attacker",
-    Defender = "defender"
+    Attacker = 'attacker',
+    Defender = 'defender',
 }
 
 export enum PieceType {
-    Attacker = "attacker",
-    Defender = "defender",
-    King = "king"
+    Attacker = 'attacker',
+    Defender = 'defender',
+    King = 'king',
 }
 
 export interface Piece {
-    owner: Player;
-    type: PieceType;
+    owner: Player
+    type: PieceType
 }
 
 export enum GameStatus {
-    InProgress = "in_progress",
-    AttackerWin = "attacker_win",
-    DefenderWin = "defender_win"
+    InProgress = 'in_progress',
+    AttackerWin = 'attacker_win',
+    DefenderWin = 'defender_win',
 }
 
 export interface Coordinate {
