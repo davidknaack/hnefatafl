@@ -47,67 +47,72 @@ function renderBoard(position: Square[][], edgeSquares: Set<Coordinate>) {
     return out
 }
 describe('defendersCanEscape', () => {
-    test('returns true when a defender is on the edge', () => {
+    test('returns true when a defender is on the edge', (context) => {
         // prettier-ignore
         const { position, edgeSquares } = createTestBoardAndEdges([
-          'D....',
-          '.....',
-          '.....',
-          '.....',
-          '.....'
+            'D....',
+            '.....',
+            '.....',
+            '.....',
+            '.....'
         ]);
+        console.log(context.task.name)
         console.log(renderBoard(position, edgeSquares))
         expect(defendersCanEscape(position, edgeSquares)).toBe(true)
     })
 
-    test('returns false when an attacker is on the top edge', () => {
+    test('returns false when an attacker is on the top edge', (context) => {
         // prettier-ignore
         const { position, edgeSquares } = createTestBoardAndEdges([
-        'aaaaa',
-        'a.d.a',
-        'a...a',
-        'a...a',
-        'aaaaa'
-      ]);
+            'aaaaa',
+            'a.d.a',
+            'a...a',
+            'a...a',
+            'aaaaa'
+        ]);
+        console.log(context.task.name)
         console.log(renderBoard(position, edgeSquares))
         expect(defendersCanEscape(position, edgeSquares)).toBe(false)
     })
 
-    test('returns false when an attacker is on the right edge', () => {
+    test('returns false when an attacker is on the right edge', (context) => {
         // prettier-ignore
         const { position, edgeSquares } = createTestBoardAndEdges([
-        'aaaaa',
-        'a.d.a',
-        'a...a',
-        'a...a',
-        'aaaaa'
-      ]);
+            'aaaaa',
+            'a.d.a',
+            'a...a',
+            'a...a',
+            'aaaaa'
+        ]);
+        console.log(context.task.name)
         console.log(renderBoard(position, edgeSquares))
         expect(defendersCanEscape(position, edgeSquares)).toBe(false)
     })
 
-    test('returns true when a defender can reach the edge', () => {
+    test('returns true when a defender can reach the edge', (context) => {
         // prettier-ignore
         const { position, edgeSquares } = createTestBoardAndEdges([
-        '.....',
-        '.....',
-        '..d..',
-        '.....',
-        '.....'
-      ]);
+            '.....',
+            '.....',
+            '..d..',
+            '.....',
+            '.....'
+        ]);
+        console.log(context.task.name)
         console.log(renderBoard(position, edgeSquares))
         expect(defendersCanEscape(position, edgeSquares)).toBe(true)
     })
 
-    test('returns false when defenders are completely surrounded', () => {
+    test('returns false when defenders are completely surrounded', (context) => {
         // prettier-ignore
         const { position, edgeSquares } = createTestBoardAndEdges([
-        '.....',
-        '.aaa.',
-        '.ada.',
-        '.aaa.',
-        '.....'
-      ]);
+            '.....',
+            '.aaa.',
+            '.ada.',
+            '.aaa.',
+            '.....'
+        ]);
+        console.log(context.task.name)
         console.log(renderBoard(position, edgeSquares))
         expect(defendersCanEscape(position, edgeSquares)).toBe(false)
     })
@@ -115,31 +120,32 @@ describe('defendersCanEscape', () => {
     test('returns false when multiple defenders are surrounded', (context) => {
         // prettier-ignore
         const { position, edgeSquares } = createTestBoardAndEdges([
-        'aaaaa',
-        'aaaa.',
-        'a.dda',
-        'aaaaa',
-        'aaaaa'
-      ]);
+            'aaaaa',
+            'aaaa.',
+            'a.dda',
+            'aaaaa',
+            'aaaaa'
+        ]);
         console.log(context.task.name)
         console.log(renderBoard(position, edgeSquares))
         expect(defendersCanEscape(position, edgeSquares)).toBe(false)
     })
 
-    test('returns true for a winding path to the edge', () => {
+    test('returns true for a winding path to the edge', (context) => {
         // prettier-ignore
         const { position, edgeSquares } = createTestBoardAndEdges([
-        '.....',
-        '.....',
-        '..d..',
-        '.....',
-        '.....'
-      ]);
+            '.....',
+            '.....',
+            '..d..',
+            '.....',
+            '.....'
+        ]);
+        console.log(context.task.name)
         console.log(renderBoard(position, edgeSquares))
         expect(defendersCanEscape(position, edgeSquares)).toBe(true)
     })
 
-    test('returns false for a large board with isolated defenders', () => {
+    test('returns false for a large board with isolated defenders', (context) => {
         const layout = Array.from({ length: 10 }, (_, y) =>
             Array.from({ length: 10 }, (_, x) => {
                 // Create a ring of attackers around positions (5,5) and (6,5)
@@ -155,32 +161,35 @@ describe('defendersCanEscape', () => {
         )
 
         const { position, edgeSquares } = createTestBoardAndEdges(layout)
+        console.log(context.task.name)
         console.log(renderBoard(position, edgeSquares))
         expect(defendersCanEscape(position, edgeSquares)).toBe(false)
     })
 
-    test('returns true for multiple defenders with one escape route', () => {
+    test('returns true for multiple defenders with one escape route', (context) => {
         // prettier-ignore
         const { position, edgeSquares } = createTestBoardAndEdges([
-        '.....',
-        '.....',
-        '..dd.',
-        '.aa.a',
-        '.....'
-      ]);
+            '.....',
+            '.....',
+            '..dd.',
+            '.aa.a',
+            '.....'
+        ]);
+        console.log(context.task.name)
         console.log(renderBoard(position, edgeSquares))
         expect(defendersCanEscape(position, edgeSquares)).toBe(true)
     })
 
-    test('returns false when edges are blocked', () => {
+    test('returns false when edges are blocked', (context) => {
         // prettier-ignore
         const { position, edgeSquares} = createTestBoardAndEdges([
-        'aaaaa',
-        'a..da',
-        'a.d.a',
-        'aa.aa',
-        'aaaaa'
-      ]);
+            'aaaaa',
+            'a..da',
+            'a.d.a',
+            'aa.aa',
+            'aaaaa'
+        ]);
+        console.log(context.task.name)
         console.log(renderBoard(position, edgeSquares))
         expect(defendersCanEscape(position, edgeSquares)).toBe(false)
     })
