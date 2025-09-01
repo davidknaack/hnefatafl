@@ -713,11 +713,9 @@ describe('Validator Tests', () => {
             "R DK D    R"
         ]
         const gameSetup = transformLayoutToPosition(boardLayout)
-        gameSetup.position[5][5].isThrone = true;
-        gameSetup.position[10][3].isThrone = false;
         const move = {
-            from: { x: 9, y: 5 },
-            to: { x: 9, y: 4 },
+            from: { x: 5, y: 9 },
+            to: { x: 4, y: 9 },
             captures: []
         }
         const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
@@ -725,6 +723,222 @@ describe('Validator Tests', () => {
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.DefenderWin)
+    })
+
+    test('Captureable defenders adjacent to a fort do not invalidate the fort', () => {
+        const boardLayout = [
+            "R         R",
+            "           ",
+            "           ",
+            "           ",
+            "           ",
+            "     T     ",
+            "           ",
+            "           ",
+            " A DA      ",
+            "   D D     ",
+            "R DK D    R"
+        ]
+        const gameSetup = transformLayoutToPosition(boardLayout)
+        const move = {
+            from: { x: 5, y: 9 },
+            to: { x: 4, y: 9 },
+            captures: []
+        }
+        const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
+        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toEqual([])
+        expect(result.status).toBe(GameStatus.DefenderWin)
+    })
+
+    test('A fort must be on the edge of the board', () => {
+        const boardLayout = [
+            "R         R",
+            "           ",
+            "           ",
+            "           ",
+            "           ",
+            "     T     ",
+            "           ",
+            " A DD D    ",
+            "   DkD     ",
+            "   DDD     ",
+            "R         R"
+        ]
+        const gameSetup = transformLayoutToPosition(boardLayout)
+        const move = {
+            from: { x: 6, y: 7 },
+            to: { x: 5, y: 7 },
+            captures: []
+        }
+        const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
+        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toEqual([])
+        expect(result.status).toBe(GameStatus.InProgress)
+    })
+
+    test('A fort may be connected to the edge of the board by uncapturable defenders 1', () => {
+        const boardLayout = [
+            "R         R",
+            "           ",
+            "           ",
+            "           ",
+            "           ",
+            "     T     ",
+            "           ",
+            " A DD D    ",
+            "   DkD     ",
+            "   DDD     ",
+            "R  DD     R"
+        ]
+        const gameSetup = transformLayoutToPosition(boardLayout)
+        const move = {
+            from: { x: 6, y: 7 },
+            to: { x: 5, y: 7 },
+            captures: []
+        }
+        const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
+        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toEqual([])
+        expect(result.status).toBe(GameStatus.DefenderWin)
+    })
+
+    test('A fort may be connected to the edge of the board by uncapturable defenders 2', () => {
+        const boardLayout = [
+            "R         R",
+            "           ",
+            "           ",
+            "           ",
+            "           ",
+            "     T     ",
+            "           ",
+            " A DD D    ",
+            "   DkD     ",
+            "   DDD     ",
+            "R  D D    R"
+        ]
+        const gameSetup = transformLayoutToPosition(boardLayout)
+        const move = {
+            from: { x: 6, y: 7 },
+            to: { x: 5, y: 7 },
+            captures: []
+        }
+        const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
+        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toEqual([])
+        expect(result.status).toBe(GameStatus.DefenderWin)
+    })
+
+    test('A fort connected to the edge of the board by capturable defenders is not a win 1', () => {
+        const boardLayout = [
+            "R         R",
+            "           ",
+            "           ",
+            "           ",
+            "           ",
+            "     T     ",
+            "           ",
+            " A DD D    ",
+            "   DkD     ",
+            "   DDD     ",
+            "R  D      R"
+        ]
+        const gameSetup = transformLayoutToPosition(boardLayout)
+        const move = {
+            from: { x: 6, y: 7 },
+            to: { x: 5, y: 7 },
+            captures: []
+        }
+        const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
+        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toEqual([])
+        expect(result.status).toBe(GameStatus.InProgress)
+    })
+
+    test('A fort connected to the edge of the board by capturable defenders is not a win 2', () => {
+        const boardLayout = [
+            "R         R",
+            "           ",
+            "           ",
+            "           ",
+            "           ",
+            " A   T     ",
+            "           ",
+            "DDDDD D    ",
+            " A DkD     ",
+            "   DDD     ",
+            "R  D      R"
+        ]
+        const gameSetup = transformLayoutToPosition(boardLayout)
+        const move = {
+            from: { x: 6, y: 7 },
+            to: { x: 5, y: 7 },
+            captures: []
+        }
+        const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
+        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toEqual([])
+        expect(result.status).toBe(GameStatus.InProgress)
+    })
+
+    test('A fort connected to the edge of the board by capturable defenders is not a win 3', () => {
+        const boardLayout = [
+            "R         R",
+            "           ",
+            "           ",
+            "           ",
+            "           ",
+            "     T     ",
+            "           ",
+            " DD D      ",
+            " DkD       ",
+            " DDD       ",
+            "RD   A    R"
+        ]
+        const gameSetup = transformLayoutToPosition(boardLayout)
+        const move = {
+            from: { x: 4, y: 7 },
+            to: { x: 3, y: 7 },
+            captures: []
+        }
+        const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
+        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toEqual([])
+        expect(result.status).toBe(GameStatus.InProgress)
+    })
+
+    test('A fort connected to the edge of the board by both capturable and uncapturable defenders is a win', () => {
+        const boardLayout = [
+            "R         R",
+            "           ",
+            "           ",
+            "           ",
+            "           ",
+            " A   T     ",
+            "           ",
+            "DDDDD D    ",
+            " A DkD     ",
+            "   DDD     ",
+            "R  D D    R"
+        ]
+        const gameSetup = transformLayoutToPosition(boardLayout)
+        const move = {
+            from: { x: 6, y: 7 },
+            to: { x: 5, y: 7 },
+            captures: []
+        }
+        const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
+        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toEqual([])
+        expect(result.status).toBe(GameStatus.InProgress)
     })
 
     test('Attackers win if defenders fully encircled', () => {
