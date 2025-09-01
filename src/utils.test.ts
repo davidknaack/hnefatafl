@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import { defendersCanEscape } from './utils';
 import { transformLayoutToPosition, extractEscapePoints, GameSetup } from './board';
-import { Square, Player, PieceType } from './types';
+import { Square, Player, PieceType, Coordinate } from './types';
 
 // Helper to create a test board with the specified layout
 function createTestBoardAndEdges(layout: string[]): GameSetup {
@@ -16,12 +16,13 @@ function createTestBoardAndEdges(layout: string[]): GameSetup {
 // then the occupied piece type is rendered as uppercase,
 // indicating a defender (D/d) or attacker (A/a) that is on
 // an edge square.
-function renderBoard(position: Square[][], escapePoints: Set<string>) {
-    let out = '';
-    for (let y = 0; y < position.length; y++) {
-        for (let x = 0; x < position[0].length; x++) {
-            const key = `${x},${y}`;
-            const isEscape = escapePoints.has(key);
+function renderBoard(position: Square[][], escapePoints: Set<Coordinate>) {
+  const edgeKeys = new Set(Array.from(escapePoints).map(c => `${c.x},${c.y}`));
+  let out = '';
+  for (let y = 0; y < position.length; y++) {
+    for (let x = 0; x < position[0].length; x++) {
+      const key = `${x},${y}`;
+      const isEscape = edgeKeys.has(key);
             const cell = position[y][x];
             
             if (cell.occupant?.type === PieceType.Defender || cell.occupant?.type === PieceType.King) {

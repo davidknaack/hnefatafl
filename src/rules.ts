@@ -49,7 +49,7 @@ export function getAvailableCaptures(
   position: Square[][],
   move: Move,
   player: Player,
-  edges: Set<string>
+  edges: Set<Coordinate>
 ): Coordinate[] {
   const captures: Coordinate[] = [];
   const size = position.length;
@@ -160,7 +160,7 @@ function getEdgeEnclosureCaptures(
   position: Square[][],
   move: Move,
   player: Player,
-  edges: Set<string>,
+  edges: Set<Coordinate>,
   isHostileTo: (owner: Player, x: number, y: number) => boolean,
   getOccupantAfter: (x: number, y: number) => Square["occupant"]
 ): Coordinate[] {
@@ -177,10 +177,7 @@ function getEdgeEnclosureCaptures(
   }
 
   // Convert edges to coordinates
-  const edgeCoords: Coordinate[] = Array.from(edges).map(e => {
-    const [x, y] = e.split(",").map(Number);
-    return { x, y };
-  });
+  const edgeCoords: Coordinate[] = Array.from(edges).map(e => ({ x: e.x, y: e.y }));
 
   // Group by row and column
   const byRow: Map<number, Coordinate[]> = new Map();

@@ -63,7 +63,7 @@ export const STANDARD_BOARD = [
 
 export interface GameSetup {
   position: Square[][];
-  escapePoints: Set<string>;
+  escapePoints: Set<Coordinate>;
 }
 
 export interface LayoutTransformOptions {
@@ -138,7 +138,6 @@ export function transformLayoutToPosition(
 export function initializeGame(boardLayout: string[]): GameSetup {
   // Validation for game boards
   let kingCount = 0;
-  let restrictedCount = 0;
 
   // Count kings and restricted squares
   for (let y = 0; y < boardLayout.length; y++) {
@@ -158,8 +157,8 @@ export function initializeGame(boardLayout: string[]): GameSetup {
 /**
  * Extracts escape points from a position: board perimeter + non-throne restricted squares
  */
-export function extractEscapePoints(position: Square[][]): Set<string> {
-  const escapePoints = new Set<string>();
+export function extractEscapePoints(position: Square[][]): Set<Coordinate> {
+  const escapePoints = new Set<Coordinate>();
   const size = position.length;
 
   for (let y = 0; y < size; y++) {
@@ -173,7 +172,7 @@ export function extractEscapePoints(position: Square[][]): Set<string> {
       const isNonThroneRestricted = square.isRestricted && !square.isThrone;
       
       if (isPerimeter || isNonThroneRestricted) {
-        escapePoints.add(`${x},${y}`);
+        escapePoints.add({ x, y });
       }
     }
   }

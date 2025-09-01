@@ -31,7 +31,7 @@ export function validateMove(
   position: Square[][],
   player: Player,
   move: Move,
-  escapePoints: Set<string>,
+  escapePoints: Set<Coordinate>,
   defenderPositions: string[][] = []
 ): MoveValidationResult {
   const fromSquare = position[move.from.y][move.from.x];

@@ -11,20 +11,19 @@ import { COORD_CAPTURE_RE } from "./patterns";
  */
 export function defendersCanEscape(
   position: Square[][],
-  escapePoints: Set<string>
+  escapePoints: Set<Coordinate>
 ): boolean {
   const visited = new Set<string>();
   const stack: {x: number, y: number}[] = [];
 
   // Efficiently filter out edge squares occupied by attackers
   const validEdges = new Set<string>();
-  for (const key of escapePoints) {
-    const [xStr, yStr] = key.split(",");
-    const x = Number(xStr), y = Number(yStr);
+  for (const coord of escapePoints) {
+    const x = coord.x, y = coord.y;
     const square = position[y][x];
     // Edge is valid if not occupied by an attacker
     if (!square.occupant || square.occupant.owner !== Player.Attacker) {
-      validEdges.add(key);
+      validEdges.add(`${x},${y}`);
     }
   }
 
