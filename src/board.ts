@@ -97,6 +97,9 @@ export function transformLayoutToPosition(
         )
     }
 
+    // If a throne is specified separately from the king, the king's position does not imply the throne square
+    const layoutHasThrone = boardLayout.some(row => row.includes('T'))
+
     // Default character mappings (production game format)
     const defaultCharMap: Record<
         string,
@@ -112,10 +115,16 @@ export function transformLayoutToPosition(
         d: { occupant: { owner: Player.Defender, type: PieceType.Defender } },
         K: {
             occupant: { owner: Player.Defender, type: PieceType.King },
-            isThrone: true,
-            isRestricted: true,
+            isThrone: layoutHasThrone ? false : true,
+            isRestricted: layoutHasThrone ? false : true,
+        },
+        k: {
+            occupant: { owner: Player.Defender, type: PieceType.King },
+            isThrone: layoutHasThrone ? false : true,
+            isRestricted: layoutHasThrone ? false : true,
         },
         R: { isRestricted: true },
+        T: { isThrone: true, isRestricted: true },
         ' ': {},
         '.': {},
     }
