@@ -231,6 +231,28 @@ describe('Validator Tests', () => {
         expect(result.expectedCaptures).toEqual([{ x: 1, y: 2 }]) 
         expect(result.status).toBe(GameStatus.InProgress)
     })
+    
+    // Test for invalid captures
+    test('Specifying incorrect captures is invalid', () => {
+        const boardLayout = [
+            "R   R",
+            "D    ",
+            " AK  ",
+            "     ",
+            "R   R"
+        ]
+        const board = createInitialBoard(boardLayout)
+        const move = {
+            from: { x: 0, y: 1 },
+            to: { x: 0, y: 2 },
+            captures: [{ x: 2, y: 2 }] // Incorrect capture specified, should be { x: 1, y: 2 }
+        }
+        const result = validateMove(board.board, Player.Defender, move, board.edges)
+        expect(result.isValid).toBe(false)
+        expect(result.reason).toContain("Invalid captures")
+        expect(result.expectedCaptures).toEqual([{ x: 1, y: 2 }])
+        expect(result.status).toBe(GameStatus.InProgress)
+    })
 
     test('Left edge enclosure captures defenders', () => {
         const boardLayout = [
@@ -243,16 +265,30 @@ describe('Validator Tests', () => {
             "RA    R"
         ]
         const board = createInitialBoard(boardLayout)
-        const move = {
+        // Test with complete captures
+        const moveComplete = {
             from: { x: 1, y: 6 },
             to: { x: 1, y: 4 },
             captures: [{ x: 0, y: 3 },{ x: 0, y: 4 }]
         }
-        const result = validateMove(board.board, Player.Attacker, move, board.edges)
-        expect(result.isValid).toBe(true)
-        expect(result.expectedCaptures).toContainEqual({ x: 0, y: 3 })
-        expect(result.expectedCaptures).toContainEqual({ x: 0, y: 4 })
-        expect(result.status).toBe(GameStatus.InProgress)
+        const resultComplete = validateMove(board.board, Player.Attacker, moveComplete, board.edges)
+        expect(resultComplete.isValid).toBe(true)
+        expect(resultComplete.expectedCaptures).toContainEqual({ x: 0, y: 3 })
+        expect(resultComplete.expectedCaptures).toContainEqual({ x: 0, y: 4 })
+        expect(resultComplete.status).toBe(GameStatus.InProgress)
+
+        // Test with incomplete captures
+        const moveIncomplete = {
+            from: { x: 1, y: 6 },
+            to: { x: 1, y: 4 },
+            captures: [{ x: 0, y: 3 }] // Only one of the two captures
+        }
+        const resultIncomplete = validateMove(board.board, Player.Attacker, moveIncomplete, board.edges)
+        expect(resultIncomplete.isValid).toBe(false)
+        expect(resultIncomplete.reason).toContain("Invalid captures")
+        expect(resultIncomplete.expectedCaptures).toContainEqual({ x: 0, y: 3 })
+        expect(resultIncomplete.expectedCaptures).toContainEqual({ x: 0, y: 4 })
+        expect(resultIncomplete.status).toBe(GameStatus.InProgress)
     })
 
     test('Left edge enclosure captures defenders using hostile restricted square', () => {

@@ -131,7 +131,6 @@
     <div class="info">
         <input id="fromInput" placeholder="From (e.g. E5)">
         <input id="toInput" placeholder="To (e.g. E6)">
-        <input id="captureInput" placeholder="Capture (e.g. D5F5)">
         <button id="clearBtn">Clear</button>
         <button id="validateBtn">Validate</button>
         <button id="applyBtn">Apply</button>
@@ -152,7 +151,6 @@
         const boardEl = document.getElementById('board');
         const fromInput = document.getElementById('fromInput');
         const toInput = document.getElementById('toInput');
-        const captureInput = document.getElementById('captureInput');
         const validateBtn = document.getElementById('validateBtn');
         const applyBtn = document.getElementById('applyBtn');
         const clearBtn = document.getElementById('clearBtn');
@@ -190,7 +188,7 @@
                     li.onclick = () => {
                         fromInput.value = from;
                         toInput.value = to;
-                        captureInput.value = move.captures.map(c => coordToString(c.x, c.y)).join('');
+                        // Captures are now automatically handled
                     };
                 }
                 listEl.appendChild(li);
@@ -222,8 +220,7 @@
                             fromInput.value = coord;
                         else if (!toInput.value)
                             toInput.value = coord;
-                        else if (!captureInput.value)
-                            captureInput.value = coord;
+                        // No capture input field anymore as captures are automatic
                     });
                     boardEl.appendChild(div);
                 });
@@ -244,31 +241,37 @@
         }
 
         validateBtn.onclick = () => {
-            const move = `${fromInput.value}-${toInput.value}${captureInput.value ? `(${captureInput.value})` : ''}`;
+            // Note: Captures are now automatically handled, so we only need the from-to coordinates
+            const move = `${fromInput.value}-${toInput.value}`;
             const result = engine.validateMove(move);
-            logEl.textContent = JSON.stringify(result, null, 2);
+            
+            // If there are captures available, display them in the log
+            if (result.expectedCaptures && result.expectedCaptures.length > 0) {
+                const captureNotation = result.expectedCaptures.map(c => coordToString(c.x, c.y)).join('');
+                logEl.textContent = `${JSON.stringify(result, null, 2)}\n\nCaptures: ${captureNotation}`;
+            } else {
+                logEl.textContent = JSON.stringify(result, null, 2);
+            }
         };
 
         applyBtn.onclick = () => {
-            const move = `${fromInput.value}-${toInput.value}${captureInput.value ? `(${captureInput.value})` : ''}`;
+            // Note: Captures are now automatically handled
+            const move = `${fromInput.value}-${toInput.value}`;
             const result = engine.applyMove(move);
             logEl.textContent = JSON.stringify(result, null, 2);
             if (result.success) {
                 fromInput.value = '';
                 toInput.value = '';
-                captureInput.value = '';
                 render();
             } else {
                 fromInput.value = '';
                 toInput.value = '';
-                captureInput.value = '';
             }
         };
 
         clearBtn.onclick = () => {
             fromInput.value = '';
             toInput.value = '';
-            captureInput.value = '';
         };
 
         loadBtn.onclick = () => {

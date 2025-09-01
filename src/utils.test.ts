@@ -8,10 +8,7 @@ function createTestBoardAndEdges(layout: string[]): { board: CellState[][], edge
     // Use the shared transformation function with test-specific options
     const board = transformLayoutToBoard(layout);
 
-    // Extract edges (perimeter squares + non-throne restricted squares)
-    const edges = extractEdges(board);
-
-    return { board, edges };
+    return board;
 }
 
 // Helper to render the board as text for debugging

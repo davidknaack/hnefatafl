@@ -61,18 +61,18 @@ export class HnefataflEngine {
         if (!validation.isValid) 
             return { success: false, error: validation.reason }
 
-    // Compute available captures from the pre-move board
-    const actualCaptures = getAvailableCaptures(this.state.board, move, this.state.currentPlayer, this.edges)
-
-        // Validate declared captures against available captures
-        for (const cap of move.captures) {
-            const matched = actualCaptures.find(c => c.x === cap.x && c.y === cap.y)
-            if (!matched) 
-                return { success: false, error: `Invalid capture specified: ${coordToString(cap)}`}
-        }
-
-        // Update capture counters based on pre-move board, then apply move + captures
-        for (const cap of move.captures) {
+        // Use the expected captures from the validator
+        const expectedCaptures = validation.expectedCaptures;
+        
+        // Create a new move object with the expected captures
+        const moveWithCaptures = { 
+            from: move.from, 
+            to: move.to, 
+            captures: expectedCaptures 
+        };
+        
+        // Update capture counters based on expected captures
+        for (const cap of expectedCaptures) {
             const cell = this.state.board[cap.y][cap.x]
             if (cell.occupant && cell.occupant.type === PieceType.Attacker) {
                 this.state.captured.attacker++
@@ -82,29 +82,37 @@ export class HnefataflEngine {
         }
 
         // Generate the next board state with the move applied and captures removed
-        const board = applyMoveToBoard(this.state.board, move, { applyCaptures: true })
+        const board = applyMoveToBoard(this.state.board, moveWithCaptures, { applyCaptures: true })
 
-        // Check for win conditions using rules.ts
+        // Check for win conditions
         let newStatus: GameStatus = getGameStatusAfterMove(board, move, this.state.currentPlayer)
 
         const nextPlayer: Player = this.state.currentPlayer === Player.Attacker ? Player.Defender : Player.Attacker
 
         let defenderPositions = [...this.state.defenderPositions]
-        if (move.captures.length > 0) {
+        if (expectedCaptures.length > 0) {
             defenderPositions = []
         }
-        if (move.captures.length > 0 || this.state.currentPlayer === Player.Defender) {
+        if (expectedCaptures.length > 0 || this.state.currentPlayer === Player.Defender) {
             defenderPositions.push(extractDefenderPosition(board))
         }
 
-        // Update edges if the board size/layout changes (not typical, but for completeness)
-        this.edges = extractEdges(board)
+        // Create a move string that includes captures if they occurred
+        let moveStrWithCaptures = moveStr;
+        if (expectedCaptures.length > 0) {
+            // Check if the move string already has captures notation
+            if (!moveStr.includes('(')) {
+                // Add the captures to the notation
+                const capturesNotation = '(' + expectedCaptures.map(c => coordToString(c)).join('') + ')';
+                moveStrWithCaptures = moveStr + capturesNotation;
+            }
+        }
 
         const newState: GameState = {
             board,
             currentPlayer: newStatus === GameStatus.InProgress ? nextPlayer : this.state.currentPlayer,
             captured: { ...this.state.captured },
-            moveHistory: [...this.state.moveHistory, moveStr],
+            moveHistory: [...this.state.moveHistory, moveStrWithCaptures],
             defenderPositions,
             status: newStatus
         }

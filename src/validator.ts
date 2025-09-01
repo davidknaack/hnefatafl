@@ -54,17 +54,36 @@ export function validateMove(
 
   const expectedCaptures = getAvailableCaptures(board, move, player, edges);
 
-  for (const capture of move.captures) {
-    const found = expectedCaptures.some(exp => isSameCoord(exp, capture));
-    if (!found) {
+  // If captures were explicitly provided, validate them
+  if (move.captures.length > 0) {
+    // Check if provided captures match the expected ones
+    if (move.captures.length !== expectedCaptures.length || 
+        !expectedCaptures.every(expected => 
+          move.captures.some(capture => isSameCoord(capture, expected))
+        )) {
       return {
         isValid: false,
-        reason: `Invalid capture at ${coordToString(capture)}`,
+        reason: `Invalid captures. Expected ${expectedCaptures.length} specific captures.`,
         expectedCaptures,
         status: GameStatus.InProgress
       };
     }
+
+    // Validate that all provided captures are valid
+    for (const capture of move.captures) {
+      const found = expectedCaptures.some(exp => isSameCoord(exp, capture));
+      if (!found) {
+        return {
+          isValid: false,
+          reason: `Invalid capture at ${coordToString(capture)}`,
+          expectedCaptures,
+          status: GameStatus.InProgress
+        };
+      }
+    }
   }
+  
+  // At this point, either no captures were provided, or they exactly match the expected captures
 
   if (player === "defender") {
     const pos = extractDefenderPosition(board, move);
