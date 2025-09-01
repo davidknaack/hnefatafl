@@ -833,6 +833,33 @@ describe('Validator Tests', () => {
         expect(result.status).toBe(GameStatus.DefenderWin)
     })
 
+    test('An attacker may be trapped with the king', () => {
+        const boardLayout = [
+            "R         R",
+            "           ",
+            "           ",
+            "           ",
+            "           ",
+            "     T     ",
+            "           ",
+            " A DD D    ",
+            "   DkD     ",
+            "  DDADD    ",
+            "R DD DD   R"
+        ]
+        const gameSetup = transformLayoutToPosition(boardLayout)
+        const move = {
+            from: { x: 6, y: 7 },
+            to: { x: 5, y: 7 },
+            captures: []
+        }
+        const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
+        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toEqual([])
+        expect(result.status).toBe(GameStatus.DefenderWin)
+    })
+
     test('A fort connected to the edge of the board by capturable defenders is not a win 1', () => {
         const boardLayout = [
             "R         R",
@@ -887,7 +914,7 @@ describe('Validator Tests', () => {
         expect(result.status).toBe(GameStatus.InProgress)
     })
 
-    test('A fort connected to the edge of the board by capturable defenders is not a win 3', () => {
+    test('A fort connected to the edge of the board only by capturable defenders is not a win 3', () => {
         const boardLayout = [
             "R         R",
             "           ",
