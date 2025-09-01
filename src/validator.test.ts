@@ -101,9 +101,30 @@ describe('Validator Tests', () => {
             to: { x: 0, y: 0 },
             captures: []
         }
-    const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
+        const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
         expect(result.isValid).toBe(true)
         expect(result.status).toBe(GameStatus.DefenderWin)
+    })
+
+    test('King moving back to the throne (a restricted square) is not a win condition', () => {
+        const boardLayout = [
+            "R K  ",
+            "     ",
+            "     ",
+            "     ",
+            "     "
+        ]
+        const gameSetup = transformLayoutToPosition(boardLayout)
+        gameSetup.position[0][2].isThrone = false;
+        gameSetup.position[0][0].isThrone = true;
+        const move = {
+            from: { x: 2, y: 0 }, // king
+            to: { x: 0, y: 0 },
+            captures: []
+        }
+        const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
+        expect(result.isValid).toBe(true)
+        expect(result.status).toBe(GameStatus.InProgress)
     })
 
     test('Moving across restricted square successful for non-king', () => {

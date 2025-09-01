@@ -155,7 +155,7 @@ export function initializeGame(boardLayout: string[]): GameSetup {
 }
 
 /**
- * Extracts edges points from a position: board perimeter + non-throne restricted squares
+ * Extracts edge squares from a position: board perimeter + non-throne restricted squares
  */
 export function extractEdgeSquares(position: Square[][]): Set<Coordinate> {
   const edgeSquares = new Set<Coordinate>();

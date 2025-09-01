@@ -11,8 +11,11 @@ export function getGameStatusAfterMove(position: Square[][], move: Move, current
   
   if (isKingCaptured(position)) {
     return GameStatus.AttackerWin;
-  } else if (piece && piece.type === PieceType.King && isKingEscaped(move.to, position.length)) {
-    return GameStatus.DefenderWin;
+  } else if (piece && piece.type === PieceType.King) {
+    const dest = position[move.to.y][move.to.x];
+    // King escapes by reaching a restricted square. 
+    // A throne (isThrone) is restricted and does not count as escape.
+    if (dest.isRestricted && !dest.isThrone) return GameStatus.DefenderWin;
   }
 
   // Check for encirclement after attacker moves
@@ -249,9 +252,4 @@ export function isKingCaptured(position: Square[][]): boolean {
   return true;
 }
 
-export function isKingEscaped(coord: Coordinate, boardSize = 11): boolean {
-  return (
-    (coord.x === 0 || coord.x === boardSize - 1) &&
-    (coord.y === 0 || coord.y === boardSize - 1)
-  );
-}
+// Note: king escape is determined by landing on a non-restricted edge square.
