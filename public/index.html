@@ -199,16 +199,16 @@
             const state = engine.getState();
             boardEl.innerHTML = '';
 
-            state.board.forEach((row, y) => {
-                row.forEach((cell, x) => {
+            state.position.forEach((row, y) => {
+                row.forEach((square, x) => {
                     const div = document.createElement('div');
                     div.className = 'cell';
-                    if (cell.isThrone) div.classList.add('throne')
-                    else if (cell.isRestricted) div.classList.add('corner');
-                    if (cell.occupant) {
-                        if (cell.occupant.type === 'attacker') div.textContent = 'A';
-                        else if (cell.occupant.type === 'defender') div.textContent = 'D';
-                        else if (cell.occupant.type === 'king') div.textContent = 'K';
+                    if (square.isThrone) div.classList.add('throne')
+                    else if (square.isRestricted) div.classList.add('corner');
+                    if (square.occupant) {
+                        if (square.occupant.type === 'attacker') div.textContent = 'A';
+                        else if (square.occupant.type === 'defender') div.textContent = 'D';
+                        else if (square.occupant.type === 'king') div.textContent = 'K';
                         else div.textContent = '';
                     } else {
                         div.textContent = '';
