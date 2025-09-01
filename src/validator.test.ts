@@ -860,6 +860,60 @@ describe('Validator Tests', () => {
         expect(result.status).toBe(GameStatus.DefenderWin)
     })
 
+    test('Attackers that can capture the king cannot be trapped with the king 1', () => {
+        const boardLayout = [
+            "R         R",
+            "     T     ",
+            "           ",
+            "ddddd d    ",
+            "dddddd     ",
+            "  a dd     ",
+            "aka dd     ",
+            "a   dd     ",
+            "dddddd     ",
+            "dddddd     ",
+            "R         R"
+        ]
+        const gameSetup = transformLayoutToPosition(boardLayout)
+        const move = {
+            from: { x: 6, y: 3 },
+            to: { x: 5, y: 3 },
+            captures: []
+        }
+        const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
+        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toEqual([])
+        expect(result.status).toBe(GameStatus.InProgress)
+    })
+
+    test('Attackers that can capture the king cannot be trapped with the king 2', () => {
+        const boardLayout = [
+            "R         R",
+            "           ",
+            "           ",
+            "ddddd d    ",
+            "dddddd     ",
+            " t  dd     ",
+            "aka dd     ",
+            "a   dd     ",
+            "dddddd     ",
+            "dddddd     ",
+            "R         R"
+        ]
+        const gameSetup = transformLayoutToPosition(boardLayout)
+        const move = {
+            from: { x: 6, y: 3 },
+            to: { x: 5, y: 3 },
+            captures: []
+        }
+        const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
+        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toEqual([])
+        expect(result.status).toBe(GameStatus.InProgress)
+    })
+
     test('A fort connected to the edge of the board by capturable defenders is not a win 1', () => {
         const boardLayout = [
             "R         R",
