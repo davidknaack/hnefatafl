@@ -698,6 +698,33 @@ describe('Validator Tests', () => {
         expect(result.status).toBe(GameStatus.InProgress)
     })
 
+    test('King moving to the edge does not win the game', () => {
+        const boardLayout = [
+            "R         R",
+            "           ",
+            "           ",
+            "           ",
+            "           ",
+            "     T     ",
+            "           ",
+            " A         ",
+            "           ",
+            "   K D     ",
+            "R D  D    R"
+        ]
+        const gameSetup = transformLayoutToPosition(boardLayout)
+        const move = {
+            from: { x: 3, y: 9 },
+            to: { x: 4, y: 9 },
+            captures: []
+        }
+        const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
+        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toEqual([])
+        expect(result.status).toBe(GameStatus.InProgress)
+    })
+
     test('King in a fort that cannot be captured wins the game', () => {
         const boardLayout = [
             "R         R",
