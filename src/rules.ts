@@ -6,7 +6,7 @@ import {
     Move,
     Coordinate,
 } from './types'
-import { defendersCanEscape } from './utils'
+import { defendersCanEscape, defendersHaveFort } from './utils'
 import { extractEdgeSquares } from './board'
 
 // Returns the game status after a move is applied
@@ -27,6 +27,12 @@ export function getGameStatusAfterMove(
         // King escapes by reaching a restricted square.
         // A throne (isThrone) is restricted and does not count as escape.
         if (dest.isRestricted && !dest.isThrone) return GameStatus.DefenderWin
+    }
+
+    // Fort detection: if defenders have built an unbreakable fort that
+    // connects the king to the edge, the defenders win immediately.
+    if (defendersHaveFort(position)) {
+        return GameStatus.DefenderWin
     }
 
     // Check for encirclement after attacker moves
