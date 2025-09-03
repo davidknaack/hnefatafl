@@ -663,33 +663,34 @@ describe('Validator Tests', () => {
         expect(result.status).toBe(GameStatus.InProgress)
     })
 
-    // test('King in a fort that cannot be captured wins the game', () => {
-    //     const boardLayout = [
-    //         "R         R",
-    //         "           ",
-    //         "           ",
-    //         "           ",
-    //         "           ",
-    //         "     R     ",
-    //         "           ",
-    //         " A         ",
-    //         "           ",
-    //         "   D D     ",
-    //         "R DK D    R"
-    //     ]
-    //     const gameSetup = transformLayoutToPosition(boardLayout)
-    //     gameSetup.position[5][5].isThrone = true;
-    //     gameSetup.position[10][3].isThrone = false;
-    //     const move = {
-    //         from: { x: 9, y: 5 },
-    //         to: { x: 9, y: 4 },
-    //         captures: []
-    //     }
-    //     const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
-    //     expect(result.isValid).toBe(true)
-    //     expect(result.expectedCaptures).toEqual([])
-    //     expect(result.status).toBe(GameStatus.DefenderWin)
-    // })
+    test('King in a fort that cannot be captured wins the game', () => {
+        // prettier-ignore
+        const boardLayout = [
+            "R         R",
+            "           ",
+            "           ",
+            "           ",
+            "           ",
+            "     R     ",
+            "           ",
+            " A         ",
+            "           ",
+            "   D D     ",
+            "R DK D    R"
+        ]
+        const gameSetup = transformLayoutToPosition(boardLayout)
+        gameSetup.position[5][5].isThrone = true;
+        gameSetup.position[10][3].isThrone = false;
+        const move = {
+            from: { x: 5, y: 9 },
+            to: { x: 4, y: 9 },
+            captures: []
+        }
+        const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toEqual([])
+        expect(result.status).toBe(GameStatus.DefenderWin)
+    })
 
     test('Attackers win if defenders fully encircled', () => {
         // prettier-ignore
