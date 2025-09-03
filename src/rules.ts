@@ -29,6 +29,11 @@ export function getGameStatusAfterMove(
         if (dest.isRestricted && !dest.isThrone) return GameStatus.DefenderWin
     }
 
+    // Check if the king is protected within an uncapturable fort
+    if (isKingInFort(position)) {
+        return GameStatus.DefenderWin
+    }
+
     // Check for encirclement after attacker moves
     if (currentPlayer === Player.Attacker) {
         const edgeSquares = extractEdgeSquares(position)
@@ -317,3 +322,218 @@ export function isKingCaptured(position: Square[][]): boolean {
 }
 
 // Note: king escape is determined by landing on a non-restricted edge square.
+
+const dirs = [
+    { dx: 1, dy: 0 },
+    { dx: -1, dy: 0 },
+    { dx: 0, dy: 1 },
+    { dx: 0, dy: -1 },
+]
+
+function isEdgeSquare(position: Square[][], x: number, y: number): boolean {
+    const size = position.length
+    if (x === 0 || y === 0 || x === size - 1 || y === size - 1) return true
+    const cell = position[y][x]
+    return cell.isRestricted && !cell.isThrone
+}
+
+function getAttackerReachable(position: Square[][]): boolean[][] {
+    const size = position.length
+    const reachable = Array.from({ length: size }, () =>
+        Array(size).fill(false)
+    )
+    const visited = Array.from({ length: size }, () => Array(size).fill(false))
+    const queue: Coordinate[] = []
+
+    for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+            const occ = position[y][x].occupant
+            if (occ && occ.owner === Player.Attacker) {
+                visited[y][x] = true
+                if (!position[y][x].isRestricted) reachable[y][x] = true
+                queue.push({ x, y })
+            }
+        }
+    }
+
+    while (queue.length > 0) {
+        const { x, y } = queue.shift()!
+        for (const { dx, dy } of dirs) {
+            const nx = x + dx
+            const ny = y + dy
+            if (nx < 0 || ny < 0 || nx >= size || ny >= size) continue
+            if (visited[ny][nx]) continue
+            const cell = position[ny][nx]
+            if (cell.occupant && cell.occupant.owner === Player.Defender) continue
+            if (cell.occupant && cell.occupant.type === PieceType.King) continue
+            visited[ny][nx] = true
+            if (!cell.isRestricted) reachable[ny][nx] = true
+            queue.push({ x: nx, y: ny })
+        }
+    }
+
+    return reachable
+}
+
+function attackerCanOccupy(
+    reachable: boolean[][],
+    position: Square[][],
+    x: number,
+    y: number
+): boolean {
+    const size = position.length
+    if (x < 0 || y < 0 || x >= size || y >= size) return false
+    if (position[y][x].isRestricted) return false
+    return reachable[y][x]
+}
+
+function isHostileToDefender(
+    position: Square[][],
+    x: number,
+    y: number
+): boolean {
+    const size = position.length
+    if (x < 0 || y < 0 || x >= size || y >= size) return true
+    const cell = position[y][x]
+    if (cell.isRestricted) return true
+    const occ = cell.occupant
+    return !!(occ && occ.owner === Player.Attacker)
+}
+
+function isDefenderCapturable(
+    position: Square[][],
+    coord: Coordinate,
+    reachable: boolean[][]
+): boolean {
+    const { x, y } = coord
+    const size = position.length
+    const pairs = [
+        [
+            { dx: -1, dy: 0 },
+            { dx: 1, dy: 0 },
+        ],
+        [
+            { dx: 0, dy: -1 },
+            { dx: 0, dy: 1 },
+        ],
+    ]
+
+    for (const [a, b] of pairs) {
+        const nx1 = x + a.dx
+        const ny1 = y + a.dy
+        const nx2 = x + b.dx
+        const ny2 = y + b.dy
+
+        const hostile1 = isHostileToDefender(position, nx1, ny1)
+        const hostile2 = isHostileToDefender(position, nx2, ny2)
+        if (!(hostile1 && hostile2)) continue
+
+        const edge1 = nx1 < 0 || ny1 < 0 || nx1 >= size || ny1 >= size || position[ny1][nx1].isRestricted
+        const edge2 = nx2 < 0 || ny2 < 0 || nx2 >= size || ny2 >= size || position[ny2][nx2].isRestricted
+
+        const attack1 = attackerCanOccupy(reachable, position, nx1, ny1)
+        const attack2 = attackerCanOccupy(reachable, position, nx2, ny2)
+
+        if ((edge1 && attack2) || (edge2 && attack1) || (attack1 && attack2)) {
+            return true
+        }
+    }
+    return false
+}
+
+function isKingStaticCapturable(
+    position: Square[][],
+    king: Coordinate,
+    reachable: boolean[][]
+): boolean {
+    let hostileCount = 0
+    for (const { dx, dy } of dirs) {
+        const nx = king.x + dx
+        const ny = king.y + dy
+        if (isHostileToDefender(position, nx, ny)) {
+            if (nx < 0 || ny < 0 || nx >= position.length || ny >= position.length) {
+                hostileCount++
+            } else if (
+                position[ny][nx].isRestricted ||
+                (position[ny][nx].occupant &&
+                    position[ny][nx].occupant.owner === Player.Attacker) ||
+                attackerCanOccupy(reachable, position, nx, ny)
+            ) {
+                hostileCount++
+            }
+        }
+    }
+    return hostileCount >= 4
+}
+
+function isKingInFort(position: Square[][]): boolean {
+    const size = position.length
+    if (size !== 11) return false
+    let king: Coordinate | null = null
+    for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+            const occ = position[y][x].occupant
+            if (occ && occ.type === PieceType.King) {
+                king = { x, y }
+                break
+            }
+        }
+        if (king) break
+    }
+    if (!king) return false
+
+    const reachable = getAttackerReachable(position)
+    if (isKingStaticCapturable(position, king, reachable)) return false
+
+    const capturable = Array.from({ length: size }, () => Array(size).fill(false))
+    for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+            const occ = position[y][x].occupant
+            if (occ && occ.owner === Player.Defender && occ.type !== PieceType.King) {
+                capturable[y][x] = isDefenderCapturable(
+                    position,
+                    { x, y },
+                    reachable
+                )
+            }
+        }
+    }
+
+    const visited = Array.from({ length: size }, () => Array(size).fill(false))
+    const queue: Coordinate[] = [king]
+    visited[king.y][king.x] = true
+
+    while (queue.length > 0) {
+        const { x, y } = queue.shift()!
+        if (
+            position[y][x].occupant &&
+            position[y][x].occupant!.owner === Player.Defender &&
+            isEdgeSquare(position, x, y)
+        ) {
+            return true
+        }
+
+        for (const { dx, dy } of dirs) {
+            const nx = x + dx
+            const ny = y + dy
+            if (nx < 0 || ny < 0 || nx >= size || ny >= size) continue
+            if (visited[ny][nx]) continue
+            const cell = position[ny][nx]
+            if (cell.occupant) {
+                if (
+                    cell.occupant.owner === Player.Defender &&
+                    !capturable[ny][nx]
+                ) {
+                    visited[ny][nx] = true
+                    queue.push({ x: nx, y: ny })
+                }
+            } else if (!reachable[ny][nx]) {
+                visited[ny][nx] = true
+                queue.push({ x: nx, y: ny })
+            }
+        }
+    }
+
+    return false
+}
+
