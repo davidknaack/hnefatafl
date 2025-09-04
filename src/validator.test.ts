@@ -697,7 +697,7 @@ describe('Validator Tests', () => {
         expect(result.status).toBe(GameStatus.InProgress)
     })
 
-    test('King in a false fort (can be captured) does not win the game', () => {
+    test('King in a false fort (can be captured) does not win the game 1', () => {
         // prettier-ignore
         const boardLayout = [
             "R         R",
@@ -716,6 +716,62 @@ describe('Validator Tests', () => {
         const move = {
             from: { x: 5, y: 9 },
             to: { x: 3, y: 9 },
+            captures: []
+        }
+        const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
+        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toEqual([])
+        expect(result.status).toBe(GameStatus.InProgress)
+    })
+
+    test('King in a false fort (not capturable, but not enclosing the king) does not win the game 2', () => {
+        prettier-ignore
+        const boardLayout = [
+            "R         R",
+            "           ",
+            "   DD      ",
+            "           ",
+            "           ",
+            "     T     ",
+            "           ",
+            "  A A      ",
+            "       D   ",
+            "   DD D    ",
+            "R  DDKDD  R"
+        ]
+        const gameSetup = transformLayoutToPosition(boardLayout)
+        const move = {
+            from: { x: 7, y: 8 },
+            to: { x: 7, y: 9 },
+            captures: []
+        }
+        const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
+        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toEqual([])
+        expect(result.status).toBe(GameStatus.InProgress)
+    })
+
+    test('King in a false fort (capturable defender exposes the king) does not win the game 3', () => {
+        // prettier-ignore
+        const boardLayout = [
+            "R         R",
+            "           ",
+            "   DD      ",
+            "           ",
+            "           ",
+            "     T     ",
+            "           ",
+            "  A A      ",
+            "   DDDDD   ",
+            "   DDAD    ",
+            "R  DDKDD  R"
+        ]
+        const gameSetup = transformLayoutToPosition(boardLayout)
+        const move = {
+            from: { x: 7, y: 8 },
+            to: { x: 7, y: 9 },
             captures: []
         }
         const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
@@ -877,7 +933,7 @@ describe('Validator Tests', () => {
             "           ",
             " A DD D    ",
             "   DkD     ",
-            "   DDD     ",
+            "   D D     ",
             "R  D D    R"
         ]
         const gameSetup = transformLayoutToPosition(boardLayout)
@@ -929,7 +985,7 @@ describe('Validator Tests', () => {
             "           ",
             "ddddd d    ",
             "dddddd     ",
-            "  a dd     ",
+            "  a dd  a  ",
             "aka dd     ",
             "a   dd     ",
             "dddddd     ",
@@ -957,7 +1013,7 @@ describe('Validator Tests', () => {
             "           ",
             "ddddd d    ",
             "dddddd     ",
-            " t  dd     ",
+            " t  dd  a  ",
             "aka dd     ",
             "a   dd     ",
             "dddddd     ",
