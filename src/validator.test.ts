@@ -115,7 +115,7 @@ describe('Validator Tests', () => {
         expect(result.status).toBe(GameStatus.InProgress)
     })
 
-    test('King may move to a restricted square', () => {
+    test('King moving to a restricted square is a win condition', () => {
         // prettier-ignore
         const boardLayout = [
             "R K  ",
@@ -325,7 +325,33 @@ describe('Validator Tests', () => {
         expect(result.status).toBe(GameStatus.InProgress)
     })
 
-    // Test for invalid captures
+    test('King may participate in captures', () => {
+        // prettier-ignore
+        const boardLayout = [
+            "R   R",
+            "D    ",
+            " AK  ",
+            "     ",
+            "R   R"
+        ]
+        const gameSetup = transformLayoutToPosition(boardLayout)
+        const move = {
+            from: { x: 0, y: 1 },
+            to: { x: 0, y: 2 },
+            captures: [{ x: 1, y: 2 }],
+        }
+        const result = validateMove(
+            gameSetup.position,
+            Player.Defender,
+            move,
+            gameSetup.edgeSquares
+        )
+        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toEqual([{ x: 1, y: 2 }])
+        expect(result.status).toBe(GameStatus.InProgress)
+    })
+    
     test('Specifying incorrect captures is invalid', () => {
         // prettier-ignore
         const boardLayout = [
@@ -1060,7 +1086,7 @@ describe('Validator Tests', () => {
         console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([])
-        expect(result.status).toBe(GameStatus.InProgress)
+        expect(result.status).toBe(GameStatus.DefenderWin)
     })
 
     test('Attackers win if defenders fully encircled', () => {
