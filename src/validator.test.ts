@@ -672,6 +672,7 @@ describe('Validator Tests', () => {
     })
 
     test('King in a false fort (can be captured) does not win the game', () => {
+        // prettier-ignore
         const boardLayout = [
             "R         R",
             "           ",
@@ -687,8 +688,8 @@ describe('Validator Tests', () => {
         ]
         const gameSetup = transformLayoutToPosition(boardLayout)
         const move = {
-            from: { x: 9, y: 5 },
-            to: { x: 9, y: 3 },
+            from: { x: 5, y: 9 },
+            to: { x: 3, y: 9 },
             captures: []
         }
         const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
@@ -699,6 +700,7 @@ describe('Validator Tests', () => {
     })
 
     test('King moving to the edge does not win the game', () => {
+        // prettier-ignore
         const boardLayout = [
             "R         R",
             "           ",
@@ -726,6 +728,7 @@ describe('Validator Tests', () => {
     })
 
     test('King in a fort that cannot be captured wins the game', () => {
+        // prettier-ignore
         const boardLayout = [
             "R         R",
             "           ",
@@ -753,6 +756,7 @@ describe('Validator Tests', () => {
     })
 
     test('Captureable defenders adjacent to a fort do not invalidate the fort', () => {
+        // prettier-ignore
         const boardLayout = [
             "R         R",
             "           ",
@@ -780,6 +784,7 @@ describe('Validator Tests', () => {
     })
 
     test('A fort must be on the edge of the board', () => {
+        // prettier-ignore
         const boardLayout = [
             "R         R",
             "           ",
@@ -807,6 +812,7 @@ describe('Validator Tests', () => {
     })
 
     test('A fort may be connected to the edge of the board by uncapturable defenders 1', () => {
+        // prettier-ignore
         const boardLayout = [
             "R         R",
             "           ",
@@ -834,6 +840,7 @@ describe('Validator Tests', () => {
     })
 
     test('A fort may be connected to the edge of the board by uncapturable defenders 2', () => {
+        // prettier-ignore
         const boardLayout = [
             "R         R",
             "           ",
@@ -861,6 +868,7 @@ describe('Validator Tests', () => {
     })
 
     test('An attacker may be trapped with the king', () => {
+        // prettier-ignore
         const boardLayout = [
             "R         R",
             "           ",
@@ -888,6 +896,7 @@ describe('Validator Tests', () => {
     })
 
     test('Attackers that can capture the king cannot be trapped with the king 1', () => {
+        // prettier-ignore
         const boardLayout = [
             "R         R",
             "     T     ",
@@ -915,6 +924,7 @@ describe('Validator Tests', () => {
     })
 
     test('Attackers that can capture the king cannot be trapped with the king 2', () => {
+        // prettier-ignore
         const boardLayout = [
             "R         R",
             "           ",
@@ -942,6 +952,7 @@ describe('Validator Tests', () => {
     })
 
     test('A fort connected to the edge of the board by capturable defenders is not a win 1', () => {
+        // prettier-ignore
         const boardLayout = [
             "R         R",
             "           ",
@@ -969,6 +980,7 @@ describe('Validator Tests', () => {
     })
 
     test('A fort connected to the edge of the board by capturable defenders is not a win 2', () => {
+        // prettier-ignore
         const boardLayout = [
             "R         R",
             "           ",
@@ -996,6 +1008,7 @@ describe('Validator Tests', () => {
     })
 
     test('A fort connected to the edge of the board only by capturable defenders is not a win 3', () => {
+        // prettier-ignore
         const boardLayout = [
             "R         R",
             "           ",
@@ -1023,6 +1036,7 @@ describe('Validator Tests', () => {
     })
 
     test('A fort connected to the edge of the board by both capturable and uncapturable defenders is a win', () => {
+        // prettier-ignore
         const boardLayout = [
             "R         R",
             "           ",
