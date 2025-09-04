@@ -152,6 +152,10 @@ export function defendersHaveFort(position: Square[][]): boolean {
     const size = position.length
     const key = (x: number, y: number) => `${x},${y}`
 
+    // Debug logging for specific test cases
+    const isDebugCase = size === 11 && position[10][3].occupant?.type === PieceType.King;
+    if (isDebugCase) console.log("\n=== DEBUG FORT ANALYSIS ===");
+
     // ------------------------------------------------------------------
     // Step 1: squares attackers can eventually occupy
     // ------------------------------------------------------------------
@@ -165,6 +169,7 @@ export function defendersHaveFort(position: Square[][]): boolean {
                 const k = key(x, y)
                 reachable.add(k)
                 queue.push({ x, y })
+                if (isDebugCase) console.log(`Attacker at (${x},${y})`);
             }
         }
     }
@@ -209,6 +214,26 @@ export function defendersHaveFort(position: Square[][]): boolean {
                 // Can move past restricted squares but cannot stop there
                 nx += dx
                 ny += dy
+            }
+        }
+    }
+
+    if (isDebugCase) {
+        console.log(`Total reachable squares: ${reachable.size}`);
+        console.log("Squares around king:");
+        const kingX = 3, kingY = 10;
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                if (dx === 0 && dy === 0) continue; // skip king square
+                const x = kingX + dx, y = kingY + dy;
+                if (x >= 0 && x < size && y >= 0 && y < size) {
+                    const occupied = position[y][x].occupant ? 
+                        `${position[y][x].occupant.type[0].toLowerCase()}` : '.';
+                    const reach = reachable.has(key(x, y)) ? 'R' : '-';
+                    console.log(`  (${x},${y}): ${occupied} [${reach}]`);
+                } else {
+                    console.log(`  (${x},${y}): OOB`);
+                }
             }
         }
     }
@@ -327,12 +352,22 @@ export function defendersHaveFort(position: Square[][]): boolean {
             { dx: 0, dy: -1 },
         ]
         let hostileCount = 0
+        if (isDebugCase) console.log(`Checking king capturability at (${x},${y}):`);
         for (const { dx, dy } of dirs) {
             const nx = x + dx
             const ny = y + dy
-            if (nx < 0 || ny < 0 || nx >= size || ny >= size) return false
-            if (isHostile(nx, ny)) hostileCount++
+            // Out of bounds squares are considered hostile for king capture
+            if (nx < 0 || ny < 0 || nx >= size || ny >= size) {
+                hostileCount++
+                if (isDebugCase) console.log(`  (${nx},${ny}): out of bounds - hostile`);
+            } else if (isHostile(nx, ny)) {
+                hostileCount++
+                if (isDebugCase) console.log(`  (${nx},${ny}): hostile`);
+            } else {
+                if (isDebugCase) console.log(`  (${nx},${ny}): not hostile`);
+            }
         }
+        if (isDebugCase) console.log(`King has ${hostileCount}/4 hostile neighbors`);
         return hostileCount >= 4
     }
 
@@ -353,12 +388,17 @@ export function defendersHaveFort(position: Square[][]): boolean {
         }
     }
 
+    if (isDebugCase) console.log(`Capturable pieces: ${capturable.size}`);
+
     // ------------------------------------------------------------------
     // Step 3: flood fill from king through safe squares
     // ------------------------------------------------------------------
     if (!king) return false
     const kingKey = key(king.x, king.y)
-    if (capturable.has(kingKey)) return false
+    if (capturable.has(kingKey)) {
+        if (isDebugCase) console.log("King is capturable - no fort");
+        return false
+    }
 
     const safe = new Set<string>()
     for (let y = 0; y < size; y++) {
@@ -387,6 +427,7 @@ export function defendersHaveFort(position: Square[][]): boolean {
     while (stack.length > 0) {
         const { x, y } = stack.pop()!
         if (x === 0 || y === 0 || x === size - 1 || y === size - 1) {
+            if (isDebugCase) console.log(`Fort reaches edge at (${x},${y})`);
             return true
         }
         for (const { dx, dy } of dirs) {
@@ -407,5 +448,6 @@ export function defendersHaveFort(position: Square[][]): boolean {
         }
     }
 
+    if (isDebugCase) console.log("Fort does not reach edge");
     return false
 }
