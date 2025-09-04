@@ -726,7 +726,7 @@ describe('Validator Tests', () => {
     })
 
     test('King in a false fort (not capturable, but not enclosing the king) does not win the game 2', () => {
-        prettier-ignore
+        // prettier-ignore
         const boardLayout = [
             "R         R",
             "           ",
