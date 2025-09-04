@@ -153,7 +153,7 @@ export function defendersHaveFort(position: Square[][]): boolean {
     const key = (x: number, y: number) => `${x},${y}`
 
     // Debug logging for specific test cases
-    const isDebugCase = size === 11 && position[10][3].occupant?.type === PieceType.King;
+    const isDebugCase = size === 11 && position[10][5].occupant?.type === PieceType.King;
     if (isDebugCase) console.log("\n=== DEBUG FORT ANALYSIS ===");
 
     // ------------------------------------------------------------------
@@ -275,6 +275,10 @@ export function defendersHaveFort(position: Square[][]): boolean {
                 end = xs[i]
             }
 
+            if (isDebugCase && y === size - 1) {
+                console.log(`Edge enclosure check: bottom edge segment [${start},${end}]`);
+            }
+
             const adj: Coordinate[] = []
             for (let x = start; x <= end; x++) {
                 const inward = y === 0 ? 1 : size - 2
@@ -283,10 +287,27 @@ export function defendersHaveFort(position: Square[][]): boolean {
             adj.push({ x: start - 1, y })
             adj.push({ x: end + 1, y })
 
+            if (isDebugCase && y === size - 1) {
+                console.log("Adjacent squares to check:");
+                for (const {x, y} of adj) {
+                    const occ = (x >= 0 && y >= 0 && x < size && y < size) ? 
+                        (position[y][x].occupant ? position[y][x].occupant.type[0] : '.') : 'OOB';
+                    const hostile = isHostile(x, y) ? 'H' : '-';
+                    console.log(`  (${x},${y}): ${occ} [${hostile}]`);
+                }
+            }
+
             const enclosed = adj.every(({ x, y }) => isHostile(x, y))
             if (enclosed) {
+                if (isDebugCase && y === size - 1) {
+                    console.log("Edge enclosure: all adjacent squares hostile - capturing segment");
+                }
                 for (let x = start; x <= end; x++) {
                     capturable.add(key(x, y))
+                }
+            } else {
+                if (isDebugCase && y === size - 1) {
+                    console.log("Edge enclosure: not all adjacent squares hostile - no capture");
                 }
             }
             i++
@@ -389,6 +410,14 @@ export function defendersHaveFort(position: Square[][]): boolean {
     }
 
     if (isDebugCase) console.log(`Capturable pieces: ${capturable.size}`);
+    if (isDebugCase) {
+        console.log("List of capturable pieces:");
+        for (const piece of capturable) {
+            const [x, y] = piece.split(',').map(Number);
+            const type = position[y][x].occupant?.type || 'empty';
+            console.log(`  (${x},${y}): ${type}`);
+        }
+    }
 
     // ------------------------------------------------------------------
     // Step 3: flood fill from king through safe squares
@@ -420,10 +449,99 @@ export function defendersHaveFort(position: Square[][]): boolean {
         }
     }
 
-    if (!safe.has(kingKey)) return false
+    if (isDebugCase) {
+        console.log(`Total safe squares: ${safe.size}`);
+        console.log("Safe squares around king:");
+        const kingX = 3, kingY = 10;
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                if (dx === 0 && dy === 0) continue;
+                const x = kingX + dx, y = kingY + dy;
+                const k = key(x, y);
+                if (x >= 0 && x < size && y >= 0 && y < size) {
+                    const isSafe = safe.has(k) ? 'S' : '-';
+                    const occupied = position[y][x].occupant ? 
+                        `${position[y][x].occupant.type[0].toLowerCase()}` : '.';
+                    console.log(`  (${x},${y}): ${occupied} [${isSafe}]`);
+                } else {
+                    console.log(`  (${x},${y}): OOB`);
+                }
+            }
+        }
+    }
+
+    if (!safe.has(kingKey)) {
+        if (isDebugCase) console.log("King is not in safe squares - returning false");
+        return false
+    } else {
+        if (isDebugCase) console.log("King is in safe squares");
+    }
 
     const stack: Coordinate[] = [king]
     const visited = new Set<string>([kingKey])
+    
+    // Special case: if king is at edge but has no safe adjacent squares, 
+    // it's not a valid fort (just an isolated king at edge)
+    if (king.x === 0 || king.y === 0 || king.x === size - 1 || king.y === size - 1) {
+        let hasSafeAdjacent = false;
+        let hasThreateningAdjacent = false;
+        for (const { dx, dy } of dirs) {
+            const nx = king.x + dx
+            const ny = king.y + dy
+            if (nx >= 0 && ny >= 0 && nx < size && ny < size) {
+                const k = key(nx, ny)
+                if (safe.has(k)) {
+                    hasSafeAdjacent = true;
+                } else {
+                    // If square is reachable by attackers or has attackers, it's threatening
+                    if (reachable.has(k) || (position[ny][nx].occupant?.owner === Player.Attacker)) {
+                        hasThreateningAdjacent = true;
+                    }
+                }
+            }
+        }
+        if (!hasSafeAdjacent) {
+            if (isDebugCase) console.log("King at edge but has no safe adjacent squares - not a fort");
+            return false;
+        }
+        // Additional check: if king has threatening adjacent squares, fort must be more robust
+        if (hasThreateningAdjacent) {
+            // Check if ALL non-out-of-bounds adjacent squares are either safe or protected
+            let allAdjacentSecure = true;
+            for (const { dx, dy } of dirs) {
+                const nx = king.x + dx
+                const ny = king.y + dy
+                if (nx >= 0 && ny >= 0 && nx < size && ny < size) {
+                    const k = key(nx, ny)
+                    const square = position[ny][nx];
+                    // Square is secure if it's safe, restricted, or protected by safe defenders
+                    if (!safe.has(k) && !square.isRestricted) {
+                        // Check if this threatening square is "protected" by surrounding safe squares
+                        let protectedCount = 0;
+                        for (const { dx: dx2, dy: dy2 } of dirs) {
+                            const nx2 = nx + dx2
+                            const ny2 = ny + dy2
+                            if (nx2 >= 0 && ny2 >= 0 && nx2 < size && ny2 < size) {
+                                if (safe.has(key(nx2, ny2))) {
+                                    protectedCount++;
+                                }
+                            }
+                        }
+                        // If the threatening square isn't well-protected, fort is invalid
+                        if (protectedCount < 3) {
+                            allAdjacentSecure = false;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (!allAdjacentSecure) {
+                if (isDebugCase) console.log("King at edge with insufficiently protected threatening squares - not a fort");
+                return false;
+            }
+        }
+    }
+    
     while (stack.length > 0) {
         const { x, y } = stack.pop()!
         if (x === 0 || y === 0 || x === size - 1 || y === size - 1) {
