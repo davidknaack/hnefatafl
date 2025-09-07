@@ -258,7 +258,7 @@ export function defendersHaveFort(position: Square[][]): boolean {
         }
     }
 
-    // Expand attacker reachability through empty squares
+    // Expand attacker reachability through empty squares and restricted squares they can pass through
     while (attackerQueue.length > 0) {
         const current = attackerQueue.shift()!
         
@@ -268,7 +268,14 @@ export function defendersHaveFort(position: Square[][]): boolean {
             const neighborKey = `${nx},${ny}`
 
             if (nx >= 0 && ny >= 0 && nx < size && ny < size && !attackerReachable.has(neighborKey)) {
+                // Attackers can reach empty squares
                 if (isEmpty(nx, ny)) {
+                    attackerReachable.add(neighborKey)
+                    attackerQueue.push({ x: nx, y: ny })
+                }
+                // Attackers can also pass through restricted squares (but shouldn't stop there in actual game)
+                // For fort detection, we consider they can threaten through restricted squares
+                else if (isRestricted(nx, ny) && !position[ny][nx].occupant) {
                     attackerReachable.add(neighborKey)
                     attackerQueue.push({ x: nx, y: ny })
                 }
@@ -276,9 +283,29 @@ export function defendersHaveFort(position: Square[][]): boolean {
         }
     }
 
-    // If attackers can reach the king's position, the fort is not valid
+    // If attackers can reach squares adjacent to the king, they can threaten the king
     const kingKey = `${king.x},${king.y}`
-    if (attackerReachable.has(kingKey)) return false
+    let kingIsThreatened = false
+    
+    // Check if attackers can reach the king's position directly
+    if (attackerReachable.has(kingKey)) {
+        kingIsThreatened = true
+    }
+    
+    // Also check if attackers can reach squares adjacent to the king
+    for (const { dx, dy } of directions) {
+        const adjX = king.x + dx
+        const adjY = king.y + dy
+        const adjKey = `${adjX},${adjY}`
+        if (attackerReachable.has(adjKey)) {
+            kingIsThreatened = true
+            break
+        }
+    }
+    
+    if (kingIsThreatened) {
+        return false
+    }
 
     // If we passed all checks, this is a valid fort
     return true
