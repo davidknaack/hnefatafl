@@ -10,6 +10,7 @@ if (!crypto.hash) {
 
 export default defineConfig({
   root: 'public',
+  base: '/davidknaack/',
   server: {
     open: true
   },
