@@ -331,15 +331,53 @@ export function defendersHaveFort(position: Square[][]): boolean {
 
     // Helper function to check if defender can be captured  
     function isDefenderCapturable(x: number, y: number): boolean {
-        // Check horizontal capture (sandwiched left-right)
+        // Check horizontal capture potential (left-right)
         const leftHostile = isAttacker(x - 1, y) || isRestricted(x - 1, y)
         const rightHostile = isAttacker(x + 1, y) || isRestricted(x + 1, y)
+        const leftEmpty = isEmpty(x - 1, y)
+        const rightEmpty = isEmpty(x + 1, y)
+        
+        // If already sandwiched, definitely capturable
         if (leftHostile && rightHostile) return true
+        
+        // If one side is hostile and the other is empty, check if there are free attackers
+        if ((leftHostile && rightEmpty) || (rightHostile && leftEmpty)) {
+            // Count attackers that are not currently threatening other fort pieces
+            let freeAttackers = 0
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    if (isAttacker(x, y)) {
+                        freeAttackers++
+                    }
+                }
+            }
+            // If there are at least 2 attackers total, one could potentially move to capture
+            if (freeAttackers >= 2) return true
+        }
 
-        // Check vertical capture (sandwiched up-down)
+        // Check vertical capture potential (up-down)
         const upHostile = isAttacker(x, y - 1) || isRestricted(x, y - 1)
         const downHostile = isAttacker(x, y + 1) || isRestricted(x, y + 1)
+        const upEmpty = isEmpty(x, y - 1)
+        const downEmpty = isEmpty(x, y + 1)
+        
+        // If already sandwiched, definitely capturable
         if (upHostile && downHostile) return true
+        
+        // If one side is hostile and the other is empty, check if there are free attackers
+        if ((upHostile && downEmpty) || (downHostile && upEmpty)) {
+            // Count attackers that are not currently threatening other fort pieces
+            let freeAttackers = 0
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    if (isAttacker(x, y)) {
+                        freeAttackers++
+                    }
+                }
+            }
+            // If there are at least 2 attackers total, one could potentially move to capture
+            if (freeAttackers >= 2) return true
+        }
 
         return false
     }
