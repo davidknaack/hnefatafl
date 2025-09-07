@@ -205,7 +205,8 @@
         function highlightPossibleMoves(from) {
             clearHighlights();
             possibleMoves = engine.getPossibleMoves(from);
-            
+            logEl.textContent = JSON.stringify(possibleMoves, null, 2);
+
             // Highlight the selected piece
             const fromCell = boardEl.children[from.y * 11 + from.x];
             fromCell.classList.add('highlight-selected');
