@@ -129,283 +129,191 @@ export function renderBoard(position: Square[][], edgeSquares: Set<Coordinate>) 
 }
 
 /**
- * Determines whether defenders (including the king) have formed a
- * "fort"—a configuration that attackers cannot break and that
- * connects the king to the board edge exclusively through squares
- * that attackers cannot occupy.
- *
- * The algorithm works in three broad steps:
- *  1. Compute every square an attacker could eventually occupy by
- *     moving through empty, non-restricted squares. These squares are
- *     considered "reachable" by the attackers.
- *  2. Using that reachability information, determine which defender
- *     pieces are capturable. This includes standard captures and
- *     edge-enclosure captures. Any defender that can be captured is
- *     excluded from the fort.
- *  3. Starting from the king, perform a flood fill through squares
- *     that are either (a) non-capturable defenders/king or (b) empty
- *     squares that attackers cannot reach.  If this region touches the
- *     board edge, the king is protected by an unbreakable fort and the
- *     defenders win.
+ * Determines whether defenders have formed a valid fort under Copenhagen rules.
+ * 
+ * A fort is valid when:
+ * 1. The king is on the board edge
+ * 2. The king can move within the fort area  
+ * 3. Fort defenders are not capturable
+ * 4. No attackers can reach the king through normal movement
+ * 
+ * @param position Current board position
+ * @returns true if defenders have a valid fort, false otherwise
  */
 export function defendersHaveFort(position: Square[][]): boolean {
     const size = position.length
-    const key = (x: number, y: number) => `${x},${y}`
 
-    // ------------------------------------------------------------------
-    // Step 1: squares attackers can eventually occupy
-    // ------------------------------------------------------------------
-    const reachable = new Set<string>()
-    const queue: Coordinate[] = []
-
+    // Find the king
+    let king: Coordinate | null = null
     for (let y = 0; y < size; y++) {
         for (let x = 0; x < size; x++) {
-            const occ = position[y][x].occupant
-            if (occ && occ.owner === Player.Attacker) {
-                const k = key(x, y)
-                reachable.add(k)
-                queue.push({ x, y })
+            const occupant = position[y][x].occupant
+            if (occupant && occupant.type === PieceType.King) {
+                king = { x, y }
+                break
             }
         }
+        if (king) break
     }
 
-    // Without any attackers on the board, a fort is not considered
-    // formed (tests use minimalist boards without attackers).
-    if (queue.length === 0) return false
+    if (!king) return false
 
-    const dirs = [
-        { dx: 1, dy: 0 },
-        { dx: -1, dy: 0 },
-        { dx: 0, dy: 1 },
-        { dx: 0, dy: -1 },
+    // Rule 1: King must be on board edge
+    const isOnEdge = king.x === 0 || king.y === 0 || king.x === size - 1 || king.y === size - 1
+    if (!isOnEdge) return false
+
+    // Helper functions
+    const directions = [
+        { dx: 0, dy: -1 }, // up
+        { dx: 0, dy: 1 },  // down
+        { dx: -1, dy: 0 }, // left
+        { dx: 1, dy: 0 },  // right
     ]
 
+    const isDefenderOrKing = (x: number, y: number): boolean => {
+        if (x < 0 || y < 0 || x >= size || y >= size) return false
+        const occupant = position[y][x].occupant
+        return occupant && (occupant.type === PieceType.King || occupant.owner === Player.Defender) || false
+    }
+
+    const isAttacker = (x: number, y: number): boolean => {
+        if (x < 0 || y < 0 || x >= size || y >= size) return false
+        const occupant = position[y][x].occupant
+        return occupant && occupant.owner === Player.Attacker || false
+    }
+
+    const isEmpty = (x: number, y: number): boolean => {
+        if (x < 0 || y < 0 || x >= size || y >= size) return false
+        return !position[y][x].occupant
+    }
+
+    const isRestricted = (x: number, y: number): boolean => {
+        if (x < 0 || y < 0 || x >= size || y >= size) return false
+        return position[y][x].isRestricted
+    }
+
+    // Rule 2: King must be able to move (not completely trapped)
+    let kingCanMove = false
+    for (const { dx, dy } of directions) {
+        const moveX = king.x + dx
+        const moveY = king.y + dy
+        if (moveX >= 0 && moveY >= 0 && moveX < size && moveY < size) {
+            if (isEmpty(moveX, moveY) || isDefenderOrKing(moveX, moveY)) {
+                kingCanMove = true
+                break
+            }
+        }
+    }
+    if (!kingCanMove) return false
+
+    // Find connected defenders that form the potential fort
+    const fortPieces = new Set<string>()
+    const queue: Coordinate[] = [king]
+    const visited = new Set<string>([`${king.x},${king.y}`])
+
     while (queue.length > 0) {
-        const { x, y } = queue.shift()!
-        for (const { dx, dy } of dirs) {
-            let nx = x + dx
-            let ny = y + dy
-            while (nx >= 0 && ny >= 0 && nx < size && ny < size) {
-                const square = position[ny][nx]
-                if (square.occupant) {
-                    // Attackers block behind them; if another attacker is
-                    // encountered we treat it as another source.
-                    if (
-                        square.occupant.owner === Player.Attacker &&
-                        !reachable.has(key(nx, ny))
-                    ) {
-                        reachable.add(key(nx, ny))
-                        queue.push({ x: nx, y: ny })
-                    }
-                    break
-                }
-                if (!square.isRestricted) {
-                    const k = key(nx, ny)
-                    if (!reachable.has(k)) {
-                        reachable.add(k)
-                        queue.push({ x: nx, y: ny })
-                    }
-                }
-                // Can move past restricted squares but cannot stop there
-                nx += dx
-                ny += dy
+        const current = queue.shift()!
+        const key = `${current.x},${current.y}`
+        fortPieces.add(key)
+
+        for (const { dx, dy } of directions) {
+            const nx = current.x + dx
+            const ny = current.y + dy
+            const neighborKey = `${nx},${ny}`
+
+            if (!visited.has(neighborKey) && isDefenderOrKing(nx, ny)) {
+                visited.add(neighborKey)
+                queue.push({ x: nx, y: ny })
             }
         }
     }
 
-    // Helper to determine if a square is hostile to defenders given
-    // attacker reachability.
-    const isHostile = (x: number, y: number): boolean => {
-        if (x < 0 || y < 0 || x >= size || y >= size) return true
-        const sq = position[y][x]
-        if (sq.isRestricted) return true
-        if (sq.occupant && sq.occupant.owner === Player.Attacker) return true
-        return reachable.has(key(x, y))
+    // Rule 3: Check if any fort piece is capturable by standard rules
+    for (const pieceKey of fortPieces) {
+        const [x, y] = pieceKey.split(',').map(Number)
+        const occupant = position[y][x].occupant!
+
+        if (occupant.type === PieceType.King) {
+            // King is capturable if surrounded by 4 hostile squares (not at board edge)
+            if (isKingCapturable(x, y)) return false
+        } else {
+            // Regular defender is capturable if sandwiched between 2 hostile squares
+            if (isDefenderCapturable(x, y)) return false
+        }
     }
 
-    // ------------------------------------------------------------------
-    // Step 2: determine capturable defenders (including king)
-    // ------------------------------------------------------------------
-    const capturable = new Set<string>()
+    // Rule 4: Check if attackers can reach the king via pathfinding
+    // Use flood fill from all attackers to see if they can reach the king
+    const attackerReachable = new Set<string>()
+    const attackerQueue: Coordinate[] = []
 
-    // Edge-enclosure capture detection
-    function processHorizontalEdge(y: number) {
-        const xs: number[] = []
+    // Start from all attacker positions
+    for (let y = 0; y < size; y++) {
         for (let x = 0; x < size; x++) {
-            const occ = position[y][x].occupant
-            if (
-                occ &&
-                (occ.owner === Player.Defender || occ.type === PieceType.King)
-            ) {
-                xs.push(x)
+            if (isAttacker(x, y)) {
+                const key = `${x},${y}`
+                attackerReachable.add(key)
+                attackerQueue.push({ x, y })
             }
         }
-        xs.sort((a, b) => a - b)
-        let i = 0
-        while (i < xs.length) {
-            let start = xs[i]
-            let end = start
-            while (i + 1 < xs.length && xs[i + 1] === xs[i] + 1) {
-                i++
-                end = xs[i]
-            }
+    }
 
-            const adj: Coordinate[] = []
-            for (let x = start; x <= end; x++) {
-                const inward = y === 0 ? 1 : size - 2
-                adj.push({ x, y: inward })
-            }
-            adj.push({ x: start - 1, y })
-            adj.push({ x: end + 1, y })
+    // Expand attacker reachability through empty squares
+    while (attackerQueue.length > 0) {
+        const current = attackerQueue.shift()!
+        
+        for (const { dx, dy } of directions) {
+            const nx = current.x + dx
+            const ny = current.y + dy
+            const neighborKey = `${nx},${ny}`
 
-            const enclosed = adj.every(({ x, y }) => isHostile(x, y))
-            if (enclosed) {
-                for (let x = start; x <= end; x++) {
-                    capturable.add(key(x, y))
+            if (nx >= 0 && ny >= 0 && nx < size && ny < size && !attackerReachable.has(neighborKey)) {
+                if (isEmpty(nx, ny)) {
+                    attackerReachable.add(neighborKey)
+                    attackerQueue.push({ x: nx, y: ny })
                 }
             }
-            i++
         }
     }
 
-    function processVerticalEdge(x: number) {
-        const ys: number[] = []
-        for (let y = 0; y < size; y++) {
-            const occ = position[y][x].occupant
-            if (
-                occ &&
-                (occ.owner === Player.Defender || occ.type === PieceType.King)
-            ) {
-                ys.push(y)
-            }
-        }
-        ys.sort((a, b) => a - b)
-        let i = 0
-        while (i < ys.length) {
-            let start = ys[i]
-            let end = start
-            while (i + 1 < ys.length && ys[i + 1] === ys[i] + 1) {
-                i++
-                end = ys[i]
-            }
+    // If attackers can reach the king's position, the fort is not valid
+    const kingKey = `${king.x},${king.y}`
+    if (attackerReachable.has(kingKey)) return false
 
-            const adj: Coordinate[] = []
-            for (let y = start; y <= end; y++) {
-                const inward = x === 0 ? 1 : size - 2
-                adj.push({ x: inward, y })
-            }
-            adj.push({ x, y: start - 1 })
-            adj.push({ x, y: end + 1 })
+    // If we passed all checks, this is a valid fort
+    return true
 
-            const enclosed = adj.every(({ x, y }) => isHostile(x, y))
-            if (enclosed) {
-                for (let y = start; y <= end; y++) {
-                    capturable.add(key(x, y))
-                }
-            }
-            i++
-        }
-    }
-
-    processHorizontalEdge(0)
-    processHorizontalEdge(size - 1)
-    processVerticalEdge(0)
-    processVerticalEdge(size - 1)
-
-    // Standard captures & king capture
-    const isStandardCapturable = (x: number, y: number): boolean => {
-        if (isHostile(x - 1, y) && isHostile(x + 1, y)) return true
-        if (isHostile(x, y - 1) && isHostile(x, y + 1)) return true
-        return false
-    }
-
-    const isKingCapturable = (x: number, y: number): boolean => {
-        const dirs = [
-            { dx: 1, dy: 0 },
-            { dx: -1, dy: 0 },
-            { dx: 0, dy: 1 },
-            { dx: 0, dy: -1 },
-        ]
+    // Helper function to check if king can be captured
+    function isKingCapturable(x: number, y: number): boolean {
         let hostileCount = 0
-        for (const { dx, dy } of dirs) {
+        for (const { dx, dy } of directions) {
             const nx = x + dx
             const ny = y + dy
-            if (nx < 0 || ny < 0 || nx >= size || ny >= size) return false
-            if (isHostile(nx, ny)) hostileCount++
+            
+            // Board edges prevent king capture in Copenhagen rules
+            if (nx < 0 || ny < 0 || nx >= size || ny >= size) {
+                return false
+            }
+            
+            if (isAttacker(nx, ny) || isRestricted(nx, ny)) {
+                hostileCount++
+            }
         }
         return hostileCount >= 4
     }
 
-    let king: Coordinate | null = null
-    for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-            const sq = position[y][x]
-            if (!sq.occupant) continue
-            const occ = sq.occupant
-            const k = key(x, y)
-            if (occ.type === PieceType.King) {
-                king = { x, y }
-                if (isKingCapturable(x, y)) capturable.add(k)
-            } else if (occ.owner === Player.Defender) {
-                if (capturable.has(k)) continue // already marked via edge rules
-                if (isStandardCapturable(x, y)) capturable.add(k)
-            }
-        }
+    // Helper function to check if defender can be captured  
+    function isDefenderCapturable(x: number, y: number): boolean {
+        // Check horizontal capture (sandwiched left-right)
+        const leftHostile = isAttacker(x - 1, y) || isRestricted(x - 1, y)
+        const rightHostile = isAttacker(x + 1, y) || isRestricted(x + 1, y)
+        if (leftHostile && rightHostile) return true
+
+        // Check vertical capture (sandwiched up-down)
+        const upHostile = isAttacker(x, y - 1) || isRestricted(x, y - 1)
+        const downHostile = isAttacker(x, y + 1) || isRestricted(x, y + 1)
+        if (upHostile && downHostile) return true
+
+        return false
     }
-
-    // ------------------------------------------------------------------
-    // Step 3: flood fill from king through safe squares
-    // ------------------------------------------------------------------
-    if (!king) return false
-    const kingKey = key(king.x, king.y)
-    if (capturable.has(kingKey)) return false
-
-    const safe = new Set<string>()
-    for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-            const k = key(x, y)
-            const sq = position[y][x]
-            if (sq.occupant) {
-                const occ = sq.occupant
-                if (
-                    (occ.owner === Player.Defender ||
-                        occ.type === PieceType.King) &&
-                    !capturable.has(k)
-                ) {
-                    safe.add(k)
-                }
-            } else if (!reachable.has(k)) {
-                safe.add(k)
-            }
-        }
-    }
-
-    if (!safe.has(kingKey)) return false
-
-    const stack: Coordinate[] = [king]
-    const visited = new Set<string>([kingKey])
-    while (stack.length > 0) {
-        const { x, y } = stack.pop()!
-        if (x === 0 || y === 0 || x === size - 1 || y === size - 1) {
-            return true
-        }
-        for (const { dx, dy } of dirs) {
-            const nx = x + dx
-            const ny = y + dy
-            const k = key(nx, ny)
-            if (
-                nx >= 0 &&
-                ny >= 0 &&
-                nx < size &&
-                ny < size &&
-                safe.has(k) &&
-                !visited.has(k)
-            ) {
-                visited.add(k)
-                stack.push({ x: nx, y: ny })
-            }
-        }
-    }
-
-    return false
 }
