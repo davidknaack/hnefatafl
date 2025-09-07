@@ -157,8 +157,6 @@ export function defendersHaveFort(position: Square[][]): boolean {
     }
 
     if (!king) return false
-    
-    console.log(`King found at (${king.x}, ${king.y})`)
 
     // Rule 1: King must be on board edge
     const isOnEdge = king.x === 0 || king.y === 0 || king.x === size - 1 || king.y === size - 1
@@ -234,8 +232,6 @@ export function defendersHaveFort(position: Square[][]): boolean {
     // First, identify all potentially capturable defenders in the connected component
     const uncapturableDefenders = new Set<string>()
     
-    console.log(`Analyzing fort with pieces: ${Array.from(fortPieces).join(', ')}`)
-    
     for (const pieceKey of fortPieces) {
         const [x, y] = pieceKey.split(',').map(Number)
         const occupant = position[y][x].occupant!
@@ -244,16 +240,12 @@ export function defendersHaveFort(position: Square[][]): boolean {
             // King is part of fort if not capturable
             if (!isKingCapturable(x, y)) {
                 uncapturableDefenders.add(pieceKey)
-                console.log(`King at (${x},${y}) is uncapturable`)
             } else {
-                console.log(`King at (${x},${y}) is capturable - fort invalid`)
                 return false // King is capturable, fort is invalid
             }
         } else {
             // Only include defenders that are not capturable
-            const capturable = isDefenderCapturable(x, y)
-            console.log(`Defender at (${x},${y}) is ${capturable ? 'capturable' : 'uncapturable'}`)
-            if (!capturable) {
+            if (!isDefenderCapturable(x, y)) {
                 uncapturableDefenders.add(pieceKey)
             }
         }
@@ -291,7 +283,9 @@ export function defendersHaveFort(position: Square[][]): boolean {
     // console.log(`Uncapturable fort pieces: ${Array.from(connectedToKing).join(', ')}`)
 
     // Rule 4: Check if attackers can reach the king via pathfinding
-    // Use flood fill from all attackers to see if they can reach the king
+    // But also consider if capturing any capturable defender would expose the king
+    
+    // First, check current threat level
     const attackerReachable = new Set<string>()
     const attackerQueue: Coordinate[] = []
 
@@ -337,7 +331,6 @@ export function defendersHaveFort(position: Square[][]): boolean {
     // Check if attackers can reach the king's position directly
     if (attackerReachable.has(kingKey)) {
         kingIsThreatened = true
-        console.log('Attackers can reach king directly')
     }
     
     // Also check if attackers can reach squares adjacent to the king
@@ -347,14 +340,38 @@ export function defendersHaveFort(position: Square[][]): boolean {
         const adjKey = `${adjX},${adjY}`
         if (attackerReachable.has(adjKey)) {
             kingIsThreatened = true
-            console.log(`Attackers can reach square adjacent to king: (${adjX},${adjY})`)
             break
         }
     }
     
     if (kingIsThreatened) {
-        console.log('King is threatened - fort invalid')
         return false
+    }
+    
+    // Additional check: see if capturing any capturable defender would expose the king
+    // This handles cases where defenders not in the connected fort are still crucial for protection
+    // But we need to be selective - only check defenders that are immediately adjacent to king path
+    for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+            const occupant = position[y][x].occupant
+            if (occupant && occupant.type === PieceType.Defender) {
+                // Only check defenders that are NOT part of the connected fort
+                // AND are immediately adjacent to the king or blocking a direct path
+                const pieceKey = `${x},${y}`
+                const isInConnectedFort = fortPieces.has(pieceKey)
+                const distanceToKing = Math.abs(x - king.x) + Math.abs(y - king.y)
+                const isAdjacentToKing = distanceToKing === 1
+                
+                // Only check non-fort defenders that are directly adjacent to the king
+                if (!isInConnectedFort && isAdjacentToKing && isDefenderCapturable(x, y)) {
+                    // This is a non-fort defender adjacent to the king that could be captured
+                    // Check if its removal exposes the king
+                    if (wouldRemovingDefenderExposeKing(x, y)) {
+                        return false
+                    }
+                }
+            }
+        }
     }
 
     // If we passed all checks, this is a valid fort
@@ -381,28 +398,14 @@ export function defendersHaveFort(position: Square[][]): boolean {
 
     // Helper function to check if defender can be captured using enhanced rules
     function isDefenderCapturable(x: number, y: number): boolean {
-        // Debug specific case
-        const isTestCase = x === 2 && y === 8
-        if (isTestCase) {
-            console.log(`Checking capturability for defender at (${x},${y})`)
-            console.log(`Left (${x-1},${y}): ${isAttacker(x-1,y) ? 'attacker' : isEmpty(x-1,y) ? 'empty' : 'other'}`)
-            console.log(`Right (${x+1},${y}): ${isAttacker(x+1,y) ? 'attacker' : isEmpty(x+1,y) ? 'empty' : 'other'}`)
-        }
-        
         // Check if defender is currently sandwiched
         const leftHostile = isAttacker(x - 1, y) || isRestricted(x - 1, y)
         const rightHostile = isAttacker(x + 1, y) || isRestricted(x + 1, y)
-        if (leftHostile && rightHostile) {
-            if (isTestCase) console.log('Currently sandwiched horizontally')
-            return true
-        }
+        if (leftHostile && rightHostile) return true
 
         const upHostile = isAttacker(x, y - 1) || isRestricted(x, y - 1)
         const downHostile = isAttacker(x, y + 1) || isRestricted(x, y + 1)
-        if (upHostile && downHostile) {
-            if (isTestCase) console.log('Currently sandwiched vertically')
-            return true
-        }
+        if (upHostile && downHostile) return true
 
         // Check if attackers could potentially sandwich this defender
         // We need to check if attackers can reach the empty positions adjacent to the defender
@@ -414,15 +417,11 @@ export function defendersHaveFort(position: Square[][]): boolean {
         // Case 1: One side hostile, other side empty - need 1 attacker to reach empty side
         if (leftHostile && rightEmpty) {
             // Can any attacker reach (x+1, y)?
-            const canReach = canAttackerReach(x + 1, y)
-            if (isTestCase) console.log(`Left hostile, right empty. Can attacker reach (${x+1},${y})? ${canReach}`)
-            if (canReach) return true
+            if (canAttackerReach(x + 1, y)) return true
         }
         if (rightHostile && leftEmpty) {
             // Can any attacker reach (x-1, y)?
-            const canReach = canAttackerReach(x - 1, y)
-            if (isTestCase) console.log(`Right hostile, left empty. Can attacker reach (${x-1},${y})? ${canReach}`)
-            if (canReach) return true
+            if (canAttackerReach(x - 1, y)) return true
         }
         
         // Case 2: Both sides empty - need 2 attackers to reach both sides
@@ -434,10 +433,7 @@ export function defendersHaveFort(position: Square[][]): boolean {
                 for (let ax = 0; ax < size; ax++) {
                     if (isAttacker(ax, ay)) {
                         attackerCount++
-                        if (attackerCount >= 2) {
-                            if (isTestCase) console.log('Both sides empty, 2+ attackers available')
-                            return true
-                        }
+                        if (attackerCount >= 2) return true
                     }
                 }
             }
@@ -450,15 +446,11 @@ export function defendersHaveFort(position: Square[][]): boolean {
         // Case 1: One side hostile, other side empty - need 1 attacker to reach empty side
         if (upHostile && downEmpty) {
             // Can any attacker reach (x, y+1)?
-            const canReach = canAttackerReach(x, y + 1)
-            if (isTestCase) console.log(`Up hostile, down empty. Can attacker reach (${x},${y+1})? ${canReach}`)
-            if (canReach) return true
+            if (canAttackerReach(x, y + 1)) return true
         }
         if (downHostile && upEmpty) {
             // Can any attacker reach (x, y-1)?
-            const canReach = canAttackerReach(x, y - 1)
-            if (isTestCase) console.log(`Down hostile, up empty. Can attacker reach (${x},${y-1})? ${canReach}`)
-            if (canReach) return true
+            if (canAttackerReach(x, y - 1)) return true
         }
         
         // Case 2: Both sides empty - need 2 attackers to reach both sides
@@ -469,16 +461,12 @@ export function defendersHaveFort(position: Square[][]): boolean {
                 for (let ax = 0; ax < size; ax++) {
                     if (isAttacker(ax, ay)) {
                         attackerCount++
-                        if (attackerCount >= 2) {
-                            if (isTestCase) console.log('Both up/down empty, 2+ attackers available')
-                            return true
-                        }
+                        if (attackerCount >= 2) return true
                     }
                 }
             }
         }
 
-        if (isTestCase) console.log('Defender not capturable')
         return false
     }
 
@@ -499,6 +487,71 @@ export function defendersHaveFort(position: Square[][]): boolean {
                 }
             }
         }
+        return false
+    }
+
+    // Helper function to check if removing a defender would expose the king
+    function wouldRemovingDefenderExposeKing(defenderX: number, defenderY: number): boolean {
+        // Create a temporary position with the defender removed
+        const tempPosition = JSON.parse(JSON.stringify(position))
+        tempPosition[defenderY][defenderX].occupant = null
+        
+        // Check if attackers can now reach king or adjacent squares in this modified position
+        const tempAttackerReachable = new Set<string>()
+        const tempAttackerQueue: Coordinate[] = []
+
+        // Start from all attacker positions
+        for (let y = 0; y < size; y++) {
+            for (let x = 0; x < size; x++) {
+                const occupant = tempPosition[y][x].occupant
+                if (occupant && occupant.owner === Player.Attacker) {
+                    const key = `${x},${y}`
+                    tempAttackerReachable.add(key)
+                    tempAttackerQueue.push({ x, y })
+                }
+            }
+        }
+
+        // Expand attacker reachability in the modified position
+        while (tempAttackerQueue.length > 0) {
+            const current = tempAttackerQueue.shift()!
+            
+            for (const { dx, dy } of directions) {
+                const nx = current.x + dx
+                const ny = current.y + dy
+                const neighborKey = `${nx},${ny}`
+
+                if (nx >= 0 && ny >= 0 && nx < size && ny < size && !tempAttackerReachable.has(neighborKey)) {
+                    const tempSquare = tempPosition[ny][nx]
+                    // Attackers can reach empty squares
+                    if (!tempSquare.occupant) {
+                        tempAttackerReachable.add(neighborKey)
+                        tempAttackerQueue.push({ x: nx, y: ny })
+                    }
+                    // Attackers can also pass through restricted squares
+                    else if (tempSquare.isRestricted && !tempSquare.occupant) {
+                        tempAttackerReachable.add(neighborKey)
+                        tempAttackerQueue.push({ x: nx, y: ny })
+                    }
+                }
+            }
+        }
+
+        // Check if attackers can now reach king or adjacent squares
+        const tempKingKey = `${king.x},${king.y}`
+        if (tempAttackerReachable.has(tempKingKey)) {
+            return true
+        }
+        
+        for (const { dx, dy } of directions) {
+            const adjX = king.x + dx
+            const adjY = king.y + dy
+            const adjKey = `${adjX},${adjY}`
+            if (tempAttackerReachable.has(adjKey)) {
+                return true
+            }
+        }
+        
         return false
     }
 
