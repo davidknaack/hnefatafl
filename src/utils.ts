@@ -238,7 +238,21 @@ export function defendersHaveFort(position: Square[][]): boolean {
             if (isKingCapturable(x, y)) return false
         } else {
             // Regular defender is capturable if sandwiched between 2 hostile squares
-            if (isDefenderCapturable(x, y)) return false
+            // Apply enhanced logic only to defenders that are in the path between king and attackers
+            const isInKingPath = (x === king.x) || (y === king.y)
+            if (isInKingPath) {
+                // Use enhanced capturability check for defenders in king's path
+                if (isDefenderCapturable(x, y)) return false
+            } else {
+                // Use simple check for other defenders
+                const leftHostile = isAttacker(x - 1, y) || isRestricted(x - 1, y)
+                const rightHostile = isAttacker(x + 1, y) || isRestricted(x + 1, y)
+                if (leftHostile && rightHostile) return false
+
+                const upHostile = isAttacker(x, y - 1) || isRestricted(x, y - 1)
+                const downHostile = isAttacker(x, y + 1) || isRestricted(x, y + 1)
+                if (upHostile && downHostile) return false
+            }
         }
     }
 
@@ -331,52 +345,56 @@ export function defendersHaveFort(position: Square[][]): boolean {
 
     // Helper function to check if defender can be captured  
     function isDefenderCapturable(x: number, y: number): boolean {
-        // Check horizontal capture potential (left-right)
+        // Check horizontal capture (sandwiched left-right)
         const leftHostile = isAttacker(x - 1, y) || isRestricted(x - 1, y)
         const rightHostile = isAttacker(x + 1, y) || isRestricted(x + 1, y)
-        const leftEmpty = isEmpty(x - 1, y)
-        const rightEmpty = isEmpty(x + 1, y)
-        
-        // If already sandwiched, definitely capturable
         if (leftHostile && rightHostile) return true
-        
-        // If one side is hostile and the other is empty, check if there are free attackers
-        if ((leftHostile && rightEmpty) || (rightHostile && leftEmpty)) {
-            // Count attackers that are not currently threatening other fort pieces
-            let freeAttackers = 0
-            for (let y = 0; y < size; y++) {
-                for (let x = 0; x < size; x++) {
-                    if (isAttacker(x, y)) {
-                        freeAttackers++
-                    }
-                }
-            }
-            // If there are at least 2 attackers total, one could potentially move to capture
-            if (freeAttackers >= 2) return true
-        }
 
-        // Check vertical capture potential (up-down)
+        // Check vertical capture (sandwiched up-down)
         const upHostile = isAttacker(x, y - 1) || isRestricted(x, y - 1)
         const downHostile = isAttacker(x, y + 1) || isRestricted(x, y + 1)
-        const upEmpty = isEmpty(x, y - 1)
-        const downEmpty = isEmpty(x, y + 1)
-        
-        // If already sandwiched, definitely capturable
         if (upHostile && downHostile) return true
-        
-        // If one side is hostile and the other is empty, check if there are free attackers
-        if ((upHostile && downEmpty) || (downHostile && upEmpty)) {
-            // Count attackers that are not currently threatening other fort pieces
-            let freeAttackers = 0
-            for (let y = 0; y < size; y++) {
-                for (let x = 0; x < size; x++) {
-                    if (isAttacker(x, y)) {
-                        freeAttackers++
+
+        // Check if attacker could potentially capture this defender
+        // Horizontal: one side hostile, other side empty, and there are attackers that could move
+        const leftEmpty = isEmpty(x - 1, y)
+        const rightEmpty = isEmpty(x + 1, y)
+        if ((leftHostile && rightEmpty) || (rightHostile && leftEmpty)) {
+            // Check if there are attackers that could potentially move to the empty square
+            for (let ay = 0; ay < size; ay++) {
+                for (let ax = 0; ax < size; ax++) {
+                    if (isAttacker(ax, ay)) {
+                        // Could this attacker potentially reach the empty square?
+                        const emptyX = leftEmpty ? x - 1 : x + 1
+                        const emptyY = y
+                        // Simple check: if attacker is in same row or column as empty square
+                        if (ax === emptyX || ay === emptyY) {
+                            return true
+                        }
                     }
                 }
             }
-            // If there are at least 2 attackers total, one could potentially move to capture
-            if (freeAttackers >= 2) return true
+        }
+
+        // Check if attacker could potentially capture this defender  
+        // Vertical: one side hostile, other side empty, and there are attackers that could move
+        const upEmpty = isEmpty(x, y - 1)
+        const downEmpty = isEmpty(x, y + 1)
+        if ((upHostile && downEmpty) || (downHostile && upEmpty)) {
+            // Check if there are attackers that could potentially move to the empty square
+            for (let ay = 0; ay < size; ay++) {
+                for (let ax = 0; ax < size; ax++) {
+                    if (isAttacker(ax, ay)) {
+                        // Could this attacker potentially reach the empty square?
+                        const emptyX = x
+                        const emptyY = upEmpty ? y - 1 : y + 1
+                        // Simple check: if attacker is in same row or column as empty square
+                        if (ax === emptyX || ay === emptyY) {
+                            return true
+                        }
+                    }
+                }
+            }
         }
 
         return false
