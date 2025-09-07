@@ -157,6 +157,8 @@ export function defendersHaveFort(position: Square[][]): boolean {
     }
 
     if (!king) return false
+    
+    console.log(`King found at (${king.x}, ${king.y})`)
 
     // Rule 1: King must be on board edge
     const isOnEdge = king.x === 0 || king.y === 0 || king.x === size - 1 || king.y === size - 1
@@ -228,33 +230,65 @@ export function defendersHaveFort(position: Square[][]): boolean {
         }
     }
 
-    // Rule 3: Check if any fort piece is capturable by standard rules
+    // Rule 3: Analyze position after discounting all defenders that could be captured
+    // First, identify all potentially capturable defenders in the connected component
+    const uncapturableDefenders = new Set<string>()
+    
+    console.log(`Analyzing fort with pieces: ${Array.from(fortPieces).join(', ')}`)
+    
     for (const pieceKey of fortPieces) {
         const [x, y] = pieceKey.split(',').map(Number)
         const occupant = position[y][x].occupant!
 
         if (occupant.type === PieceType.King) {
-            // King is capturable if surrounded by 4 hostile squares (not at board edge)
-            if (isKingCapturable(x, y)) return false
-        } else {
-            // Regular defender is capturable if sandwiched between 2 hostile squares
-            // Apply enhanced logic only to defenders that are in the path between king and attackers
-            const isInKingPath = (x === king.x) || (y === king.y)
-            if (isInKingPath) {
-                // Use enhanced capturability check for defenders in king's path
-                if (isDefenderCapturable(x, y)) return false
+            // King is part of fort if not capturable
+            if (!isKingCapturable(x, y)) {
+                uncapturableDefenders.add(pieceKey)
+                console.log(`King at (${x},${y}) is uncapturable`)
             } else {
-                // Use simple check for other defenders
-                const leftHostile = isAttacker(x - 1, y) || isRestricted(x - 1, y)
-                const rightHostile = isAttacker(x + 1, y) || isRestricted(x + 1, y)
-                if (leftHostile && rightHostile) return false
-
-                const upHostile = isAttacker(x, y - 1) || isRestricted(x, y - 1)
-                const downHostile = isAttacker(x, y + 1) || isRestricted(x, y + 1)
-                if (upHostile && downHostile) return false
+                console.log(`King at (${x},${y}) is capturable - fort invalid`)
+                return false // King is capturable, fort is invalid
+            }
+        } else {
+            // Only include defenders that are not capturable
+            const capturable = isDefenderCapturable(x, y)
+            console.log(`Defender at (${x},${y}) is ${capturable ? 'capturable' : 'uncapturable'}`)
+            if (!capturable) {
+                uncapturableDefenders.add(pieceKey)
             }
         }
     }
+
+    // Check if the remaining uncapturable pieces still form a connected fort with the king
+    const kingKey = `${king.x},${king.y}`
+    if (!uncapturableDefenders.has(kingKey)) {
+        return false // King is capturable
+    }
+
+    // Verify that uncapturable defenders still form a connected component
+    const connectedToKing = new Set<string>()
+    const fortQueue: Coordinate[] = [king]
+    const fortVisited = new Set<string>([kingKey])
+    
+    while (fortQueue.length > 0) {
+        const current = fortQueue.shift()!
+        const key = `${current.x},${current.y}`
+        connectedToKing.add(key)
+
+        for (const { dx, dy } of directions) {
+            const nx = current.x + dx
+            const ny = current.y + dy
+            const neighborKey = `${nx},${ny}`
+
+            if (!fortVisited.has(neighborKey) && uncapturableDefenders.has(neighborKey)) {
+                fortVisited.add(neighborKey)
+                fortQueue.push({ x: nx, y: ny })
+            }
+        }
+    }
+
+    // Debug: show the uncapturable fort pieces
+    // console.log(`Uncapturable fort pieces: ${Array.from(connectedToKing).join(', ')}`)
 
     // Rule 4: Check if attackers can reach the king via pathfinding
     // Use flood fill from all attackers to see if they can reach the king
@@ -298,12 +332,12 @@ export function defendersHaveFort(position: Square[][]): boolean {
     }
 
     // If attackers can reach squares adjacent to the king, they can threaten the king
-    const kingKey = `${king.x},${king.y}`
     let kingIsThreatened = false
     
     // Check if attackers can reach the king's position directly
     if (attackerReachable.has(kingKey)) {
         kingIsThreatened = true
+        console.log('Attackers can reach king directly')
     }
     
     // Also check if attackers can reach squares adjacent to the king
@@ -313,11 +347,13 @@ export function defendersHaveFort(position: Square[][]): boolean {
         const adjKey = `${adjX},${adjY}`
         if (attackerReachable.has(adjKey)) {
             kingIsThreatened = true
+            console.log(`Attackers can reach square adjacent to king: (${adjX},${adjY})`)
             break
         }
     }
     
     if (kingIsThreatened) {
+        console.log('King is threatened - fort invalid')
         return false
     }
 
@@ -343,32 +379,63 @@ export function defendersHaveFort(position: Square[][]): boolean {
         return hostileCount >= 4
     }
 
-    // Helper function to check if defender can be captured  
+    // Helper function to check if defender can be captured using enhanced rules
     function isDefenderCapturable(x: number, y: number): boolean {
-        // Check horizontal capture (sandwiched left-right)
+        // Debug specific case
+        const isTestCase = x === 2 && y === 8
+        if (isTestCase) {
+            console.log(`Checking capturability for defender at (${x},${y})`)
+            console.log(`Left (${x-1},${y}): ${isAttacker(x-1,y) ? 'attacker' : isEmpty(x-1,y) ? 'empty' : 'other'}`)
+            console.log(`Right (${x+1},${y}): ${isAttacker(x+1,y) ? 'attacker' : isEmpty(x+1,y) ? 'empty' : 'other'}`)
+        }
+        
+        // Check if defender is currently sandwiched
         const leftHostile = isAttacker(x - 1, y) || isRestricted(x - 1, y)
         const rightHostile = isAttacker(x + 1, y) || isRestricted(x + 1, y)
-        if (leftHostile && rightHostile) return true
+        if (leftHostile && rightHostile) {
+            if (isTestCase) console.log('Currently sandwiched horizontally')
+            return true
+        }
 
-        // Check vertical capture (sandwiched up-down)
         const upHostile = isAttacker(x, y - 1) || isRestricted(x, y - 1)
         const downHostile = isAttacker(x, y + 1) || isRestricted(x, y + 1)
-        if (upHostile && downHostile) return true
+        if (upHostile && downHostile) {
+            if (isTestCase) console.log('Currently sandwiched vertically')
+            return true
+        }
 
-        // Check if attacker could potentially capture this defender
-        // Horizontal: one side hostile, other side empty, and there are attackers that could move
+        // Check if attackers could potentially sandwich this defender
+        // We need to check if attackers can reach the empty positions adjacent to the defender
+
+        // Horizontal potential capture
         const leftEmpty = isEmpty(x - 1, y)
         const rightEmpty = isEmpty(x + 1, y)
-        if ((leftHostile && rightEmpty) || (rightHostile && leftEmpty)) {
-            // Check if there are attackers that could potentially move to the empty square
+        
+        // Case 1: One side hostile, other side empty - need 1 attacker to reach empty side
+        if (leftHostile && rightEmpty) {
+            // Can any attacker reach (x+1, y)?
+            const canReach = canAttackerReach(x + 1, y)
+            if (isTestCase) console.log(`Left hostile, right empty. Can attacker reach (${x+1},${y})? ${canReach}`)
+            if (canReach) return true
+        }
+        if (rightHostile && leftEmpty) {
+            // Can any attacker reach (x-1, y)?
+            const canReach = canAttackerReach(x - 1, y)
+            if (isTestCase) console.log(`Right hostile, left empty. Can attacker reach (${x-1},${y})? ${canReach}`)
+            if (canReach) return true
+        }
+        
+        // Case 2: Both sides empty - need 2 attackers to reach both sides
+        if (leftEmpty && rightEmpty) {
+            // This is more complex - we'd need to check if 2 attackers can coordinate
+            // For simplicity, if we have 2+ attackers, consider it possible
+            let attackerCount = 0
             for (let ay = 0; ay < size; ay++) {
                 for (let ax = 0; ax < size; ax++) {
                     if (isAttacker(ax, ay)) {
-                        // Could this attacker potentially reach the empty square?
-                        const emptyX = leftEmpty ? x - 1 : x + 1
-                        const emptyY = y
-                        // Simple check: if attacker is in same row or column as empty square
-                        if (ax === emptyX || ay === emptyY) {
+                        attackerCount++
+                        if (attackerCount >= 2) {
+                            if (isTestCase) console.log('Both sides empty, 2+ attackers available')
                             return true
                         }
                     }
@@ -376,20 +443,34 @@ export function defendersHaveFort(position: Square[][]): boolean {
             }
         }
 
-        // Check if attacker could potentially capture this defender  
-        // Vertical: one side hostile, other side empty, and there are attackers that could move
+        // Vertical potential capture  
         const upEmpty = isEmpty(x, y - 1)
         const downEmpty = isEmpty(x, y + 1)
-        if ((upHostile && downEmpty) || (downHostile && upEmpty)) {
-            // Check if there are attackers that could potentially move to the empty square
+        
+        // Case 1: One side hostile, other side empty - need 1 attacker to reach empty side
+        if (upHostile && downEmpty) {
+            // Can any attacker reach (x, y+1)?
+            const canReach = canAttackerReach(x, y + 1)
+            if (isTestCase) console.log(`Up hostile, down empty. Can attacker reach (${x},${y+1})? ${canReach}`)
+            if (canReach) return true
+        }
+        if (downHostile && upEmpty) {
+            // Can any attacker reach (x, y-1)?
+            const canReach = canAttackerReach(x, y - 1)
+            if (isTestCase) console.log(`Down hostile, up empty. Can attacker reach (${x},${y-1})? ${canReach}`)
+            if (canReach) return true
+        }
+        
+        // Case 2: Both sides empty - need 2 attackers to reach both sides
+        if (upEmpty && downEmpty) {
+            // If we have 2+ attackers, consider it possible
+            let attackerCount = 0
             for (let ay = 0; ay < size; ay++) {
                 for (let ax = 0; ax < size; ax++) {
                     if (isAttacker(ax, ay)) {
-                        // Could this attacker potentially reach the empty square?
-                        const emptyX = x
-                        const emptyY = upEmpty ? y - 1 : y + 1
-                        // Simple check: if attacker is in same row or column as empty square
-                        if (ax === emptyX || ay === emptyY) {
+                        attackerCount++
+                        if (attackerCount >= 2) {
+                            if (isTestCase) console.log('Both up/down empty, 2+ attackers available')
                             return true
                         }
                     }
@@ -397,6 +478,49 @@ export function defendersHaveFort(position: Square[][]): boolean {
             }
         }
 
+        if (isTestCase) console.log('Defender not capturable')
         return false
+    }
+
+    // Helper function to check if any attacker can reach a target position
+    function canAttackerReach(targetX: number, targetY: number): boolean {
+        // Use the same pathfinding logic as the main fort detection
+        for (let y = 0; y < size; y++) {
+            for (let x = 0; x < size; x++) {
+                if (isAttacker(x, y)) {
+                    // Simple reachability: attacker can reach target if they share row/column
+                    // and there's a clear path (this is a simplified check)
+                    if (x === targetX || y === targetY) {
+                        // Check if path is clear
+                        if (isPathClear(x, y, targetX, targetY)) {
+                            return true
+                        }
+                    }
+                }
+            }
+        }
+        return false
+    }
+
+    // Helper function to check if path between two points is clear
+    function isPathClear(fromX: number, fromY: number, toX: number, toY: number): boolean {
+        if (fromX === toX) {
+            // Vertical movement
+            const startY = Math.min(fromY, toY)
+            const endY = Math.max(fromY, toY)
+            for (let y = startY + 1; y < endY; y++) {
+                if (!isEmpty(fromX, y)) return false
+            }
+        } else if (fromY === toY) {
+            // Horizontal movement
+            const startX = Math.min(fromX, toX)
+            const endX = Math.max(fromX, toX)
+            for (let x = startX + 1; x < endX; x++) {
+                if (!isEmpty(x, fromY)) return false
+            }
+        } else {
+            return false // Diagonal movement not allowed
+        }
+        return true
     }
 }
