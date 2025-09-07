@@ -1,9 +1,11 @@
 import { defineConfig } from 'vite';
 import crypto, { createHash } from 'crypto';
 
-// Fix Vite 7 crypto.hash issue by patching the crypto module directly
+// Fix Vite 7 crypto.hash issue by providing proper polyfill if needed
 if (!crypto.hash) {
-  crypto.hash = (algorithm: string) => createHash(algorithm);
+  crypto.hash = (algorithm: string, data: string | Buffer) => {
+    return createHash(algorithm).update(data).digest('hex');
+  };
 }
 
 export default defineConfig({
