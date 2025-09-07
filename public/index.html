@@ -129,10 +129,117 @@
     .cell.highlight-selected {
         background-color: #3a4a5a !important;
     }
+
+    /* Modal Styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+
+    .modal-content {
+        background-color: #2a2a2a;
+        border: 1px solid #555;
+        border-radius: 8px;
+        width: 80vw;
+        height: 80vh;
+        max-width: 800px;
+        max-height: 600px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px;
+        border-bottom: 1px solid #555;
+        flex-shrink: 0;
+    }
+
+    .modal-header h2 {
+        margin: 0;
+        color: #fff;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        color: #ccc;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 0;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: 4px;
+    }
+
+    .close-btn:hover {
+        background-color: #444;
+        color: #fff;
+    }
+
+    .modal-body {
+        padding: 20px;
+        overflow-y: auto;
+        flex: 1;
+        color: #ddd;
+        line-height: 1.6;
+    }
+
+    .modal-body h3 {
+        color: #fff;
+        margin-top: 20px;
+        margin-bottom: 10px;
+    }
+
+    .modal-body h3:first-child {
+        margin-top: 0;
+    }
+
+    .modal-body p, .modal-body li {
+        margin-bottom: 8px;
+    }
+
+    .modal-body ul {
+        margin: 8px 0;
+        padding-left: 20px;
+    }
+
+    .modal-body ul ul {
+        margin: 4px 0;
+    }
+
+    .modal-body strong {
+        color: #fff;
+    }
+
+    .modal-body em {
+        color: #aaa;
+        font-style: italic;
+    }
     </style>
 </head>
 <body>
     <h1>Hnefatafl Debug UI</h1>
+    
+    <div style="margin: 10px 0;">
+        <button id="howToPlayBtn">How to Play</button>
+    </div>
 
     <div class="controls-row">
         <div class="toggle-group">
@@ -207,6 +314,9 @@
         const displayMovesToggle = document.getElementById('displayMovesToggle');
         const autoValidateToggle = document.getElementById('autoValidateToggle');
         const autoApplyToggle = document.getElementById('autoApplyToggle');
+        const howToPlayBtn = document.getElementById('howToPlayBtn');
+        const howToPlayModal = document.getElementById('howToPlayModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
 
         const engine = new HnefataflEngine();
         
@@ -522,12 +632,83 @@
             toggleHighlightsVisibility();
         };
 
+        // How to Play modal event listeners
+        howToPlayBtn.onclick = () => {
+            howToPlayModal.style.display = 'flex';
+        };
+
+        closeModalBtn.onclick = () => {
+            howToPlayModal.style.display = 'none';
+        };
+
+        // Close modal when clicking the backdrop
+        howToPlayModal.onclick = (e) => {
+            if (e.target === howToPlayModal) {
+                howToPlayModal.style.display = 'none';
+            }
+        };
+
         // Note: Auto Validate and Auto Apply toggles don't need separate event handlers
         // as their state is checked during the click handling logic
 
         engine.reset();
         render();
     </script>
+
+    <!-- How to Play Modal -->
+    <div id="howToPlayModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>How to Play Hnefatafl</h2>
+                <button id="closeModalBtn" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h3>Pronunciation & Origin</h3>
+                <p><strong>Hnefatafl</strong> is pronounced "nef-ah-tah-ful" (roughly). It's an ancient Norse board game, also known as "King's Table" or "Viking Chess."</p>
+                
+                <h3>Historical Context</h3>
+                <p>Hnefatafl was played throughout medieval Scandinavia and the broader Viking world. The original rules have been lost to time, so modern versions are reconstructions based on archaeological evidence, board layouts found in ancient sites, and references in medieval literature.</p>
+                
+                <h3>Game Overview</h3>
+                <p>This is an asymmetric strategy game with two sides:</p>
+                <ul>
+                    <li><strong>Defenders (D)</strong> and the <strong>King (K)</strong> - fewer pieces, start in the center</li>
+                    <li><strong>Attackers (A)</strong> - more numerous, start around the edges</li>
+                </ul>
+                
+                <h3>Objective</h3>
+                <ul>
+                    <li><strong>Defenders win</strong> if the King reaches any edge square of the board</li>
+                    <li><strong>Attackers win</strong> if they capture the King or completely surround all defenders</li>
+                </ul>
+                
+                <h3>Basic Rules</h3>
+                <ul>
+                    <li><strong>Movement:</strong> All pieces move like a rook in chess (horizontally or vertically any number of squares)</li>
+                    <li><strong>Captures:</strong> Pieces are captured by being sandwiched between two enemy pieces</li>
+                    <li><strong>Special Squares:</strong>
+                        <ul>
+                            <li><strong>Throne (center, yellow):</strong> Only the King can occupy this square</li>
+                            <li><strong>Corners (red):</strong> Act as "hostile" squares for captures, only the King can pass through</li>
+                        </ul>
+                    </li>
+                    <li><strong>King Capture:</strong> The King must be surrounded on all four sides to be captured (or three sides if against the throne/edge)</li>
+                </ul>
+                
+                <h3>Forts</h3>
+                <p>Defenders can form protective formations called "forts" where they cannot be captured if properly arranged on the board's edge. <em>Note: Automatic fort detection has not yet been implemented in this version.</em></p>
+                
+                <h3>How to Use This Interface</h3>
+                <ul>
+                    <li>Click a piece to select it (must be your piece and your turn)</li>
+                    <li>Click a destination square to move there</li>
+                    <li>Use the input fields below to manually enter moves (e.g., "E5-E6")</li>
+                    <li>Toggle "Display Possible Moves" to see valid moves highlighted</li>
+                    <li>Use "Auto Validate" or "Auto Apply" for faster gameplay</li>
+                </ul>
+            </div>
+        </div>
+    </div>
 
 </body>
 </html>
