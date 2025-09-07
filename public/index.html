@@ -79,6 +79,19 @@
         background-color: #444;
     }
 
+    .controls-row {
+        display: flex;
+        gap: 20px;
+        margin: 20px 0;
+        align-items: center;
+    }
+
+    .toggle-group {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
     pre {
         background: #2b2b2b;
         color: #eee;
@@ -120,6 +133,21 @@
 </head>
 <body>
     <h1>Hnefatafl Debug UI</h1>
+
+    <div class="controls-row">
+        <div class="toggle-group">
+            <input type="checkbox" id="displayMovesToggle" checked>
+            <label for="displayMovesToggle">Display Possible Moves</label>
+        </div>
+        <div class="toggle-group">
+            <input type="checkbox" id="autoValidateToggle">
+            <label for="autoValidateToggle">Auto Validate</label>
+        </div>
+        <div class="toggle-group">
+            <input type="checkbox" id="autoApplyToggle">
+            <label for="autoApplyToggle">Auto Apply</label>
+        </div>
+    </div>
 
     <div id="boardcontainer" style="display: flex; flex-direction: row; gap: 20px;">
         <div id="board" class="board"></div>
@@ -176,6 +204,9 @@
         const notationInput = document.getElementById('notationInput');
         const loadBtn = document.getElementById('loadBtn');
         const copyGameBtn = document.getElementById('copyGame');
+        const displayMovesToggle = document.getElementById('displayMovesToggle');
+        const autoValidateToggle = document.getElementById('autoValidateToggle');
+        const autoApplyToggle = document.getElementById('autoApplyToggle');
 
         const engine = new HnefataflEngine();
         
@@ -207,6 +238,13 @@
             possibleMoves = engine.getPossibleMoves(from);
             logEl.textContent = JSON.stringify(possibleMoves, null, 2);
 
+            // Only show highlights if the display toggle is enabled
+            if (displayMovesToggle.checked) {
+                showHighlights(from);
+            }
+        }
+
+        function showHighlights(from) {
             // Highlight the selected piece
             const fromCell = boardEl.children[from.y * 11 + from.x];
             fromCell.classList.add('highlight-selected');
@@ -225,6 +263,16 @@
                     currentHighlights.push(captureCell);
                 });
             });
+        }
+
+        function toggleHighlightsVisibility() {
+            if (displayMovesToggle.checked && selectedFrom && possibleMoves.length > 0) {
+                // Show highlights if toggle is on and we have possible moves
+                showHighlights(selectedFrom);
+            } else {
+                // Hide highlights if toggle is off
+                clearHighlights();
+            }
         }
 
         function renderMoveList(listEl, moves) {
@@ -303,26 +351,90 @@
                                 
                                 if (isPossibleMove) {
                                     toInput.value = coordStr;
-                                    // Keep only the highlights for this specific move
-                                    clearHighlights();
-                                    const fromCell = boardEl.children[selectedFrom.y * 11 + selectedFrom.x];
-                                    fromCell.classList.add('highlight-selected');
-                                    currentHighlights.push(fromCell);
                                     
-                                    const toCell = boardEl.children[y * 11 + x];
-                                    toCell.classList.add('highlight-possible');
-                                    currentHighlights.push(toCell);
-                                    
-                                    // Highlight only the captures for this specific move
-                                    const selectedMove = possibleMoves.find(move => 
-                                        move.to.x === x && move.to.y === y
-                                    );
-                                    if (selectedMove) {
-                                        selectedMove.captures.forEach(capture => {
-                                            const captureCell = boardEl.children[capture.y * 11 + capture.x];
-                                            captureCell.classList.add('highlight-capture');
-                                            currentHighlights.push(captureCell);
-                                        });
+                                    // Handle auto-apply or auto-validate
+                                    if (autoApplyToggle.checked) {
+                                        // Auto-apply the move
+                                        const move = `${fromInput.value}-${toInput.value}`;
+                                        const result = engine.applyMove(move);
+                                        logEl.textContent = JSON.stringify(result, null, 2);
+                                        
+                                        if (result.success) {
+                                            // Clear selection and highlights after successful move
+                                            selectedFrom = null;
+                                            possibleMoves = [];
+                                            fromInput.value = '';
+                                            toInput.value = '';
+                                            clearHighlights();
+                                            render();
+                                        } else {
+                                            // Clear inputs if move fails
+                                            selectedFrom = null;
+                                            possibleMoves = [];
+                                            fromInput.value = '';
+                                            toInput.value = '';
+                                            clearHighlights();
+                                        }
+                                    } else if (autoValidateToggle.checked) {
+                                        // Auto-validate the move (but don't apply)
+                                        const move = `${fromInput.value}-${toInput.value}`;
+                                        const result = engine.validateMove(move);
+                                        
+                                        // Display validation result
+                                        if (result.expectedCaptures && result.expectedCaptures.length > 0) {
+                                            const captureNotation = result.expectedCaptures.map(c => coordToString(c.x, c.y)).join('');
+                                            logEl.textContent = `${JSON.stringify(result, null, 2)}\n\nCaptures: ${captureNotation}`;
+                                        } else {
+                                            logEl.textContent = JSON.stringify(result, null, 2);
+                                        }
+                                        
+                                        // Keep only the highlights for this specific move if display is enabled
+                                        if (displayMovesToggle.checked) {
+                                            clearHighlights();
+                                            const fromCell = boardEl.children[selectedFrom.y * 11 + selectedFrom.x];
+                                            fromCell.classList.add('highlight-selected');
+                                            currentHighlights.push(fromCell);
+                                            
+                                            const toCell = boardEl.children[y * 11 + x];
+                                            toCell.classList.add('highlight-possible');
+                                            currentHighlights.push(toCell);
+                                            
+                                            // Highlight only the captures for this specific move
+                                            const selectedMove = possibleMoves.find(move => 
+                                                move.to.x === x && move.to.y === y
+                                            );
+                                            if (selectedMove) {
+                                                selectedMove.captures.forEach(capture => {
+                                                    const captureCell = boardEl.children[capture.y * 11 + capture.x];
+                                                    captureCell.classList.add('highlight-capture');
+                                                    currentHighlights.push(captureCell);
+                                                });
+                                            }
+                                        }
+                                    } else {
+                                        // Manual mode - just show highlights for specific move if display is enabled
+                                        if (displayMovesToggle.checked) {
+                                            clearHighlights();
+                                            const fromCell = boardEl.children[selectedFrom.y * 11 + selectedFrom.x];
+                                            fromCell.classList.add('highlight-selected');
+                                            currentHighlights.push(fromCell);
+                                            
+                                            const toCell = boardEl.children[y * 11 + x];
+                                            toCell.classList.add('highlight-possible');
+                                            currentHighlights.push(toCell);
+                                            
+                                            // Highlight only the captures for this specific move
+                                            const selectedMove = possibleMoves.find(move => 
+                                                move.to.x === x && move.to.y === y
+                                            );
+                                            if (selectedMove) {
+                                                selectedMove.captures.forEach(capture => {
+                                                    const captureCell = boardEl.children[capture.y * 11 + capture.x];
+                                                    captureCell.classList.add('highlight-capture');
+                                                    currentHighlights.push(captureCell);
+                                                });
+                                            }
+                                        }
                                     }
                                 } else {
                                     // Invalid target - clear selection
@@ -404,6 +516,14 @@
                 alert('Game copied to clipboard!');
             });
         };
+
+        // Toggle event listeners
+        displayMovesToggle.onchange = () => {
+            toggleHighlightsVisibility();
+        };
+
+        // Note: Auto Validate and Auto Apply toggles don't need separate event handlers
+        // as their state is checked during the click handling logic
 
         engine.reset();
         render();
