@@ -61,3 +61,8 @@ export interface ApplyMoveResult {
     error?: string
     newState?: GameState
 }
+
+export interface PossibleMove {
+    to: Coordinate
+    captures: Coordinate[]
+}

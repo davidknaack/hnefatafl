@@ -8,6 +8,7 @@ import { validateMove as validateRawMove } from './validator'
 import { parseMove } from './parser'
 import { coordToString } from './utils'
 import { getGameStatusAfterMove } from './rules'
+import { generatePossibleMoves, PossibleMove } from './moveGenerator'
 import {
     ApplyMoveResult,
     GameState,
@@ -182,5 +183,16 @@ export class HnefataflEngine {
             if (!result.success) return result
         }
         return { success: true, newState: this.gameState }
+    }
+
+    getPossibleMoves(from: Coordinate): PossibleMove[] {
+        if (this.gameState.status !== GameStatus.InProgress) return []
+        
+        return generatePossibleMoves(
+            this.gameState.position,
+            from,
+            this.gameState.currentPlayer,
+            this.edgeSquares
+        )
     }
 }

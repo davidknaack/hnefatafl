@@ -104,6 +104,21 @@
     li:hover {
         background-color: #333;
     }
+
+    .cell.highlight-possible {
+        background-color: #4a5a3a !important;
+        border: 2px solid #6a8a4a !important;
+    }
+
+    .cell.highlight-capture {
+        background-color: #5a3a3a !important;
+        border: 2px solid #8a4a4a !important;
+    }
+
+    .cell.highlight-selected {
+        background-color: #3a4a5a !important;
+        border: 2px solid #4a6a8a !important;
+    }
     </style>
 </head>
 <body>
@@ -166,9 +181,52 @@
         const copyGameBtn = document.getElementById('copyGame');
 
         const engine = new HnefataflEngine();
+        
+        // Track UI state for move highlighting
+        let selectedFrom = null;
+        let possibleMoves = [];
+        let currentHighlights = [];
 
         function coordToString(x, y) {
             return String.fromCharCode(65 + x) + (11 - y);
+        }
+
+        function stringToCoord(str) {
+            if (!str || str.length !== 2) return null;
+            const x = str.charCodeAt(0) - 65;
+            const y = 11 - parseInt(str.charAt(1));
+            return { x, y };
+        }
+
+        function clearHighlights() {
+            currentHighlights.forEach(cell => {
+                cell.classList.remove('highlight-possible', 'highlight-capture', 'highlight-selected');
+            });
+            currentHighlights = [];
+        }
+
+        function highlightPossibleMoves(from) {
+            clearHighlights();
+            possibleMoves = engine.getPossibleMoves(from);
+            
+            // Highlight the selected piece
+            const fromCell = boardEl.children[from.y * 11 + from.x];
+            fromCell.classList.add('highlight-selected');
+            currentHighlights.push(fromCell);
+            
+            // Highlight possible target squares and captures
+            possibleMoves.forEach(move => {
+                const toCell = boardEl.children[move.to.y * 11 + move.to.x];
+                toCell.classList.add('highlight-possible');
+                currentHighlights.push(toCell);
+                
+                // Highlight pieces that would be captured
+                move.captures.forEach(capture => {
+                    const captureCell = boardEl.children[capture.y * 11 + capture.x];
+                    captureCell.classList.add('highlight-capture');
+                    currentHighlights.push(captureCell);
+                });
+            });
         }
 
         function renderMoveList(listEl, moves) {
@@ -214,11 +272,70 @@
                         div.textContent = '';
                     }
                     div.addEventListener('click', () => {
-                        const coord = coordToString(x, y);
-                        if (!fromInput.value)
-                            fromInput.value = coord;
-                        else if (!toInput.value)
-                            toInput.value = coord;
+                        const coord = { x, y };
+                        const coordStr = coordToString(x, y);
+                        
+                        if (!selectedFrom) {
+                            // First click - select a piece if it belongs to current player
+                            if (square.occupant && (
+                                square.occupant.owner === state.currentPlayer ||
+                                (state.currentPlayer === 'defender' && square.occupant.type === 'king')
+                            )) {
+                                selectedFrom = coord;
+                                fromInput.value = coordStr;
+                                toInput.value = '';
+                                highlightPossibleMoves(coord);
+                            }
+                        } else {
+                            // Second click - either select target or change selection
+                            if (square.occupant && (
+                                square.occupant.owner === state.currentPlayer ||
+                                (state.currentPlayer === 'defender' && square.occupant.type === 'king')
+                            )) {
+                                // Clicking another piece - change selection
+                                selectedFrom = coord;
+                                fromInput.value = coordStr;
+                                toInput.value = '';
+                                highlightPossibleMoves(coord);
+                            } else {
+                                // Clicking empty square or opponent piece - try to move here
+                                const isPossibleMove = possibleMoves.some(move => 
+                                    move.to.x === x && move.to.y === y
+                                );
+                                
+                                if (isPossibleMove) {
+                                    toInput.value = coordStr;
+                                    // Keep only the highlights for this specific move
+                                    clearHighlights();
+                                    const fromCell = boardEl.children[selectedFrom.y * 11 + selectedFrom.x];
+                                    fromCell.classList.add('highlight-selected');
+                                    currentHighlights.push(fromCell);
+                                    
+                                    const toCell = boardEl.children[y * 11 + x];
+                                    toCell.classList.add('highlight-possible');
+                                    currentHighlights.push(toCell);
+                                    
+                                    // Highlight only the captures for this specific move
+                                    const selectedMove = possibleMoves.find(move => 
+                                        move.to.x === x && move.to.y === y
+                                    );
+                                    if (selectedMove) {
+                                        selectedMove.captures.forEach(capture => {
+                                            const captureCell = boardEl.children[capture.y * 11 + capture.x];
+                                            captureCell.classList.add('highlight-capture');
+                                            currentHighlights.push(captureCell);
+                                        });
+                                    }
+                                } else {
+                                    // Invalid target - clear selection
+                                    selectedFrom = null;
+                                    possibleMoves = [];
+                                    fromInput.value = '';
+                                    toInput.value = '';
+                                    clearHighlights();
+                                }
+                            }
+                        }
                     });
                     boardEl.appendChild(div);
                 });
@@ -256,8 +373,12 @@
             const result = engine.applyMove(move);
             logEl.textContent = JSON.stringify(result, null, 2);
             if (result.success) {
+                // Clear selection and highlights after successful move
+                selectedFrom = null;
+                possibleMoves = [];
                 fromInput.value = '';
                 toInput.value = '';
+                clearHighlights();
                 render();
             } else {
                 fromInput.value = '';
@@ -266,8 +387,11 @@
         };
 
         clearBtn.onclick = () => {
+            selectedFrom = null;
+            possibleMoves = [];
             fromInput.value = '';
             toInput.value = '';
+            clearHighlights();
         };
 
         loadBtn.onclick = () => {
