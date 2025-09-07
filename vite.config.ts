@@ -1,22 +1,9 @@
 import { defineConfig } from 'vite';
-import { createHash } from 'crypto';
+import crypto, { createHash } from 'crypto';
 
-// Polyfill for crypto.hash function to fix Vite 7 compatibility issues in CI
-if (!globalThis.crypto?.hash) {
-  try {
-    Object.defineProperty(globalThis.crypto || {}, 'hash', {
-      value: (alg) => createHash(alg),
-      writable: true,
-      configurable: true
-    });
-  } catch (e) {
-    // If crypto is not available or read-only, create a new crypto object
-    if (!globalThis.crypto) {
-      globalThis.crypto = {
-        hash: (alg) => createHash(alg)
-      };
-    }
-  }
+// Fix Vite 7 crypto.hash issue by patching the crypto module directly
+if (!crypto.hash) {
+  crypto.hash = (algorithm: string) => createHash(algorithm);
 }
 
 export default defineConfig({
