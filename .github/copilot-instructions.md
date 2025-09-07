@@ -33,7 +33,7 @@ Always reference these instructions first and fallback to search or bash command
 - **TypeScript Error (IGNORE)**: There is 1 TypeScript compilation error related to PossibleMove import in HnefataflEngine.ts. This does NOT break the build due to Vite's handling. Do not attempt to fix this unless specifically working on that issue.
 - **Test Failures (IGNORE)**: 4 out of 61 tests fail consistently. These are existing issues related to fort validation logic and are NOT build-breaking. Test results: "4 failed | 57 passed (61)".
 - **No Linting**: The project does not have ESLint configured. Only Prettier is available for formatting with config in `.prettierrc`.
-- **No CI/CD**: There are no GitHub Actions workflows in the repository.
+- **CI/CD**: GitHub Actions workflow automatically deploys to GitHub Pages on pushes to main branch. The workflow builds the project and deploys static files from the `dist/` directory.
 
 ## Common Tasks
 
@@ -67,6 +67,11 @@ vite.config.ts
   }
 }
 ```
+
+### Deployment
+- **Live Demo**: https://davidknaack.github.io/hnefatafl/
+- **Auto-deployment**: Pushes to main branch trigger GitHub Actions workflow that builds and deploys to GitHub Pages
+- **Manual deployment**: Push to main branch or create PR to trigger build and deployment process
 
 ### Source Code Structure
 ```

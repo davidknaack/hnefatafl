@@ -1,4 +1,10 @@
-# Intro
+# Hnefatafl Game Engine
+
+**🎮 [Play the game online](https://davidknaack.github.io/hnefatafl/)**
+
+A browser-based implementation of Hnefatafl, the classic Norse board game. This TypeScript engine features an interactive 11×11 board where players control attackers and defenders in strategic combat, with the king seeking escape to the edges while attackers attempt capture.
+
+## Intro
 
 I'm just playing with GitHub Copilot and OpenAI's agent mode in here.
 The general idea is to build a Hnefatafl game that runs in-browser (static hosting)
