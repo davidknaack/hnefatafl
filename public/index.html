@@ -6,7 +6,7 @@
     <style>
     body {
         background-color: #1e1e1e;
-        color: #ddd;
+        color: #ffffffce;
         font-family: sans-serif;
         padding: 0.125rem;
     }
@@ -42,20 +42,81 @@
         background-color: #520000 !important;
     }
 
-    .info, .side-panel {
-        margin-bottom: 0.5rem;
-    }
-
-    .side-panel > div {
+    .movecontrols {
+        width: calc(22rem);
         display: flex;
         flex-direction: column;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+        border-radius: 0.25rem;
+        border-width: 1px;
+        border-color: #444;
+        border-style: solid;
+        padding: 0.4rem;
+    }
+
+    .movecontrols .info {
+        flex: 1 1 0;
+        display: flex;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+
+    .movecontrols .info input,
+    .movecontrols .info button {
+        flex: 1 1 0;
         min-width: 0;
+    }
+
+    .side-panel {
+        display: flex; 
+        flex-direction: column;
+        gap: 0.5rem; 
+    }
+
+    .status {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        border-radius: 0.25rem;
+        border-width: 1px;
+        border-color: #444;
+        border-style: solid;
+        padding: 0.4rem;
+    }
+
+    .game-lists {
+        display: flex;
+        flex: 1 1 0%;
+        gap: 0.5rem;
+    }
+
+    .current-game, 
+    .load-game {
+        flex: 1 1 0;
+        display: flex;
+        flex-direction: column;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        border-width: 1px;
+        border-color: #444;
+        border-style: solid;
+    }
+
+    .current-game input {
+        justify-self: center;
+    }
+    .load-game input {
+        width: calc(100% - 80px);
     }
 
     .side-panel ul {
         flex: 1 1 auto;
         overflow: auto;
         height: 10rem;
+        list-style: none; 
+        padding: 0; 
+        border-radius: 0.25rem;
+        border: 1px solid #444;
     }
 
     input {
@@ -67,9 +128,8 @@
     }
 
     button {
-        margin-right: 5px;
         background-color: #333;
-        color: #fff;
+        color: #ffffffce;
         border: 1px solid #666;
         padding: 4px 8px;
         cursor: pointer;
@@ -97,6 +157,7 @@
         color: #eee;
         padding: 10px;
         height: 150px;
+        width: 46rem;
         overflow: auto;
         border: 1px solid #444;
     }
@@ -104,7 +165,6 @@
     ul {
         margin: 0;
         padding: 0;
-        max-height: 10rem;
         overflow: auto;
     }
 
@@ -237,11 +297,8 @@
 <body>
     <h1>Hnefatafl Debug UI</h1>
     
-    <div style="margin: 10px 0;">
-        <button id="howToPlayBtn">How to Play</button>
-    </div>
-
     <div class="controls-row">
+        <button id="howToPlayBtn">How to Play</button>
         <div class="toggle-group">
             <input type="checkbox" id="displayMovesToggle" checked>
             <label for="displayMovesToggle">Display Possible Moves</label>
@@ -257,39 +314,50 @@
     </div>
 
     <div id="boardcontainer" style="display: flex; flex-direction: row; gap: 20px;">
-        <div id="board" class="board"></div>
-        <div class="side-panel" style="display: flex; gap: 20px; align-items: flex-start;">
-            <div style="flex: 1;">
-                <h3>Current Game</h3>
-                <button id="copyGame">Copy Game</button>
-                <ul id="currentMoves" style="list-style: none; padding: 0; border: 1px solid #ccc;"></ul>
-            </div>
-            <div style="flex: 1;">
-                <h3>Load Game</h3>
-                <div style="display: flex;flex-direction: row">
-                    <input id="notationInput" placeholder="Enter game notation string" style="width: 100%; margin-bottom: 5px;">
-                    <button id="loadBtn">Load</button>
+        <div>
+            <div id="board" class="board"></div>
+            <div class="movecontrols">
+                <div class="info">
+                    <input id="fromInput" placeholder="From (e.g. E5)">
+                    <input id="toInput" placeholder="To (e.g. E6)">
                 </div>
-                <ul id="loadedMoves" style="list-style: none; padding: 0; border: 1px solid #ccc;"></ul>
+                <div class="info">
+                    <button id="clearBtn">Clear</button>
+                    <button id="validateBtn">Validate</button>
+                    <button id="applyBtn">Apply</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="side-panel">
+            <div class="status">
+                <div>Status:</div><div id="gameStatus"></div>
+                <div>Current Player:</div><div id="currentPlayer"></div>
+                <div>Captured:</div>
+                <div>
+                    A: <span id="capturedA"></span>, D: <span id="capturedD"></span>
+                </div>
+            </div>
+            <div class="game-lists">
+                <div class="current-game">
+                    <div>Current Game</div>
+                    <ul id="currentMoves"></ul>
+                    <button id="copyGame">Copy Game</button>
+                </div>
+                <div class="load-game">
+                    <div>Load Game</div>
+                    <div>
+                        <input id="notationInput" placeholder="Paste">
+                        <button id="loadBtn">Load</button>
+                    </div>
+                    <ul id="loadedMoves"></ul>
+                </div>
             </div>
         </div>
     </div>
-
-    <div class="info">
-        <input id="fromInput" placeholder="From (e.g. E5)">
-        <input id="toInput" placeholder="To (e.g. E6)">
-        <button id="clearBtn">Clear</button>
-        <button id="validateBtn">Validate</button>
-        <button id="applyBtn">Apply</button>
-    </div>
-
-    <div class="info">
-        <div>Current Player: <span id="currentPlayer"></span></div>
-        <div>Captured: A: <span id="capturedA"></span>, D: <span id="capturedD"></span></div>
-        <div>Status: <span id="gameStatus"></span></div>
-    </div>
-
     <pre id="log"></pre>
+
+
 
     <script type="module">
         import { HnefataflEngine } from '../src/HnefataflEngine.js';
@@ -420,9 +488,9 @@
                     if (square.isThrone) div.classList.add('throne')
                     else if (square.isRestricted) div.classList.add('corner');
                     if (square.occupant) {
-                        if (square.occupant.type === 'attacker') div.textContent = 'A';
-                        else if (square.occupant.type === 'defender') div.textContent = 'D';
-                        else if (square.occupant.type === 'king') div.textContent = 'K';
+                        if (square.occupant.type === 'attacker') div.textContent = '⚔';
+                        else if (square.occupant.type === 'defender') div.textContent = '🛡️';
+                        else if (square.occupant.type === 'king') div.textContent = '👑';
                         else div.textContent = '';
                     } else {
                         div.textContent = '';
@@ -678,25 +746,25 @@
                 
                 <h3>Objective</h3>
                 <ul>
-                    <li><strong>Defenders win</strong> if the King reaches any edge square of the board</li>
+                    <li><strong>Defenders win</strong> if the King reaches a corner square or if the King reaches an edge square while surrounded by a 'fort' of uncapturable defenders and is still free to move</li>
                     <li><strong>Attackers win</strong> if they capture the King or completely surround all defenders</li>
                 </ul>
                 
                 <h3>Basic Rules</h3>
                 <ul>
                     <li><strong>Movement:</strong> All pieces move like a rook in chess (horizontally or vertically any number of squares)</li>
-                    <li><strong>Captures:</strong> Pieces are captured by being sandwiched between two enemy pieces</li>
+                    <li><strong>Captures:</strong> Pieces are captured by being sandwiched between two enemy pieces, and only occur as a result of an enemy move. Captures are mandatory and automatic.</li>
                     <li><strong>Special Squares:</strong>
                         <ul>
-                            <li><strong>Throne (center, yellow):</strong> Only the King can occupy this square</li>
-                            <li><strong>Corners (red):</strong> Act as "hostile" squares for captures, only the King can pass through</li>
+                            <li><strong>Throne (center, yellow):</strong> Only the King can occupy this square. When not occupied, the throne is hostile to attackers and the King, and can be used to capture</li>
+                            <li><strong>Corners (red):</strong> Act as "hostile" squares for captures, only the King can enter</li>
                         </ul>
                     </li>
-                    <li><strong>King Capture:</strong> The King must be surrounded on all four sides to be captured (or three sides if against the throne/edge)</li>
+                    <li><strong>King Capture:</strong> The King must be surrounded on all four sides to be captured (or three sides if against the throne)</li>
                 </ul>
                 
                 <h3>Forts</h3>
-                <p>Defenders can form protective formations called "forts" where they cannot be captured if properly arranged on the board's edge. <em>Note: Automatic fort detection has not yet been implemented in this version.</em></p>
+                <p>Defenders can form protective formations called "forts" where they cannot be captured if properly arranged on the board's edge. <em>Note: Automatic fort detection has not yet been implemented in this version, so the win will not be detected.</em></p>
                 
                 <h3>How to Use This Interface</h3>
                 <ul>
