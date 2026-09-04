@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { defendersCanEscape, renderBoard } from './utils'
+import { defendersCanEscape, defendersHaveFort, renderBoard } from './utils'
 import {
     transformLayoutToPosition,
     extractEdgeSquares,
@@ -175,5 +175,43 @@ describe('defendersCanEscape', () => {
         console.log(context.task.name)
         console.log(renderBoard(position, edgeSquares))
         expect(defendersCanEscape(position, edgeSquares)).toBe(false)
+    })
+})
+
+describe('defendersHaveFort', () => {
+    test('returns false when the king is outside the fort wall', () => {
+        const { position } = createTestBoardAndEdges([
+            '...........',
+            '...........',
+            '...........',
+            '...........',
+            '...........',
+            '...........',
+            '...........',
+            '...........',
+            '.....DDD...',
+            '.....DAD...',
+            '.....KDD...',
+        ])
+
+        expect(defendersHaveFort(position)).toBe(false)
+    })
+
+    test('returns false when an otherwise valid edge fort encloses an attacker', () => {
+        const { position } = createTestBoardAndEdges([
+            '...........',
+            '...........',
+            '...........',
+            '...........',
+            '...........',
+            '...........',
+            '...........',
+            '...........',
+            '....DDDDD..',
+            '....D.DAD..',
+            '....DKDDD..',
+        ])
+
+        expect(defendersHaveFort(position)).toBe(false)
     })
 })
