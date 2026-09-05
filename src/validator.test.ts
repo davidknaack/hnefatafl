@@ -365,7 +365,7 @@ describe('Validator Tests', () => {
         expect(result.expectedCaptures).toEqual([{ x: 1, y: 2 }])
         expect(result.status).toBe(GameStatus.InProgress)
     })
-    
+
     test('Defenders may move between two attackers without being captured', () => {
         // Reason: Core game rule, captures are the result of movement by an opponent,
         // so pieces may move freely between hostile squares without being captured.
@@ -396,7 +396,7 @@ describe('Validator Tests', () => {
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.InProgress)
     })
-    
+
     test('Defenders may move between an attacker and a restricted square without being captured', () => {
         // Reason: Core game rule, captures are the result of movement by an opponent,
         // so pieces may move freely between hostile squares without being captured.
@@ -427,7 +427,7 @@ describe('Validator Tests', () => {
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.InProgress)
     })
-    
+
     test('Attackers may move between two defenders without being captured', () => {
         // Reason: Core game rule, captures are the result of movement by an opponent,
         // so pieces may move freely between hostile squares without being captured.
@@ -764,7 +764,7 @@ describe('Validator Tests', () => {
     })
 
     test('Edge capture and regular capture may occur in one move', () => {
-        // Reason: Core game rule, all captures that can occur as a result of a move do occur. 
+        // Reason: Core game rule, all captures that can occur as a result of a move do occur.
         // prettier-ignore
         const boardLayout = [
             "R     R",
@@ -840,17 +840,17 @@ describe('Validator Tests', () => {
         // the throne is not a safe space.
         // prettier-ignore
         const boardLayout = [
-            "R         R",  
-            "           ",  
-            "           ",  
-            "           ",  
-            "     A     ",  
-            "   A KA    ",  
-            "     A     ",  
-            "           ",  
-            "           ",  
-            "           ",  
-            "R         R"  
+            "R         R",
+            "           ",
+            "           ",
+            "           ",
+            "     A     ",
+            "   A KA    ",
+            "     A     ",
+            "           ",
+            "           ",
+            "           ",
+            "R         R"
         ]
         const gameSetup = transformLayoutToPosition(boardLayout)
         const move = {
@@ -874,17 +874,17 @@ describe('Validator Tests', () => {
         // Reason: Core game rule, the king may be captured if surrounded by attackers.
         // prettier-ignore
         const boardLayout = [
-            "R         R",  
-            "           ",  
-            "     T     ",  
-            "           ",  
-            "     A     ",  
-            "   A KA    ",  
-            "     A     ",  
-            "           ",  
-            "           ",  
-            "           ",  
-            "R         R"  
+            "R         R",
+            "           ",
+            "     T     ",
+            "           ",
+            "     A     ",
+            "   A KA    ",
+            "     A     ",
+            "           ",
+            "           ",
+            "           ",
+            "R         R"
         ]
         const gameSetup = transformLayoutToPosition(boardLayout)
         const move = {
@@ -909,17 +909,17 @@ describe('Validator Tests', () => {
         // with a restricted square (even the throne) qualifying as a hostile space.
         // prettier-ignore
         const boardLayout = [
-            "R         R",  
-            "           ",  
-            "           ",  
-            "           ",  
-            "     T     ",  
-            "   A KA    ",  
-            "     A     ",  
-            "           ",  
-            "           ",  
-            "           ",  
-            "R         R"  
+            "R         R",
+            "           ",
+            "           ",
+            "           ",
+            "     T     ",
+            "   A KA    ",
+            "     A     ",
+            "           ",
+            "           ",
+            "           ",
+            "R         R"
         ]
         const gameSetup = transformLayoutToPosition(boardLayout)
         const move = {
@@ -943,17 +943,17 @@ describe('Validator Tests', () => {
         // Reason: Core game rule, the king may not be captured if it is against the border.
         // prettier-ignore
         const boardLayout = [
-            "R         R",  
-            "           ",  
-            "           ",  
-            "           ",  
-            "           ",  
-            "     T     ",  
-            "           ",  
-            "           ",  
-            "           ",  
-            "     A     ",  
-            "R  A KA   R"  
+            "R         R",
+            "           ",
+            "           ",
+            "           ",
+            "           ",
+            "     T     ",
+            "           ",
+            "           ",
+            "           ",
+            "     A     ",
+            "R  A KA   R"
         ]
         const gameSetup = transformLayoutToPosition(boardLayout)
         const move = {
@@ -977,17 +977,17 @@ describe('Validator Tests', () => {
         // Reason: Core game rule, the king may not be captured if it is against the border.
         // prettier-ignore
         const boardLayout = [
-            "R         R",  
-            "           ",  
-            "           ",  
-            "           ",  
-            "           ",  
-            "     T     ",  
-            "           ",  
-            "           ",  
-            "           ",  
-            " A         ",  
-            "RK A      R"  
+            "R         R",
+            "           ",
+            "           ",
+            "           ",
+            "           ",
+            "     T     ",
+            "           ",
+            "           ",
+            "           ",
+            " A         ",
+            "RK A      R"
         ]
         const gameSetup = transformLayoutToPosition(boardLayout)
         const move = {
@@ -1011,17 +1011,17 @@ describe('Validator Tests', () => {
         // Reason: Core game rule, the king may not be captured if it is against the border.
         // prettier-ignore
         const boardLayout = [
-            "R         R",  
-            "           ",  
-            "           ",  
-            "           ",  
-            "           ",  
-            "     T     ",  
-            "           ",  
-            "           ",  
-            "           ",  
-            " A         ",  
-            "RK A      R"  
+            "R         R",
+            "           ",
+            "           ",
+            "           ",
+            "           ",
+            "     T     ",
+            "           ",
+            "           ",
+            "           ",
+            " A         ",
+            "RK A      R"
         ]
         const gameSetup = transformLayoutToPosition(boardLayout)
         const move = {
@@ -1041,132 +1041,101 @@ describe('Validator Tests', () => {
         expect(result.status).toBe(GameStatus.InProgress)
     })
 
-    // TODO: Uncomment when fort validation logic is implemented
-    // test('King in a false fort (can be captured) does not win the game 1', () => {
-    //     // Reason: The defender ending move on 2,8 can be captured, leaving the king
-    //     // exposed, so this is not a fort.
-    //     // prettier-ignore
-    //     const boardLayout = [
-    //         "R         R",
-    //         "           ",
-    //         "           ",
-    //         "           ",
-    //         "           ",
-    //         "     T     ",
-    //         "           ",
-    //         "  D        ",
-    //         " A  A      ",
-    //         " D D       ",
-    //         "RDKD      R"
-    //     ]
-    //     const gameSetup = transformLayoutToPosition(boardLayout)
-    //     const move = {
-    //         from: { x: 2, y: 7 },
-    //         to: { x: 2, y: 8 },
-    //         captures: []
-    //     }
-    //     const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
-    //     console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
-    //     expect(result.isValid).toBe(true)
-    //     expect(result.expectedCaptures).toEqual([])
-    //     expect(result.status).toBe(GameStatus.InProgress)
-    // })
+    test('King in a false fort (can be captured) does not win the game 1', () => {
+        // Reason: The defender ending move on 2,8 can be captured, leaving the king
+        // exposed, so this is not a fort.
+        // prettier-ignore
+        const boardLayout = [
+            "R         R",
+            "           ",
+            "           ",
+            "           ",
+            "           ",
+            "     T     ",
+            "           ",
+            "  D        ",
+            " A  A      ",
+            " D D       ",
+            "RDKD      R"
+        ]
+        const gameSetup = transformLayoutToPosition(boardLayout)
+        const move = {
+            from: { x: 2, y: 7 },
+            to: { x: 2, y: 8 },
+            captures: []
+        }
+        const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
+        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toEqual([])
+        expect(result.status).toBe(GameStatus.InProgress)
+    })
 
     // TODO: Uncomment when fort validation logic is implemented
-    // test('King in a false fort (not capturable, but not enclosing the king) does not win the game 2', () => {
-    //     // Reason: The defenders are not capturable, but attackers have a path to the king.
-    //     //prettier-ignore
-    //     const boardLayout = [
-    //         "R         R",
-    //         "           ",
-    //         "   DD      ",
-    //         "           ",
-    //         "           ",
-    //         "     T     ",
-    //         "           ",
-    //         "  A A      ",
-    //         "       D   ",
-    //         "   DD D    ",
-    //         "R  DDKDD  R"
-    //     ]
-    //     const gameSetup = transformLayoutToPosition(boardLayout)
-    //     const move = {
-    //         from: { x: 7, y: 8 },
-    //         to: { x: 7, y: 9 },
-    //         captures: []
-    //     }
-    //     const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
-    //     console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
-    //     expect(result.isValid).toBe(true)
-    //     expect(result.expectedCaptures).toEqual([])
-    //     expect(result.status).toBe(GameStatus.InProgress)
-    // })
+    test('King in a false fort (not capturable, but not enclosing the king) does not win the game 2', () => {
+        // Reason: The defenders are not capturable and the king is free to move, but attackers have a path to the king.
+        //prettier-ignore
+        const boardLayout = [
+            "R         R",
+            "           ",
+            "   DD      ",
+            "           ",
+            "           ",
+            "     T     ",
+            "           ",
+            "  A A      ",
+            "       D   ",
+            "   DD D    ",
+            "R  DDKDD  R"
+        ]
+        const gameSetup = transformLayoutToPosition(boardLayout)
+        const move = {
+            from: { x: 7, y: 8 },
+            to: { x: 7, y: 9 },
+            captures: []
+        }
+        const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
+        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toEqual([])
+        expect(result.status).toBe(GameStatus.InProgress)
+    })
+
 
     // TODO: Uncomment when fort validation logic is implemented
-    // test('King in a false fort (enclosed attacker exposes the king) does not win the game 3', () => {
-    //     // Reason: Implied rule, the defenders are not capturable, but an attacker (inside the fort)
-    //     // has a path to the king.
-    //     // prettier-ignore
-    //     const boardLayout = [
-    //         "R         R",
-    //         "           ",
-    //         "   DD      ",
-    //         "           ",
-    //         "     T     ",
-    //         "  A A      ",
-    //         "   DDDDD   ",
-    //         "   DDDDD   ",
-    //         "   DDADD   ",
-    //         "   DD D D  ",
-    //         "R  DDKDD  R"
-    //      ]
-    //     const gameSetup = transformLayoutToPosition(boardLayout)
-    //     const move = {
-    //         from: { x: 8, y: 9 },
-    //         to: { x: 7, y: 9 },
-    //         captures: []
-    //     }
-    //     const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
-    //     console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
-    //     expect(result.isValid).toBe(true)
-    //     expect(result.expectedCaptures).toEqual([])
-    //     expect(result.status).toBe(GameStatus.InProgress)
-    // })
-
-    // TODO: Uncomment when fort validation logic is implemented
-    // test('King in a fort, on board edge, vertical movement possible', () => {
-    //     // Reason: Core game rule, the defenders win if the king has contact with the board edge, 
-    //     // is able to move, and it is impossible for the attackers to break the fort.
-    //     // prettier-ignore
-    //     const boardLayout = [
-    //         "R         R",
-    //         "           ",
-    //         "           ",
-    //         "           ",
-    //         "           ",
-    //         "     R     ",
-    //         "           ",
-    //         "           ",
-    //         "    D D    ",
-    //         "    D D    ",
-    //         "R   DKD   R"
-    //     ]
-    //     const gameSetup = transformLayoutToPosition(boardLayout)
-    //     const move = {
-    //         from: { x: 6, y: 8 },
-    //         to: { x: 5, y: 8 },
-    //         captures: []
-    //     }
-    //     const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
-    //     console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
-    //     expect(result.isValid).toBe(true)
-    //     expect(result.expectedCaptures).toEqual([])
-    //     expect(result.status).toBe(GameStatus.DefenderWin)
-    // })
+    test('King in a fort, on board edge, vertical movement possible', () => {
+        // Reason: Core game rule, the defenders win if the king has contact with the board edge,
+        // is able to move, and it is impossible for the attackers to break the fort.
+        // prettier-ignore
+        const boardLayout = [
+            "R         R",
+            "           ",
+            "           ",
+            "           ",
+            "           ",
+            "     R     ",
+            "           ",
+            "           ",
+            "    D D    ",
+            "    D D    ",
+            "R   DKD   R"
+        ]
+        const gameSetup = transformLayoutToPosition(boardLayout)
+        const move = {
+            from: { x: 6, y: 8 },
+            to: { x: 5, y: 8 },
+            captures: []
+        }
+        const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
+        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toEqual([])
+        expect(result.status).toBe(GameStatus.DefenderWin)
+    })
 
     test('King in a fort, not on board edge, vertical movement possible', () => {
         // Reason: Core game rule, the defenders don't win if the king is in a fort
-        // but does not have contact with the board edge, 
+        // but does not have contact with the board edge,
         // prettier-ignore
         const boardLayout = [
             "R         R",
@@ -1226,7 +1195,7 @@ describe('Validator Tests', () => {
 
     test('King in a fort, on board edge, horizontal movement possible', () => {
         // prettier-ignore
-        // Reason: Core game rule, the defenders win if the king has contact with the board edge, 
+        // Reason: Core game rule, the defenders win if the king has contact with the board edge,
         // is able to move, and it is impossible for the attackers to break the fort.
         // prettier-ignore
         const boardLayout = [
@@ -1253,6 +1222,75 @@ describe('Validator Tests', () => {
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.DefenderWin)
+    })
+
+    test('Reference escape fort shape stays in progress while attackers can still break in', () => {
+        // prettier-ignore
+        const boardLayout = [
+            "           ",
+            "           ",
+            "           ",
+            "           ",
+            "        ADD",
+            "        DK ",
+            "       A DD",
+            "           ",
+            "           ",
+            "           ",
+            "           ",
+        ]
+        const gameSetup = transformLayoutToPosition(boardLayout)
+        const move = {
+            from: { x: 9, y: 5 },
+            to: { x: 10, y: 5 },
+            captures: [],
+        }
+        const result = validateMove(
+            gameSetup.position,
+            Player.Defender,
+            move,
+            gameSetup.edgeSquares
+        )
+
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toEqual([])
+        expect(result.status).toBe(GameStatus.InProgress)
+    })
+
+    test('Reference escape fort remains breakable even with only one attacker', () => {
+        // The defender on I6 can be sandwiched between I7 and I5, opening a
+        // route through J6 to the king on K6. Structural capture capacity does
+        // not depend on the actual attacker count or an attacker already on I5.
+        // prettier-ignore
+        const boardLayout = [
+            "           ",
+            "           ",
+            "           ",
+            "           ",
+            "        ADD",
+            "        DK ",
+            "         DD",
+            "           ",
+            "           ",
+            "           ",
+            "           ",
+        ]
+        const gameSetup = transformLayoutToPosition(boardLayout)
+        const move = {
+            from: { x: 9, y: 5 },
+            to: { x: 10, y: 5 },
+            captures: [],
+        }
+        const result = validateMove(
+            gameSetup.position,
+            Player.Defender,
+            move,
+            gameSetup.edgeSquares
+        )
+
+        expect(result.isValid).toBe(true)
+        expect(result.expectedCaptures).toEqual([])
+        expect(result.status).toBe(GameStatus.InProgress)
     })
 
     test('Captureable defenders adjacent to a fort do not invalidate the fort', () => {
@@ -1317,17 +1355,17 @@ describe('Validator Tests', () => {
     test('Attackers win if defenders fully encircled', () => {
         // prettier-ignore
         const boardLayout = [
-            "R         R",  
-            "     A     ",  
-            "           ",  
-            "    A A    ",  
-            "   A D A   ",  
-            "  A DKD A  ",  
-            "   A D A   ",  
-            "    A A    ",  
-            "     A     ",  
-            "           ",  
-            "R         R"  
+            "R         R",
+            "     A     ",
+            "           ",
+            "    A A    ",
+            "   A D A   ",
+            "  A DKD A  ",
+            "   A D A   ",
+            "    A A    ",
+            "     A     ",
+            "           ",
+            "R         R"
         ]
         const gameSetup = transformLayoutToPosition(boardLayout)
         const move = {
