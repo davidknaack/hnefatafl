@@ -1257,7 +1257,10 @@ describe('Validator Tests', () => {
         expect(result.status).toBe(GameStatus.InProgress)
     })
 
-    test('Reference escape fort shape wins once the attacker break-in square is removed', () => {
+    test('Reference escape fort remains breakable even with only one attacker', () => {
+        // The defender on I6 can be sandwiched between I7 and I5, opening a
+        // route through J6 to the king on K6. Structural capture capacity does
+        // not depend on the actual attacker count or an attacker already on I5.
         // prettier-ignore
         const boardLayout = [
             "           ",
@@ -1287,7 +1290,7 @@ describe('Validator Tests', () => {
 
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([])
-        expect(result.status).toBe(GameStatus.DefenderWin)
+        expect(result.status).toBe(GameStatus.InProgress)
     })
 
     test('Captureable defenders adjacent to a fort do not invalidate the fort', () => {
