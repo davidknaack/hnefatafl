@@ -181,7 +181,7 @@ describe('defendersCanEscape', () => {
 describe('defendersHaveFort', () => {
     test('returns false when the king is outside the fort wall', () => {
         const { position } = createTestBoardAndEdges([
-            '...........',
+            'A..........',
             '...........',
             '...........',
             '...........',
@@ -197,7 +197,7 @@ describe('defendersHaveFort', () => {
         expect(defendersHaveFort(position)).toBe(false)
     })
 
-    test('returns false when an otherwise valid edge fort encloses an attacker', () => {
+    test('returns true when an enclosed attacker is isolated from the king', () => {
         const { position } = createTestBoardAndEdges([
             '...........',
             '...........',
@@ -212,6 +212,6 @@ describe('defendersHaveFort', () => {
             '....DKDDD..',
         ])
 
-        expect(defendersHaveFort(position)).toBe(false)
+        expect(defendersHaveFort(position)).toBe(true)
     })
 })

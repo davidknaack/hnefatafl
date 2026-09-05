@@ -6,6 +6,9 @@ A browser-based implementation of Hnefatafl, the classic Norse board game. This 
 
 ## Intro
 
+The [exit-fort rule and implementation notes](docs/exit-fort.md) describe the
+structural defender-win test and its regression examples.
+
 I'm just playing with GitHub Copilot and OpenAI's agent mode in here.
 The general idea is to build a Hnefatafl game that runs in-browser (static hosting)
 and that I can maybe use with a RL setup to make an AI opponent.

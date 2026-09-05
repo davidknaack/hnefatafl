@@ -8,7 +8,7 @@ import { validateMove as validateRawMove } from './validator'
 import { parseMove } from './parser'
 import { coordToString } from './utils'
 import { getGameStatusAfterMove } from './rules'
-import { generatePossibleMoves, PossibleMove } from './moveGenerator'
+import { generatePossibleMoves } from './moveGenerator'
 import {
     ApplyMoveResult,
     GameState,
@@ -17,6 +17,7 @@ import {
     GameStatus,
     PieceType,
     Coordinate,
+    PossibleMove,
 } from './types'
 
 export class HnefataflEngine {
