@@ -1,152 +1,214 @@
 # Hnefatafl Game Engine
 
-**🎮 [Play the game online](https://davidknaack.github.io/hnefatafl/)**
+**[Play the game online](https://davidknaack.github.io/hnefatafl/)**
 
-A browser-based implementation of Hnefatafl, the classic Norse board game. This TypeScript engine features an interactive 11×11 board where players control attackers and defenders in strategic combat, with the king seeking escape to the edges while attackers attempt capture.
+A browser-based Hnefatafl game with a synchronous TypeScript engine and an
+interactive 11×11 board. Attackers move first. Defenders win by moving the king
+to a restricted non-throne square (a corner on the standard board), or by forming
+an exit fort. Attackers win by capturing the king or encircling the defenders.
 
-## Intro
+This is an experimental project built largely with AI coding assistance. The
+current target is a browser application bundled by Vite for static hosting.
+Reusing the engine for reinforcement learning is a possible future direction,
+not a supported distribution today. There are no production package dependencies.
 
-The [exit-fort rule and implementation notes](docs/exit-fort.md) describe the
-structural defender-win test and its regression examples.
+## Run locally
 
-I'm just playing with GitHub Copilot and OpenAI's agent mode in here.
-The general idea is to build a Hnefatafl game that runs in-browser (static hosting)
-and that I can maybe use with a RL setup to make an AI opponent.
+Use Node 24.x, declared in `package.json` and `.nvmrc`. CI reads `.nvmrc` as
+well. With nvm, run `nvm install` and `nvm use`; otherwise install Node 24 using
+your preferred runtime manager. Node `v24.19.0` was used for the September 2026 checks.
 
-It's probably, like, 95% AI generated code.
+```sh
+npm ci
+npm run dev
+```
 
-✅ Engine is designed for use in the browser via Vite.
-🧪 If reused in Node.js or other environments (e.g., RL training), a build step or bundler (e.g., esbuild, vite-node) must resolve imports. That is not currently a requirement.
+Vite opens the browser and normally serves the app at
+`http://localhost:5173/hnefatafl/`. It may select another port if that one is busy.
 
-# Overview / Idea / Plan
+| Command | Purpose |
+| --- | --- |
+| `npm test` | Run the Vitest suite once |
+| `npm run testlive` | Run Vitest in watch mode |
+| `npm run typecheck` | Check source/tests and the Vite/Vitest configuration |
+| `npm run format` | Format tooling/configuration files with pinned Prettier |
+| `npm run format:check` | Check tooling/configuration formatting without writing |
+| `npm run build` | Bundle the browser app into ignored `dist/` output |
+| `npm run preview` | Serve the existing build, normally at `http://localhost:4173/hnefatafl/` |
 
-## Hnefatafl Engine – Simplified SRS
+The build does not perform TypeScript checking; run `npm run typecheck` separately.
+CI runs type checking, formatting checks, tests, and the build. Inline browser
+JavaScript remains unchecked until W3 extracts it. Formatting currently covers
+package/lock metadata, TypeScript configs, `vite.config.ts`, `.prettierrc`, and
+workflow YAML. Source, tests, UI, and Markdown are outside this initial formatting
+scope to keep W2 focused; expand that scope in separately reviewed work. No
+lint command is declared. See the [maintenance instructions](.github/copilot-instructions.md)
+for validation details and the dated baseline.
 
-Target: Browser-compatible TypeScript module for use with web components
+## Current rules and behavior
 
-✅ Core Features
-1. Board Initialization
+These describe the implementation, not conformance to an external named variant.
+The [project review](docs/project-review-2026-09-05.md) records known defects and
+rules decisions that remain open.
 
-    Standard 11×11 Hnefatafl layout
+- Pieces move orthogonally any distance along an unobstructed path. They cannot
+  jump occupied squares. Only the king may stop on restricted squares; other
+  pieces may pass through an empty restricted square.
+- Captures resulting from a move are mandatory and applied automatically.
+  Omitting capture notation does not decline captures, and there is no rule
+  requiring a player to choose a capturing move over another legal move.
+- Ordinary pieces are captured by orthogonal sandwiching against hostile
+  support. Restricted squares provide hostile support; a throne occupied by the
+  king is hostile to attackers but not defenders. Physical-edge shieldwalls can
+  capture multiple non-king pieces, so captures are not limited to four per move.
+  See [capture implementation](src/captures.ts) for the exact predicates.
+- King capture requires all four neighboring squares to be on the board and
+  occupied by attackers or marked throne/restricted. A board boundary does not
+  substitute for a hostile neighbor; shieldwalls exclude the king.
+- A king move to a restricted non-throne square wins for the defenders. Simply
+  reaching an ordinary edge square does not win. The separate
+  [exit-fort rule](docs/exit-fort.md) evaluates a mobile edge king and a formation
+  that survives structural capture analysis.
+- After an attacker move, encirclement wins if no defender or king has an
+  orthogonal route through empty or defender-occupied squares to a physical edge
+  or non-throne restricted square unoccupied by an attacker. This is connectivity
+  analysis, not a search for a sequence of playable escape moves.
+- Repetition prevention applies only to the defender/king layout, ignoring
+  attackers. Defender moves are checked against stored layouts. Any capture
+  clears that history and records the resulting layout; the repetition check
+  currently happens before that reset. The intended ordering remains open.
+- There is no engine pass command or explicit no-legal-move terminal check.
+  The notation sequence parser recognizes `P`, but engine application rejects it.
 
-    Defenders, King, and Attackers placed per classic rules
+Capture aggregation can return the same piece twice, overcounting captures and
+duplicating history coordinates (B1). Validation previews and generated moves
+also have known consistency defects (B2–B3). These rules describe current
+mechanisms, not a claim that those contracts are already correct.
 
-    Throne and corners marked for special rules
+## Engine API
 
-2. Game State Representation
-    ```ts
-    interface GameState {
-      board: CellState[][];
-      currentPlayer: "attacker" | "defender";
-      captured: {
-        attacker: number;
-        defender: number;
-      };
-      moveHistory: string[];
-      status: "in_progress" | "attacker_win" | "defender_win";
+Import the class from [src/HnefataflEngine.ts](src/HnefataflEngine.ts) in a
+TypeScript/bundler consumer. The UI's actual entry is the module script in
+[public/index.html](public/index.html). `public/main.js` is not referenced there.
+
+```ts
+import { HnefataflEngine } from './src/HnefataflEngine'
+
+const engine = new HnefataflEngine()
+const preview = engine.validateMove('D11-D10')
+if (preview.isValid) {
+    const result = engine.applyMove('D11-D10')
+    if (result.success && result.newState) {
+        console.log(result.newState.currentPlayer) // 'defender'
     }
-    ```
-    ```ts
-    interface CellState {
-      occupant: "attacker" | "defender" | "king" | null;
-      isThrone: boolean;
-      isCorner: boolean;
-    }
-    ```
-3. Move Format
+}
+```
 
-    Moves are strings like:
+| Method | Current contract |
+| --- | --- |
+| `reset(boardLayout?: string[]): void` | Initialize the standard or supplied layout; reset counters/history/status and start with the attacker. Invalid layouts can throw. |
+| `getState(): GameState` | Return the live internal state. Treat it as read-only; it is not a protected snapshot. |
+| `validateMove(moveStr: string): MoveValidationResult` | Parse and validate without committing. Return `isValid`, optional `reason`, `expectedCaptures: Coordinate[]`, and `status`. Preview status can disagree with application when capture notation is omitted (B2). |
+| `applyMove(moveStr: string): ApplyMoveResult` | Revalidate and apply automatically discovered captures. Return `{ success: true, newState }` or `{ success: false, error }`. Advance the turn only while the resulting game remains in progress. |
+| `applyMoveSequence(moveList: string): ApplyMoveResult` | Split on commas and apply in order to the current game. Stop at the first failure, retaining all earlier successful moves. Does not reset or roll back the sequence. |
+| `getPossibleMoves(from: Coordinate): PossibleMove[]` | Return destinations and capture coordinates for one current-player piece. Does not check repetition (B3); returns `[]` after game end. Invalid coordinates can throw (B6). |
 
-    ```
-    "E5-E6"                // No capture
-    "E7-E6(F9)"            // Single capture
-    "D6-D8(D7E7)"          // Multiple captures
-    "E5-E6, E7-E6(F9)"     // Sequence of moves
-    ```
+There are no facade methods named `getGameState` or `generatePossibleMoves`.
+`generatePossibleMoves` is a lower-level function in `src/moveGenerator.ts`.
 
-4. Validation API
+The source of truth for exported types is [src/types.ts](src/types.ts):
 
-    ```ts
-    function validateMove(move: string): MoveValidationResult;
-    ```
-    ```ts
-    interface MoveValidationResult {
-      isValid: boolean;
-      reason?: string;
-      expectedCaptures: string[]; // e.g. ["F9", "D7"]
-    }
-    ```
-    Parses one move at a time
+```ts
+interface GameState {
+    position: Square[][]
+    currentPlayer: Player
+    captured: { attacker: number; defender: number }
+    moveHistory: string[]
+    defenderPositions: string[][]
+    status: GameStatus
+}
 
-    Does not apply the move
+interface Square {
+    occupant: Piece | null
+    isThrone: boolean
+    isRestricted: boolean
+}
 
-    Provides list of available captures for the move, but allows player to choose whether to apply them
+interface Piece {
+    owner: Player
+    type: PieceType
+}
+```
 
-    Handles 0–4 capture directions (orthogonal only; max 3 is realistic but 4 is technically possible)
+`Player` values are `attacker` and `defender`; `PieceType` additionally includes
+`king`. `GameStatus` values are `in_progress`, `attacker_win`, and `defender_win`.
+Capture counters count pieces lost by the named side, including the king as a
+defender. `Coordinate` is `{ x: number, y: number }`, indexed as `position[y][x]`:
+`A11` is `{ x: 0, y: 0 }`, and `K1` is `{ x: 10, y: 10 }`.
+`PossibleMove` contains `to: Coordinate` and `captures: Coordinate[]`.
 
-5. Commit API
+Returned states and piece objects are mutable and shared. A saved state can have
+its capture counters changed by a later move; shallow board clones also share
+pieces (B5). Do not rely on snapshot isolation until W7 establishes it.
 
-    ```ts
-    function applyMove(move: string): ApplyMoveResult;
-    ```
-    ```ts
-    interface ApplyMoveResult {
-      success: boolean;
-      error?: string;
-      newState?: GameState;
-    }
-    ```
-    Revalidates move string
+## Notation and layouts
 
-    Checks if listed captures match what’s possible
+Moves use files A–K and ranks 1–11: `D11-D10`. Optional capture annotations contain
+concatenated coordinates, such as `D11-C11(B11)` or `D6-D8(D7E7)` (syntax examples;
+legality depends on the position). A nonempty parsed capture list is checked
+against discovered captures. Use uppercase coordinates: lowercase capture text,
+out-of-range captures, and trailing junk are parsed inconsistently today (B4).
+The parser does not reliably reject all malformed capture text.
 
-    Applies piece movement and capture(s)
+The engine appends discovered captures to history when the input has no `(`;
+otherwise it retains the supplied notation. History is not canonically
+serialized. `parseMoveSequence` from [src/parser.ts](src/parser.ts) uppercases
+tokens, recognizes `P` as `'pass'`, and silently drops unparseable tokens. It is
+not used by `applyMoveSequence`, which stops at invalid input instead.
 
-    Advances turn if valid
+In the UI, **Load Game** parses notation into a selectable move list. It does not
+reset or replay the engine. Current history labels start with the defender even
+though the engine starts with the attacker (B8).
 
-    Returns updated game state or error
+Custom layouts are arrays of square-board rows, ordered top to bottom:
 
-6. Game History Parsing
+| Character | Current default transformation |
+| --- | --- |
+| `A` / `a` | Attacker |
+| `D` / `d` | Defender |
+| `K` / `k` | Defender-owned king; also a restricted throne if no uppercase `T` occurs anywhere in the layout |
+| `T` | Empty restricted throne; when present, the king's square is not implicitly a throne |
+| `R` | Empty restricted non-throne square |
+| Space / `.` | Empty ordinary square |
+| Any other character | Silently treated as empty by the default mapping |
 
-    ```ts
-    function applyMoveSequence(moves: string): ApplyMoveResult;
-    ```
-    Input: comma-separated string of moves
+`initializeGame` checks for exactly one uppercase `K` before transformation.
+A lowercase-only king is rejected, but a layout with both `K` and `k` can produce
+two kings (B7). `transformLayoutToPosition` supports custom character mappings
+and flexible fixtures without that king-count check.
+Although initialization accepts other square sizes, notation is fixed to 11×11
+and can throw on smaller layouts (B6). For current engine use, keep layouts
+11×11 with one uppercase `K` and no lowercase `k`. This is usage guidance pending
+W6, not an enforced size/alphabet contract.
 
-    Applies moves in order, halts on first error
+## Maintenance and next work
 
-    Returns final state or error
+- [Maintenance instructions](.github/copilot-instructions.md): commands, validation,
+  module boundaries, and deployment behavior.
+- [September 5 project review](docs/project-review-2026-09-05.md): B1–B8 defects,
+  T1 tooling gaps, reproduction fixtures, and W1–W8 work packages.
+- [Exit-fort notes](docs/exit-fort.md): structural semantics and regression examples.
 
-7. Design Constraints
+W1 and W2 are complete: maintenance guidance and runtime/configuration/check
+commands are aligned. W3–W4 cover bounded extraction and contracts. Functional
+corrections belong in W5–W8.
+Resolve board-size/pass policy before W6 and state ownership before W7. Treat
+Load Game semantics and accessibility changes as separate decisions within W8.
+Do not infer the intended variant from the Rust reference project.
 
-    No exceptions for validation errors — use clean return types
+The package is marked `private` and has no library entry point. An engine
+distribution should wait until reuse is explicitly in scope.
 
-    No mandatory captures
-
-    Moves must explicitly list desired captures, even if they’re available
-
-    Support for use inside a web component context
-
-    Engine must be fully functional in static files
-
-    No external state or async behavior
-
-    Minimal external dependencies (or none)
-
-    📌 Notes
-    Capturing multiple enemy pieces in one move is possible (up to 4).
-
-    If a move could capture but the player opts not to list any captures, it is legal.
-
-    Captures indicated that are not possible are rejected by the validator.
-
-
-# Design Philosophy
-
-Modular: Small, focused files/classes for parsing, validation, state, and rules
-
-Functional core + encapsulated engine class: Core logic is mostly pure functions (easy to test), wrapped by a stateful engine object
-
-Stateless validation: Move validation can be run without mutating state (needed for preview in UI)
-
-Web-component-friendly: No reliance on external frameworks or servers
+GitHub Actions runs installation, type and formatting checks, tests, and the build
+for pushes to `main` and pull requests targeting `main`. The deployment job runs only for the `main` ref
+and publishes `dist/` to GitHub Pages. A pull request does not deploy the site.

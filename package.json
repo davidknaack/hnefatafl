@@ -3,11 +3,17 @@
   "version": "1.0.0",
   "type": "module",
   "description": "",
-  "main": "index.js",
+  "private": true,
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "repomix": "npx repomix@latest",
     "testlive": "vitest",
-    "test" : "npx vitest run",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit && tsc --project tsconfig.node.json",
+    "format": "prettier --write package.json package-lock.json \"tsconfig*.json\" vite.config.ts .prettierrc \".github/workflows/*.yml\"",
+    "format:check": "prettier --check package.json package-lock.json \"tsconfig*.json\" vite.config.ts .prettierrc \".github/workflows/*.yml\"",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
@@ -16,6 +22,8 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/node": "24.2.0",
+    "prettier": "3.9.6",
     "typescript": "^5.8.3",
     "vite": "^7.0.6",
     "vitest": "^3.2.4"
