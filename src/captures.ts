@@ -23,7 +23,7 @@ export function getAvailableCaptures(
     position: Square[][],
     move: Move,
     player: Player,
-    edgeSquares: Set<Coordinate>
+    escapeTargets: Set<Coordinate>
 ): Coordinate[] {
     const captures: Coordinate[] = []
     const size = position.length
@@ -60,7 +60,7 @@ export function getAvailableCaptures(
         position,
         move,
         player,
-        edgeSquares,
+        escapeTargets,
         isHostileTo,
         getOccupantAfter
     )
@@ -167,7 +167,7 @@ function getEdgeEnclosureCaptures(
     position: Square[][],
     move: Move,
     player: Player,
-    edgeSquares: Set<Coordinate>,
+    escapeTargets: Set<Coordinate>,
     isHostileTo: (owner: Player, x: number, y: number) => boolean,
     getOccupantAfter: (x: number, y: number) => Square['occupant']
 ): Coordinate[] {
@@ -184,8 +184,8 @@ function getEdgeEnclosureCaptures(
         return isSquareHostileTo(cell, owner, occ)
     }
 
-    // Convert edgeSquares to coordinates
-    const edgeCoords: Coordinate[] = Array.from(edgeSquares).map((e) => ({
+    // Targets may be interior; only physical perimeter rows/columns are scanned below.
+    const escapeCoords: Coordinate[] = Array.from(escapeTargets).map((e) => ({
         x: e.x,
         y: e.y,
     }))
@@ -193,7 +193,7 @@ function getEdgeEnclosureCaptures(
     // Group by row and column
     const byRow: Map<number, Coordinate[]> = new Map()
     const byCol: Map<number, Coordinate[]> = new Map()
-    for (const c of edgeCoords) {
+    for (const c of escapeCoords) {
         if (!byRow.has(c.y)) byRow.set(c.y, [])
         byRow.get(c.y)!.push(c)
         if (!byCol.has(c.x)) byCol.set(c.x, [])

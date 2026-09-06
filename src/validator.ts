@@ -1,48 +1,22 @@
+import { isSameCoord, isPathClear, canMovePiece, canEnterSquare } from './movement'
 import {
     Square,
     Coordinate,
     Move,
     MoveValidationResult,
     Player,
-    PieceType,
     GameStatus,
 } from './types'
-import { coordToString } from './utils'
-import { getAvailableCaptures } from './rules'
+import { coordToString } from './coordinates'
+import { getAvailableCaptures } from './captures'
 import { getGameStatusAfterMove } from './rules'
 import { extractDefenderPosition, applyMoveToPosition } from './board'
-
-function isSameCoord(a: Coordinate, b: Coordinate): boolean {
-    return a.x === b.x && a.y === b.y
-}
-
-function isPathClear(
-    position: Square[][],
-    from: Coordinate,
-    to: Coordinate
-): boolean {
-    if (from.x !== to.x && from.y !== to.y) return false // not orthogonal
-
-    const dx = Math.sign(to.x - from.x)
-    const dy = Math.sign(to.y - from.y)
-
-    let x = from.x + dx
-    let y = from.y + dy
-
-    while (x !== to.x || y !== to.y) {
-        if (position[y][x].occupant) return false
-        x += dx
-        y += dy
-    }
-
-    return true
-}
 
 export function validateMove(
     position: Square[][],
     player: Player,
     move: Move,
-    edgeSquares: Set<Coordinate>,
+    escapeTargets: Set<Coordinate>,
     defenderPositions: string[][] = []
 ): MoveValidationResult {
     const fromSquare = position[move.from.y][move.from.x]
@@ -56,13 +30,7 @@ export function validateMove(
             status: GameStatus.InProgress,
         }
 
-    if (
-        fromSquare.occupant.owner !== player &&
-        !(
-            player === Player.Defender &&
-            fromSquare.occupant.type === PieceType.King
-        )
-    )
+    if (!canMovePiece(fromSquare.occupant, player))
         return {
             isValid: false,
             reason: 'Not your piece',
@@ -86,7 +54,7 @@ export function validateMove(
             status: GameStatus.InProgress,
         }
 
-    if (fromSquare.occupant.type !== PieceType.King && toSquare.isRestricted)
+    if (!canEnterSquare(fromSquare.occupant, toSquare))
         return {
             isValid: false,
             reason: 'Cannot move to restricted square',
@@ -98,7 +66,7 @@ export function validateMove(
         position,
         move,
         player,
-        edgeSquares
+        escapeTargets
     )
 
     // If captures were explicitly provided, validate them

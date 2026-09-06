@@ -6,7 +6,7 @@ import {
 } from './board'
 import { validateMove as validateRawMove } from './validator'
 import { parseMove } from './parser'
-import { coordToString } from './utils'
+import { coordToString } from './coordinates'
 import { getGameStatusAfterMove } from './rules'
 import { generatePossibleMoves } from './moveGenerator'
 import {

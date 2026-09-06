@@ -1,5 +1,5 @@
 import { Move } from './types'
-import { coordFromString } from './utils'
+import { coordFromString } from './coordinates'
 import { MOVE_RE, CAPTURE_RE } from './patterns'
 
 export function parseMove(input: string): Move | null {
