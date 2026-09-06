@@ -1,33 +1,12 @@
-import { Square, Coordinate, Move, Player, PieceType, PossibleMove } from './types'
-import { getAvailableCaptures } from './rules'
-
-function isPathClear(
-    position: Square[][],
-    from: Coordinate,
-    to: Coordinate
-): boolean {
-    if (from.x !== to.x && from.y !== to.y) return false // not orthogonal
-
-    const dx = Math.sign(to.x - from.x)
-    const dy = Math.sign(to.y - from.y)
-
-    let x = from.x + dx
-    let y = from.y + dy
-
-    while (x !== to.x || y !== to.y) {
-        if (position[y][x].occupant) return false
-        x += dx
-        y += dy
-    }
-
-    return true
-}
+import { canMovePiece, canEnterSquare } from './movement'
+import { Square, Coordinate, Move, Player, PossibleMove } from './types'
+import { getAvailableCaptures } from './captures'
 
 export function generatePossibleMoves(
     position: Square[][],
     from: Coordinate,
     player: Player,
-    edgeSquares: Set<Coordinate>
+    escapeTargets: Set<Coordinate>
 ): PossibleMove[] {
     const fromSquare = position[from.y][from.x]
     
@@ -35,13 +14,7 @@ export function generatePossibleMoves(
     if (!fromSquare.occupant) return []
     
     // Not the player's piece (except king can be moved by defender)
-    if (
-        fromSquare.occupant.owner !== player &&
-        !(
-            player === Player.Defender &&
-            fromSquare.occupant.type === PieceType.King
-        )
-    ) {
+    if (!canMovePiece(fromSquare.occupant, player)) {
         return []
     }
 
@@ -79,19 +52,15 @@ export function generatePossibleMoves(
             }
             
             // Non-king pieces can't move to restricted squares
-            if (fromSquare.occupant.type !== PieceType.King && toSquare.isRestricted) {
+            if (!canEnterSquare(fromSquare.occupant, toSquare)) {
                 distance++
                 continue
             }
             
-            // Path should be clear (redundant check, but ensures consistency)
-            if (!isPathClear(position, from, to)) {
-                break
-            }
-            
+            // The ray stops at its first occupant, so every intervening square is clear.
             // This is a valid move - calculate captures
             const move: Move = { from, to, captures: [] }
-            const captures = getAvailableCaptures(position, move, player, edgeSquares)
+            const captures = getAvailableCaptures(position, move, player, escapeTargets)
             
             possibleMoves.push({
                 to,

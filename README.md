@@ -37,8 +37,8 @@ Vite opens the browser and normally serves the app at
 | `npm run preview` | Serve the existing build, normally at `http://localhost:4173/hnefatafl/` |
 
 The build does not perform TypeScript checking; run `npm run typecheck` separately.
-CI runs type checking, formatting checks, tests, and the build. Inline browser
-JavaScript remains unchecked until W3 extracts it. Formatting currently covers
+CI runs type checking, formatting checks, tests, and the build. Browser code in
+`src/ui` is included in type checking. Formatting currently covers
 package/lock metadata, TypeScript configs, `vite.config.ts`, `.prettierrc`, and
 workflow YAML. Source, tests, UI, and Markdown are outside this initial formatting
 scope to keep W2 focused; expand that scope in separately reviewed work. No
@@ -88,8 +88,10 @@ mechanisms, not a claim that those contracts are already correct.
 ## Engine API
 
 Import the class from [src/HnefataflEngine.ts](src/HnefataflEngine.ts) in a
-TypeScript/bundler consumer. The UI's actual entry is the module script in
-[public/index.html](public/index.html). `public/main.js` is not referenced there.
+TypeScript/bundler consumer. [public/index.html](public/index.html) loads a minimal
+[bootstrap](public/main.js) for Vite's public root. The checked UI lives in
+[src/ui](src/ui/main.ts): board and history rendering, selection/highlighting,
+command handling, DOM bindings, and the extracted stylesheet.
 
 ```ts
 import { HnefataflEngine } from './src/HnefataflEngine'
@@ -199,8 +201,8 @@ W6, not an enforced size/alphabet contract.
   T1 tooling gaps, reproduction fixtures, and W1–W8 work packages.
 - [Exit-fort notes](docs/exit-fort.md): structural semantics and regression examples.
 
-W1 and W2 are complete: maintenance guidance and runtime/configuration/check
-commands are aligned. W3–W4 cover bounded extraction and contracts. Functional
+W1–W3 are complete: maintenance guidance and runtime/configuration/check
+commands are aligned, and UI/domain helpers are extracted. W4 covers contracts. Functional
 corrections belong in W5–W8.
 Resolve board-size/pass policy before W6 and state ownership before W7. Treat
 Load Game semantics and accessibility changes as separate decisions within W8.

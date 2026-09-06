@@ -1,7 +1,7 @@
 # Hnefatafl maintenance instructions
 
 This repository is a browser application with a synchronous TypeScript engine
-and a plain HTML/JavaScript debug UI, bundled with Vite. Read the
+and a plain HTML/TypeScript debug UI, bundled with Vite. Read the
 [README](../README.md) for current rules, API, notation, and layout semantics.
 Use source and configuration to verify these notes when making changes.
 
@@ -52,8 +52,9 @@ node node_modules/vite/bin/vite.js build
 `tsconfig.json` covers `src` and tests. `tsconfig.node.json` inherits its strict
 compiler options and checks `vite.config.ts` without emitting files; this keeps
 the source project's `rootDir` unchanged. `npm run typecheck` runs both checks.
-Inline browser JavaScript remains outside TypeScript checking until W3's
-extraction. Vite's build is not a type check.
+The extracted browser code under `src/ui` is included in the source check.
+`public/main.js` only imports that checked entry for Vite's public root.
+Vite's build is not a type check.
 
 ## Validation baseline and expectations
 
@@ -78,7 +79,7 @@ For W2 on September 6, Node `v24.19.0` and npm `11.6.0` passed a fresh
 `npm run format:check`, all 238 tests, and the Vite production build (15 modules).
 Tests/build required the same filesystem-access retry. The hosted Actions
 workflow and browser smoke check were not run. T1's runtime/config errors are
-resolved; inline browser type checking remains W3 work. See the review's dated
+resolved; browser type checking was subsequently completed in W3. See the review's dated
 W2 follow-up for scope and environment details.
 
 For code/tooling changes, run tests, `npm run typecheck`, `npm run format:check`,
@@ -109,10 +110,14 @@ mask it.
 | `src/rules.ts` | Terminal status; compatibility capture exports |
 | `src/exitFort.ts` | Structural exit-fort evaluation |
 | `src/parser.ts`, `src/patterns.ts` | Move/sequence parsing and notation regexes |
-| `src/utils.ts` | Coordinates, encirclement connectivity, debug rendering, fort re-export |
+| `src/coordinates.ts` | Fixed 11×11 notation/coordinate conversion |
+| `src/movement.ts` | Shared ownership, restricted-destination, path, and coordinate predicates |
+| `src/encirclement.ts`, `src/debug.ts` | Escape connectivity and text rendering, respectively |
+| `src/utils.ts` | Compatibility exports for coordinates, encirclement, debug rendering, and forts |
 | `src/types.ts` | Exported state, piece, move, and result types |
-| `public/index.html` | Actual entry, styles, inline module script, DOM/event handling |
-| `public/main.js` | Legacy file not referenced by the HTML entry |
+| `src/ui/` | Checked DOM bindings, board/history rendering, selection/highlighting, commands, modal wiring, and CSS |
+| `public/index.html` | HTML entry and modal content |
+| `public/main.js` | Minimal Vite bootstrap importing `src/ui/main.ts` |
 
 The facade methods are `reset`, `getState`, `validateMove`, `applyMove`,
 `applyMoveSequence`, and `getPossibleMoves(from)`. The lower-level
@@ -139,8 +144,10 @@ migrated. No framework rewrite or Rust-rule port is implied by the work packages
 - W2 is implemented: Node 24 alignment, config typing, explicit checking/formatting
   commands, and CI checks. The browser application is `private` and the stale
   `main: index.js` is removed. See the review's W2 follow-up for validation evidence.
-- W3–W4: bounded extraction, result/type and fixture contracts, targeted checks.
-  Preserve behavior and review exported-type compatibility.
+- W3 is implemented: UI/domain extraction with existing exports and interaction
+  branches retained. See the review's W3 follow-up for browser checks and validation.
+- W4: result/type and fixture contracts, targeted checks. Preserve behavior and
+  review exported-type compatibility.
 - W5: B1–B3 capture uniqueness, preview/commit agreement, and legal move generation.
 - W6: B4/B6/B7 parsing and layout boundaries; decide board-size/pass policy first.
 - W7: B5 state protection; select the ownership contract first.

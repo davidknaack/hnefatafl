@@ -151,7 +151,7 @@ export function transformLayoutToPosition(
     )
 
     // Calculate edge squares: board perimeter + non-throne restricted squares
-    const edgeSquares = extractEdgeSquares(position)
+    const edgeSquares = extractEscapeTargets(position)
     return { position, edgeSquares }
 }
 
@@ -176,9 +176,10 @@ export function initializeGame(boardLayout: string[]): GameSetup {
 }
 
 /**
- * Extracts edge squares from a position: board perimeter + non-throne restricted squares
+ * Encirclement escape targets: perimeter plus non-throne restricted squares.
+ * These may include interior squares; they are not all physical shieldwall edges.
  */
-export function extractEdgeSquares(position: Square[][]): Set<Coordinate> {
+export function extractEscapeTargets(position: Square[][]): Set<Coordinate> {
     const edgeSquares = new Set<Coordinate>()
     const size = position.length
 
@@ -203,5 +204,6 @@ export function extractEdgeSquares(position: Square[][]): Set<Coordinate> {
     return edgeSquares
 }
 
-// Backward-compatibility alias: older code used "extractEscapePoints"
-export const extractEscapePoints = extractEdgeSquares
+// Compatibility names include perimeter AND interior non-throne restricted squares.
+export const extractEdgeSquares = extractEscapeTargets
+export const extractEscapePoints = extractEscapeTargets

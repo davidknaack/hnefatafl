@@ -5,8 +5,9 @@ import {
     Square,
     Move,
 } from './types'
-import { defendersCanEscape, defendersHaveFort } from './utils'
-import { extractEdgeSquares } from './board'
+import { defendersCanEscape } from './encirclement'
+import { defendersHaveFort } from './exitFort'
+import { extractEscapeTargets } from './board'
 
 // Returns the game status after a move is applied
 export function getGameStatusAfterMove(
@@ -36,8 +37,8 @@ export function getGameStatusAfterMove(
 
     // Check for encirclement after attacker moves
     if (currentPlayer === Player.Attacker) {
-        const edgeSquares = extractEdgeSquares(position)
-        if (!defendersCanEscape(position, edgeSquares)) {
+        const escapeTargets = extractEscapeTargets(position)
+        if (!defendersCanEscape(position, escapeTargets)) {
             return GameStatus.AttackerWin
         }
     }

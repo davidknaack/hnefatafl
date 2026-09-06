@@ -360,6 +360,65 @@ and browser smoke check were not run. No game source, tests, or UI files changed
 T1's runtime/configuration issues are resolved; checking inline browser code
 remains tied to W3's extraction. B1–B8 and W3–W8 remain open.
 
+### September 6, 2026 — W3 UI and domain extraction
+
+W3 is complete. The HTML entry now loads a minimal `public/main.js` bootstrap
+that imports the checked `src/ui/main.ts` entry. `src/ui` separates DOM bindings,
+board rendering, history rendering, selection/highlighting, and command handling;
+the stylesheet is extracted and bundled through the TypeScript entry. The unused
+inline `stringToCoord` is removed. The former unreferenced `main.js` is repurposed
+as the bootstrap required by the existing Vite public-root layout. There is no
+framework or dependency change, and the existing source type check covers the UI.
+
+Coordinates, encirclement, and text rendering now live in `coordinates.ts`,
+`encirclement.ts`, and `debug.ts`. `movement.ts` shares coordinate equality,
+ownership (including the king exception), restricted-destination, and path
+predicates. The generator retains its ray order and removes the redundant path
+rescan: the ray has already checked each intervening square for an occupant.
+Internal consumers import captures and forts directly. `utils.ts`, capture exports
+in `rules.ts`, and both historical board-extraction names remain available.
+`extractEscapeTargets` and rule parameter names identify the combined perimeter
+and interior restricted targets; shieldwall scanning still filters for physical
+perimeter rows and columns.
+
+Validation used Node `v24.19.0` and installed dependencies:
+
+| Check | Result |
+| --- | --- |
+| Vitest | **241 passed**, eight files; three added cases compare generated destinations against exhaustive geometry for every source and side on three representative boards, and check non-mutation |
+| TypeScript source/tests and configuration | Passed, including all UI modules |
+| Tooling formatting | Passed; checkout CRLF normalization was needed in unchanged tooling files and produced no Git content changes |
+| Vite production build | Passed, 23 transformed modules; stylesheet and script bundled under `/hnefatafl/` |
+| Browser characterization | 19 pre-extraction snapshots matched after extraction in both development and production preview; fields, board classes/content, highlights, logs, turn, counters, history, and modal visibility compared |
+| Browser capture check | `D11-D8,F8-E8,F10-F8` highlighted `E8`, reported `Captures: E8`, removed the defender, counted one capture, and recorded capture notation |
+
+Commands were the installed Node equivalents of `npm test`, `npm run typecheck`,
+`npm run format:check`, and `npm run build`, as documented in the maintenance
+instructions. Vite/Vitest required the previously documented filesystem access.
+No fresh install or hosted Actions run was performed. Browser characterization
+was performed through the local browser tools, not added as a CI browser suite.
+Clipboard completion was not verified; its existing handler was retained.
+
+The browser checks cover selection, possible-move visibility, destination
+highlighting, manual validation, manual success/failure, automatic validation,
+Auto Apply precedence when both modes are enabled, automatic repetition failure,
+notation loading/selection, and modal open/close. To repeat the key scenarios:
+
+1. Select `D11`, toggle possible-move display off/on, select `D10`, and Validate.
+2. Enter an invalid destination and Apply. Fields clear while the existing
+   selection/highlights remain; clicking a destination alone does not refill From.
+3. Reload; apply `D11-D10`. Enable Auto Validate and click `F8`, then `E8`.
+   Validation leaves the turn/history unchanged and highlights the selected move.
+4. Enable Auto Apply too and click `E8` again. It applies the move. Continue with
+   `D10-C10`, then try `E8-F8`: automatic failure clears fields and highlights.
+5. Load `D11-D10,garbage,P,F8-E8`. The notation viewer retains its existing parsing
+   behavior; choosing a move fills inputs without replaying the engine.
+6. Open and close How to Play, then reload and run the capture sequence above.
+
+No game-rule or state-ownership corrections are included. B1–B8 remain deferred;
+the known history-label, parsing, and repetition differences were compared as
+baseline observations, not added as desired-rule assertions. W4–W8 remain open.
+
 ## Reproduction fixtures
 
 Both fixtures are accepted by `engine.reset(layout)` and use the existing 11×11 notation. `.` is empty, `R` restricted, `A` attacker, `D` defender, and `K` king. Under the current shorthand, `K` also marks the throne when no `T` is supplied. These are valid custom engine positions; they were not shown to be reachable from the standard opening.

@@ -1,3 +1,2 @@
-import '../src/HnefataflEngine.ts';
-
-console.log('Hnefatafl engine loaded.');
+// Vite's public-root entry; application code is checked TypeScript in src/ui.
+import '../src/ui/main.ts'
