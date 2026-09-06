@@ -2,5 +2,11 @@
   "trailingComma": "es5",
   "tabWidth": 4,
   "semi": false,
-  "singleQuote": true
+  "singleQuote": true,
+  "overrides": [
+    {
+      "files": ["*.json", "*.yml", ".prettierrc"],
+      "options": { "tabWidth": 2 }
+    }
+  ]
 }

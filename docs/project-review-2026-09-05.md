@@ -324,6 +324,42 @@ package: decide whether to mark the browser application `private` and remove
 the nonexistent `main: index.js`. No library packaging or metadata changes were
 made in W1.
 
+### September 6, 2026 — W2 validation tooling
+
+W2 is complete. `package.json` declares Node 24.x, `.nvmrc` selects Node 24,
+and GitHub Actions reads that file. The Vite configuration now imports the
+typed `defineConfig` from `vitest/config`, and the obsolete `crypto.hash` shim
+is removed. `npm run typecheck` checks source/tests and the configuration through
+`tsconfig.node.json`. The existing Node type version is now a direct development
+dependency rather than an optional transitive dependency.
+
+Prettier `3.9.6` is pinned, with `npm run format` and `npm run format:check`.
+Their initial scope is tooling: package/lock metadata, TypeScript configs,
+`vite.config.ts`, `.prettierrc`, and workflow YAML. JSON/YAML retain two-space
+indentation; TypeScript retains the existing four-space formatting preference.
+Source, tests, UI, and Markdown are outside this formatting scope so broad
+formatting can be reviewed separately. CI runs both type checking and formatting
+checks before tests/build. The browser application is now marked `private`, and
+the nonexistent `main: index.js` entry is removed, resolving A6's deferred metadata
+decision without introducing library packaging.
+
+Validation on Windows with Node `v24.19.0` and npm `11.6.0`:
+
+| Check | Result |
+| --- | --- |
+| `npm ci --no-audit --no-fund` | Fresh lockfile install passed |
+| `npm run typecheck` | Source/tests and Vite/Vitest config passed |
+| `npm run format:check` | All scoped tooling files passed |
+| `npm test` | 238 passed across seven test files |
+| `npm run build` | Passed with Vite `7.0.6`, 15 transformed modules |
+
+The environment had Node but no npm launcher, so npm was bootstrapped in a
+temporary directory and its CLI invoked with Node 24. Tests/build again required
+the filesystem-access retry described above. The hosted GitHub Actions workflow
+and browser smoke check were not run. No game source, tests, or UI files changed.
+T1's runtime/configuration issues are resolved; checking inline browser code
+remains tied to W3's extraction. B1–B8 and W3–W8 remain open.
+
 ## Reproduction fixtures
 
 Both fixtures are accepted by `engine.reset(layout)` and use the existing 11×11 notation. `.` is empty, `R` restricted, `A` attacker, `D` defender, and `K` king. Under the current shorthand, `K` also marks the throne when no `T` is supplied. These are valid custom engine positions; they were not shown to be reachable from the standard opening.

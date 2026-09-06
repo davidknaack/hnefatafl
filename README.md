@@ -14,10 +14,9 @@ not a supported distribution today. There are no production package dependencies
 
 ## Run locally
 
-Use a Node runtime satisfying the installed Vite 7 requirement:
-`^20.19.0 || >=22.12.0`. Node `v24.19.0` was used for the September 2026 checks.
-The repository does not yet declare a development runtime, and CI still selects
-Node 18; aligning these is pending work package W2.
+Use Node 24.x, declared in `package.json` and `.nvmrc`. CI reads `.nvmrc` as
+well. With nvm, run `nvm install` and `nvm use`; otherwise install Node 24 using
+your preferred runtime manager. Node `v24.19.0` was used for the September 2026 checks.
 
 ```sh
 npm ci
@@ -31,14 +30,19 @@ Vite opens the browser and normally serves the app at
 | --- | --- |
 | `npm test` | Run the Vitest suite once |
 | `npm run testlive` | Run Vitest in watch mode |
-| `npx tsc --noEmit` | Check `src` and test TypeScript using the current project config |
+| `npm run typecheck` | Check source/tests and the Vite/Vitest configuration |
+| `npm run format` | Format tooling/configuration files with pinned Prettier |
+| `npm run format:check` | Check tooling/configuration formatting without writing |
 | `npm run build` | Bundle the browser app into ignored `dist/` output |
 | `npm run preview` | Serve the existing build, normally at `http://localhost:4173/hnefatafl/` |
 
-The build does not perform TypeScript checking. The current TypeScript scope
-excludes `vite.config.ts` and the UI's inline JavaScript. There are no declared
-lint, format, or type-check scripts; `.prettierrc` exists, but Prettier is not a
-declared dependency. See the [maintenance instructions](.github/copilot-instructions.md)
+The build does not perform TypeScript checking; run `npm run typecheck` separately.
+CI runs type checking, formatting checks, tests, and the build. Inline browser
+JavaScript remains unchecked until W3 extracts it. Formatting currently covers
+package/lock metadata, TypeScript configs, `vite.config.ts`, `.prettierrc`, and
+workflow YAML. Source, tests, UI, and Markdown are outside this initial formatting
+scope to keep W2 focused; expand that scope in separately reviewed work. No
+lint command is declared. See the [maintenance instructions](.github/copilot-instructions.md)
 for validation details and the dated baseline.
 
 ## Current rules and behavior
@@ -195,18 +199,16 @@ W6, not an enforced size/alphabet contract.
   T1 tooling gaps, reproduction fixtures, and W1–W8 work packages.
 - [Exit-fort notes](docs/exit-fort.md): structural semantics and regression examples.
 
-W1 updates guidance only. W2 aligns runtime/configuration/check commands; W3–W4
-cover bounded extraction and contracts. Functional corrections belong in W5–W8.
+W1 and W2 are complete: maintenance guidance and runtime/configuration/check
+commands are aligned. W3–W4 cover bounded extraction and contracts. Functional
+corrections belong in W5–W8.
 Resolve board-size/pass policy before W6 and state ownership before W7. Treat
 Load Game semantics and accessibility changes as separate decisions within W8.
 Do not infer the intended variant from the Rust reference project.
 
-Package metadata still names a nonexistent `index.js` entry and declares no
-library exports/types entry. W1 documents the browser-application target without
-changing package metadata. In the next tooling package, decide whether to mark
-the application `private` and remove the stale `main`; an engine distribution
-should wait until reuse is explicitly in scope.
+The package is marked `private` and has no library entry point. An engine
+distribution should wait until reuse is explicitly in scope.
 
-GitHub Actions runs installation, tests, and the build for pushes to `main` and
-pull requests targeting `main`. The deployment job runs only for the `main` ref
+GitHub Actions runs installation, type and formatting checks, tests, and the build
+for pushes to `main` and pull requests targeting `main`. The deployment job runs only for the `main` ref
 and publishes `dist/` to GitHub Pages. A pull request does not deploy the site.

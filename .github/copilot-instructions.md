@@ -13,25 +13,30 @@ incidentally or encode known bad behavior as the desired rules.
 
 ## Commands and runtime
 
-Use `npm ci` for a fresh lockfile-based install. Installed Vite 7 requires Node
-`^20.19.0 || >=22.12.0`; the September 2026 checks used Node `v24.19.0`.
-CI still selects Node 18. Runtime declarations and removal/review of the config's
-crypto shim belong to W2.
+Use Node 24.x and `npm ci` for a fresh lockfile-based install. `package.json`
+declares the supported major and CI reads `.nvmrc`, which also selects Node 24
+for development. The September 2026 checks used Node `v24.19.0`. The Vite config
+uses `defineConfig` from `vitest/config`; Node 24 supplies `crypto.hash` directly,
+so no compatibility shim is needed.
 
 | Command | Purpose |
 | --- | --- |
 | `npm test` | One Vitest run |
 | `npm run testlive` | Vitest watch mode |
-| `npx tsc --noEmit` | Project TypeScript check |
+| `npm run typecheck` | Source/tests plus Vite/Vitest configuration type check |
+| `npm run format` | Format tooling/configuration files |
+| `npm run format:check` | Check tooling/configuration formatting without writing |
 | `npm run build` | Vite browser build into ignored `dist/` |
 | `npm run dev` | Development server; normally `http://localhost:5173/hnefatafl/` |
 | `npm run preview` | Serve an existing build; normally `http://localhost:4173/hnefatafl/` |
 
 Vite may choose a different port when one is occupied. `npm run repomix` runs
 `npx repomix@latest`; it is an optional repository export, not validation.
-There is no declared ESLint or Prettier dependency, and no lint, format, or
-type-check script. `.prettierrc` is formatting configuration only. Follow the
-surrounding style until explicit tooling is added in W2.
+Prettier is an exact-version development dependency using `.prettierrc`. Format
+scripts cover package/lock metadata, TypeScript configs, `vite.config.ts`,
+`.prettierrc`, and workflow YAML. Source, tests, UI, and Markdown retain their
+existing style; broad formatting is separate work. No ESLint dependency or lint
+command is declared.
 
 If the environment exposes Node but no npm launcher, equivalent checks using
 already installed dependencies are:
@@ -39,23 +44,22 @@ already installed dependencies are:
 ```sh
 node node_modules/vitest/vitest.mjs run
 node node_modules/typescript/bin/tsc --noEmit
+node node_modules/typescript/bin/tsc --project tsconfig.node.json
+node node_modules/prettier/bin/prettier.cjs --check package.json package-lock.json "tsconfig*.json" vite.config.ts .prettierrc ".github/workflows/*.yml"
 node node_modules/vite/bin/vite.js build
 ```
 
-The project TypeScript check covers `src` and tests, but excludes `vite.config.ts`
-and inline browser JavaScript. Vite's build is not a type check. The separate
-configuration check below exposes T1's crypto shim and `test` property typing
-errors:
-
-```sh
-node node_modules/typescript/bin/tsc --noEmit --target ES2020 --module ESNext --moduleResolution Bundler --strict --esModuleInterop --skipLibCheck vite.config.ts
-```
+`tsconfig.json` covers `src` and tests. `tsconfig.node.json` inherits its strict
+compiler options and checks `vite.config.ts` without emitting files; this keeps
+the source project's `rootDir` unchanged. `npm run typecheck` runs both checks.
+Inline browser JavaScript remains outside TypeScript checking until W3's
+extraction. Vite's build is not a type check.
 
 ## Validation baseline and expectations
 
 The September 5 review used baseline
 `7b6f3b32db076610712875c02d17a2bae5bf4047` plus the existing HTML warning removal.
-For W1 on September 6, 2026, the three direct Node commands above were rerun:
+For W1 on September 6, 2026, the test, source type-check, and build commands were rerun:
 
 - All 238 Vitest tests passed across seven files, using Vitest `3.2.4`.
 - The project TypeScript check passed.
@@ -69,7 +73,16 @@ errors in the September 5 review (T1). The production browser smoke check from
 that review loaded the board and applied an opening move, and reproduced B4/B8;
 a browser check was not repeated for W1's documentation-only changes.
 
-For code/tooling changes, run tests, the project TypeScript check, and build.
+For W2 on September 6, Node `v24.19.0` and npm `11.6.0` passed a fresh
+`npm ci --no-audit --no-fund`, `npm run typecheck` (including the config),
+`npm run format:check`, all 238 tests, and the Vite production build (15 modules).
+Tests/build required the same filesystem-access retry. The hosted Actions
+workflow and browser smoke check were not run. T1's runtime/config errors are
+resolved; inline browser type checking remains W3 work. See the review's dated
+W2 follow-up for scope and environment details.
+
+For code/tooling changes, run tests, `npm run typecheck`, `npm run format:check`,
+and the build.
 For UI changes or extraction, also check the browser: initial board, selection and
 possible-move highlights, validate/apply paths, capture display, input-mode
 precedence, history, and invalid notation. Distinguish known B3/B4/B8 failures
@@ -123,9 +136,9 @@ migrated. No framework rewrite or Rust-rule port is implied by the work packages
 
 ## Follow-up boundaries
 
-- W2: runtime alignment, config typing, explicit checking/formatting commands.
-  Also resolve A6's browser-app metadata decision: whether to set `private` and
-  remove nonexistent `main: index.js`. W1 leaves package/lockfile metadata intact.
+- W2 is implemented: Node 24 alignment, config typing, explicit checking/formatting
+  commands, and CI checks. The browser application is `private` and the stale
+  `main: index.js` is removed. See the review's W2 follow-up for validation evidence.
 - W3–W4: bounded extraction, result/type and fixture contracts, targeted checks.
   Preserve behavior and review exported-type compatibility.
 - W5: B1–B3 capture uniqueness, preview/commit agreement, and legal move generation.
@@ -139,12 +152,13 @@ large fort test count does not establish those public contracts.
 
 ## Deployment
 
-[deploy.yml](workflows/deploy.yml) runs `npm ci`, tests, and the build on pushes to
+[deploy.yml](workflows/deploy.yml) runs `npm ci`, type and tooling-format checks,
+tests, and the build on pushes to
 `main` and pull requests targeting `main`, then uploads `dist/` as a Pages artifact.
 The deploy job requires `github.ref == 'refs/heads/main'`; pull requests validate
 but do not deploy. There is no `workflow_dispatch` trigger. The application base
 path is `/hnefatafl/`, configured in `vite.config.ts`.
 
-The package is currently an application, with no supported library exports/types
-entry and a stale `main: index.js`. Node/RL packaging is future scope. Do not
+The package is a private application, with no library entry point or supported
+exports/types entry. Node/RL packaging is future scope. Do not
 describe an npm engine package as available.
