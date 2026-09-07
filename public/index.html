@@ -55,12 +55,12 @@
                     <button id="copyGame">Copy Game</button>
                 </div>
                 <div class="load-game">
-                    <div>Load Game</div>
+                    <label for="notationInput">Load Game</label>
                     <div class="load-game-input">
-                        <input id="notationInput" placeholder="Paste">
+                        <textarea id="notationInput" rows="5" placeholder="[Event:Friendly game]&#10;d11-d10 f8-e8" aria-describedby="loadHelp"></textarea>
                         <button id="loadBtn">Load</button>
                     </div>
-                    <ul id="loadedMoves"></ul>
+                    <small id="loadHelp">Validates and replaces the current game. Invalid games leave it unchanged.</small>
                 </div>
             </div>
         </div>

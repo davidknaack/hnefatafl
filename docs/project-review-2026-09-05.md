@@ -725,6 +725,99 @@ above. No fresh dependency install, hosted CI, or browser smoke check was run.
 UI source was unchanged. B8 history labels and the separate Load Game and
 accessibility decisions remain W8.
 
+### September 7, 2026 — W8 history and portable games
+
+W8's selected scope is complete: B8 history labels start with the attacker and
+alternate correctly for played and loaded games, including terminal moves and
+resignation. Load Game now accepts multiline portable notation, validates the
+entire replay from the standard opening, and replaces the current game only on
+success. Invalid input leaves the board, turn, counters, histories, result,
+metadata, selection, and highlights unchanged and displays an indexed error.
+The separate unvalidated loaded-move list is removed.
+
+The new `src/gameFormat.ts` implements the requested grammar with case/spacing
+tolerance and leading-zero input, strict square bounds, full input consumption,
+`x`/`/` captures, `++`/`--` terminal suffixes, and standalone `---` resignation.
+The chosen terminal interpretation is relative to the mover: `++` wins and `--`
+loses. A resignation loses for the side to move. Engine replay checks move
+legality, complete supplied capture sets, repetition, and result annotations;
+play or resignation after a terminal result fails. Omitted captures and result
+markers are inferred from replay.
+
+`loadGame` uses a temporary engine and commits atomically. `saveGame` writes
+lowercase squares and positive ranks without leading zeroes, captures sorted by
+file then numeric rank, single-space move separators, a final result or separate
+resignation, and one `[name:value]` metadata tag per line. Tags are opaque and
+preserved in order; there is no reserved schema or custom-setup extension.
+Empty games and custom starting layouts cannot be saved. `resign` records the
+concession without moving pieces or changing capture/repetition counters.
+
+Existing `parseMove`, `serializeMove`, `applyMove`, `applyMoveSequence`, and
+internal move-history notation retain their command compatibility. Portable
+game interchange uses the new facade methods. The UI displays the new notation
+and Copy Game uses the canonical writer, handling clipboard failures visibly.
+The [README](../README.md#loadsave-game-format) documents both contracts and
+the selected edge cases. Board keyboard navigation and dialog focus changes
+remain outside this selected scope. No dependencies or framework were added.
+
+Validation used Node `v24.19.0` and installed dependencies:
+
+- Full Vitest suite: **406 passed in 13 files**, including 53 new format/replay
+  cases and all existing rule, state, and command compatibility tests.
+- Source/test and configuration TypeScript checks: passed.
+- Tooling formatting, Vite production build (**25 modules**), and Git whitespace
+  checks: passed.
+- Production browser smoke check: opening validation/application and A-first
+  history, capture replay and counters, invalid-load preservation, capture and
+  move highlights, visibility toggle, Auto Validate without commit, Auto Apply
+  precedence, selection clearing, resignation display, and repetition terminal
+  display passed. No browser warning/error logs were recorded.
+- Copy Game reported success in the browser. The test browser's virtual clipboard
+  returned no text, so a browser paste-back could not be verified; canonical text
+  and replay round trips are covered by engine tests.
+
+Tests initially hit the documented esbuild directory-access restriction and ran
+with the required access. The first test run found two mistakes in new fixtures
+(an occupied destination and an incorrect expected rejection reason); those were
+corrected before the passing full run. No fresh install, hosted CI, commit, or
+deployment was performed.
+
+### September 7, 2026 — W8 Copenhagen CSV compatibility
+
+The portable loader now accepts a single row copied from the supplied
+`Hnefatafl-DCampbell/tests/copenhagen.csv`. It discards the two numeric capture
+summary fields and trailing `Ongoing`, `Black`, `White`, or `Draw` value, without
+using them to set counters or results. A final `timeout` token immediately before
+the CSV summary is also discarded; the engine has no clock state to reconstruct.
+The loaded status comes from move replay, and saving never emits these fields.
+
+The library uses repeated `x` separators for multiple captures and occasionally
+repeats the same captured square. The reader now accepts both `x` and `/` between
+capture squares and deduplicates annotations before checking the complete capture
+set against the rules. Canonical output remains unchanged. Wrong capture squares,
+malformed moves, and illegal gameplay still fail; legacy move-command validation
+is unchanged. CSV normalization recognizes the trailing summary specifically and
+does not drop arbitrary comma-delimited text or import multiple rows.
+
+A read-only audit of all **1,752 rows** found that all now parse, and **1,642**
+replay successfully. The remaining **110** fail the engine's existing gameplay
+checks: **74** capture-set disagreements, **25** missing source pieces, and **11**
+attempts to move after a terminal result. These are first reported failures per
+row, not a claim about the correctness of either rules implementation. Examples
+include CSV line 34, move 30 (capture disagreement), line 164, move 53 (missing
+piece), and line 298, move 50 (game already ended). No rule changes were made to
+force these rows to load. The CSV itself was not edited or copied into the repo.
+
+Validation with Node `v24.19.0` and installed dependencies: **426 tests passed in
+13 files**, both TypeScript checks, tooling formatting, Vite production build
+(25 modules), and Git whitespace checks passed. New tests include actual CSV
+lines 8 and 9, contradictory discarded summaries, timeout metadata, duplicate and
+mixed capture separators, canonical replay round trips, and atomic rejection of
+malformed or semantically invalid imports. The production browser loaded CSV
+line 9's 16 moves and displayed its duplicated `a7` capture only once, with replayed
+capture counts of four attackers and one defender. No dependencies, source CSV,
+game rules, commit, or deployment were changed by this follow-up.
+
 ## Reproduction fixtures
 
 Both fixtures are accepted by `engine.reset(layout)` and use the existing 11×11 notation. `.` is empty, `R` restricted, `A` attacker, `D` defender, and `K` king. Under the current shorthand, `K` also marks the throne when no `T` is supplied. These are valid custom engine positions; they were not shown to be reachable from the standard opening.

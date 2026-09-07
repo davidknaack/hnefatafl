@@ -1,8 +1,9 @@
 import { HnefataflEngine } from '../HnefataflEngine'
 import { coordToString } from '../coordinates'
 import { canMovePiece, isSameCoord } from '../movement'
-import { parseMove, parseMoveSequence } from '../parser'
-import { Coordinate, GameState, Square } from '../types'
+import { parseMove } from '../parser'
+import { RecordedMove, terminalFor } from '../gameFormat'
+import { Coordinate, GameState, Player, Square } from '../types'
 import { renderBoard } from './board'
 import { UIElements } from './elements'
 import { renderMoveList } from './history'
@@ -23,10 +24,17 @@ export function bindCommands(ui: UIElements, engine: HnefataflEngine): void {
         ui.capturedA.textContent = String(state.captured.attacker)
         ui.capturedD.textContent = String(state.captured.defender)
         ui.status.textContent = state.status
-        const parsedMoves = state.moveHistory.map((str) =>
-            str === 'P' ? 'pass' : (parseMove(str) ?? 'pass')
-        )
+        const parsedMoves = state.moveHistory.map((str, index): RecordedMove | '---' => {
+            if (str === '---') return str
+            const move: RecordedMove | null = parseMove(str)
+            if (!move) throw new Error('Invalid internal move history')
+            if (index === state.moveHistory.length - 1) {
+                move.terminal = terminalFor(state.status, index % 2 === 0 ? Player.Attacker : Player.Defender)
+            }
+            return move
+        })
         renderMoveList(ui.currentMoves, parsedMoves, selectHistory)
+        ui.copy.disabled = state.moveHistory.length === 0
     }
 
     function validate(): void {
@@ -86,21 +94,22 @@ export function bindCommands(ui: UIElements, engine: HnefataflEngine): void {
     ui.apply.onclick = () => apply('manual')
     ui.clear.onclick = () => selection.clear()
     ui.load.onclick = () => {
-        const result = parseMoveSequence(ui.notation.value)
+        const result = engine.loadGame(ui.notation.value)
         if (!result.success) {
-            ui.loadedMoves.innerHTML = ''
             ui.log.textContent = result.error
             return
         }
-        renderMoveList(ui.loadedMoves, result.moves, selectHistory)
-        ui.log.textContent = `Loaded ${result.moves.length} moves`
+        selection.clear()
+        render()
+        ui.log.textContent = `Loaded and validated ${result.newState.moveHistory.filter((move) => move !== '---').length} moves`
     }
-    ui.copy.onclick = () => {
-        navigator.clipboard
-            .writeText(engine.getState().moveHistory.join(', '))
-            .then(() => {
-                alert('Game copied to clipboard!')
-            })
+    ui.copy.onclick = async () => {
+        try {
+            await navigator.clipboard.writeText(engine.saveGame())
+            ui.log.textContent = 'Game copied to clipboard'
+        } catch (error) {
+            ui.log.textContent = `Could not copy game: ${error instanceof Error ? error.message : String(error)}`
+        }
     }
     ui.displayMoves.onchange = () => selection.toggleVisibility()
     engine.reset()
