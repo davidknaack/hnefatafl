@@ -146,16 +146,20 @@ migrated. No framework rewrite or Rust-rule port is implied by the work packages
   `main: index.js` is removed. See the review's W2 follow-up for validation evidence.
 - W3 is implemented: UI/domain extraction with existing exports and interaction
   branches retained. See the review's W3 follow-up for browser checks and validation.
-- W4: result/type and fixture contracts, targeted checks. Preserve behavior and
-  review exported-type compatibility.
+- W4 is implemented: discriminated result unions, readonly owner/type-consistent
+  pieces, explicit shared fixture helpers, and public command/parser/layout checks.
+  Compile-only consumer checks in `src/test/type-contracts.ts` run through the
+  source type check; Vitest alone does not check their expected compiler errors.
+  See the README for exported-type compatibility and the review for validation.
 - W5: B1–B3 capture uniqueness, preview/commit agreement, and legal move generation.
 - W6: B4/B6/B7 parsing and layout boundaries; decide board-size/pass policy first.
 - W7: B5 state protection; select the ownership contract first.
 - W8: B8 history labels; select Load Game and accessibility changes separately.
 
 Use the review's acceptance criteria and reproduction fixtures for selected
-fixes. The current suite has no dedicated parser or browser test files; the
-large fort test count does not establish those public contracts.
+fixes. Parser tests cover supported syntax; strict capture parsing remains W6.
+There is no dedicated browser test suite. The large fort test count does not
+establish the deferred public contracts.
 
 ## Deployment
 

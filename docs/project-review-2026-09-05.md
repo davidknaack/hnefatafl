@@ -419,6 +419,61 @@ No game-rule or state-ownership corrections are included. B1–B8 remain deferre
 the known history-label, parsing, and repetition differences were compared as
 baseline observations, not added as desired-rule assertions. W4–W8 remain open.
 
+### September 7, 2026 — W4 result and fixture contracts
+
+W4 is complete. `ApplyMoveResult` now discriminates success with a required
+`newState` from failure with a required `error`. `MoveValidationResult` similarly
+requires a reason on rejection while retaining captures and status on both
+branches. Existing runtime return shapes and validation/application branches are
+unchanged. `Piece` is a readonly union of consistent owner/type pairs; layout
+mapping occupants share that contract through `LayoutSquareMapping`. The fort
+attacker constant gains a `Piece` annotation to retain its enum literals.
+
+These exported type changes deliberately reject incomplete or contradictory
+consumer values. The README documents narrowing, interface-to-alias changes,
+readonly fields, and enum-literal annotations. Compile-only consumer checks in
+`src/test/type-contracts.ts` cover required payloads, contradictory results,
+piece ownership, readonly fields, and custom mappings. All repository consumers,
+including the UI, pass the source type check. Runtime state isolation remains W7;
+readonly types do not freeze shared objects or repair the old-counter issue.
+
+Low-level tests now share `layoutFixture` (existing implicit-throne shorthand)
+and `positionFixture` (ordinary K/k squares with explicit T terrain). Existing
+rule fixtures retain their terrain semantics, including all fort symmetry and
+non-mutation cases. The transformation API documents whole-entry custom mapping
+replacement and its distinction from game initialization. New checks cover both
+fixture conventions, custom mappings, small kingless fixtures, and square shape
+validation. Passing-test board dumps are removed, and the open escape-route test
+no longer claims to demonstrate a winding path.
+
+New facade checks cover rejected commands without mutation, non-mutating preview,
+required success data, prefix commits on sequence failure, replay through an
+ordinary capture, reset, and ended-game queries. Parser checks cover supported
+notation, ranks 10/11, capture coordinates, repeated parser calls, ordered
+sequences, and clearly invalid whole-move syntax. They do not assert the known
+B4 malformed-capture behavior as a desired contract.
+
+Validation used Node `v24.19.0` and installed dependencies:
+
+| Check | Result |
+| --- | --- |
+| Vitest | **265 passed**, nine files; 24 new runtime cases, all 172 fort cases retained |
+| Source/tests TypeScript check | Passed, including compile-only consumer checks and UI |
+| Vite/Vitest configuration TypeScript check | Passed |
+| Tooling formatting | Passed |
+| Vite production build | Passed, 23 transformed modules |
+| Git whitespace check | Passed |
+
+Commands were the installed Node equivalents of `npm test`, `npm run typecheck`,
+`npm run format:check`, and `npm run build` listed in the maintenance instructions.
+Vitest initially hit the documented esbuild filesystem-access startup error;
+tests/build passed with the required access. After simplifying the invalid-layout
+test table, all nine board tests were rerun and passed. No fresh dependency install,
+hosted CI run, or browser interaction check was performed. No UI behavior changed.
+
+B1–B8 remain deferred to W5–W8. No capture, move-transition, parsing, production
+layout policy, or runtime state-ownership corrections are included. W5 is next.
+
 ## Reproduction fixtures
 
 Both fixtures are accepted by `engine.reset(layout)` and use the existing 11×11 notation. `.` is empty, `R` restricted, `A` attacker, `D` defender, and `K` king. Under the current shorthand, `K` also marks the throne when no `T` is supplied. These are valid custom engine positions; they were not shown to be reachable from the standard opening.

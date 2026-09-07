@@ -1,6 +1,6 @@
 import { clonePosition, extractEdgeSquares } from './board'
 import { getAvailableCaptures } from './captures'
-import { Coordinate, PieceType, Player, Square } from './types'
+import { Coordinate, Piece, PieceType, Player, Square } from './types'
 
 const directions = [
     { x: 0, y: -1 },
@@ -8,7 +8,7 @@ const directions = [
     { x: -1, y: 0 },
     { x: 1, y: 0 },
 ]
-const attacker = { owner: Player.Attacker, type: PieceType.Attacker }
+const attacker: Piece = { owner: Player.Attacker, type: PieceType.Attacker }
 const key = ({ x, y }: Coordinate) => `${x},${y}`
 
 function inBounds(position: Square[][], { x, y }: Coordinate): boolean {

@@ -69,21 +69,23 @@ export interface GameSetup {
     edgeSquares: Set<Coordinate>
 }
 
+export interface LayoutSquareMapping {
+    occupant?: Piece
+    isThrone?: boolean
+    isRestricted?: boolean
+}
+
 export interface LayoutTransformOptions {
-    /** Custom character mappings for pieces (default: A=Attacker, D=Defender, K=King, R=Restricted) */
-    charMap?: Record<
-        string,
-        {
-            occupant?: { owner: Player; type: PieceType }
-            isThrone?: boolean
-            isRestricted?: boolean
-        }
-    >
+    /** Each entry replaces the entire default mapping for that character. */
+    charMap?: Record<string, LayoutSquareMapping>
 }
 
 /**
- * Core function to transform a layout string array into a game position.
- * This is the single source of truth for layout-to-position transformation.
+ * Flexible square-layout transformation, also used for low-level fixtures.
+ * Does not require a king or enforce the engine's notation size. K/k imply a
+ * restricted throne unless an uppercase T appears anywhere in the layout.
+ * Custom mappings replace defaults; unknown characters become empty squares.
+ * Occupants may be shared values; this function provides no runtime isolation.
  */
 export function transformLayoutToPosition(
     boardLayout: string[],
@@ -101,14 +103,7 @@ export function transformLayoutToPosition(
     const layoutHasThrone = boardLayout.some(row => row.includes('T'))
 
     // Default character mappings (production game format)
-    const defaultCharMap: Record<
-        string,
-        {
-            occupant?: { owner: Player; type: PieceType }
-            isThrone?: boolean
-            isRestricted?: boolean
-        }
-    > = {
+    const defaultCharMap: Record<string, LayoutSquareMapping> = {
         A: { occupant: { owner: Player.Attacker, type: PieceType.Attacker } },
         a: { occupant: { owner: Player.Attacker, type: PieceType.Attacker } },
         D: { occupant: { owner: Player.Defender, type: PieceType.Defender } },
@@ -155,6 +150,9 @@ export function transformLayoutToPosition(
     return { position, edgeSquares }
 }
 
+/** Game setup adds the current uppercase-K count check to layout transformation.
+ * Size/alphabet validation and transformed king invariants are deferred to W6.
+ */
 export function initializeGame(boardLayout: string[]): GameSetup {
     // Validation for game boards
     let kingCount = 0

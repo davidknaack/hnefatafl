@@ -1,15 +1,10 @@
 import { describe, expect, test } from 'vitest'
-import { transformLayoutToPosition } from './board'
+import { positionFixture } from './test/fixtures'
 import { defendersHaveFort } from './utils'
 import { PieceType, Player } from './types'
 
-// Unlike the layout shorthand's default, an edge king is not on the throne.
 function board(layout: string[]) {
-    return transformLayoutToPosition(layout, {
-        charMap: {
-            K: { occupant: { owner: Player.Defender, type: PieceType.King } },
-        },
-    }).position
+    return positionFixture(layout).position
 }
 
 function rotate(layout: string[]): string[] {

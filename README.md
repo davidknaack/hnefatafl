@@ -100,7 +100,7 @@ const engine = new HnefataflEngine()
 const preview = engine.validateMove('D11-D10')
 if (preview.isValid) {
     const result = engine.applyMove('D11-D10')
-    if (result.success && result.newState) {
+    if (result.success) {
         console.log(result.newState.currentPlayer) // 'defender'
     }
 }
@@ -136,10 +136,9 @@ interface Square {
     isRestricted: boolean
 }
 
-interface Piece {
-    owner: Player
-    type: PieceType
-}
+type Piece =
+    | { readonly owner: Player.Attacker; readonly type: PieceType.Attacker }
+    | { readonly owner: Player.Defender; readonly type: PieceType.Defender | PieceType.King }
 ```
 
 `Player` values are `attacker` and `defender`; `PieceType` additionally includes
@@ -149,7 +148,22 @@ defender. `Coordinate` is `{ x: number, y: number }`, indexed as `position[y][x]
 `A11` is `{ x: 0, y: 0 }`, and `K1` is `{ x: 10, y: 10 }`.
 `PossibleMove` contains `to: Coordinate` and `captures: Coordinate[]`.
 
-Returned states and piece objects are mutable and shared. A saved state can have
+Result types are discriminated unions: `success: true` guarantees `newState`,
+and `success: false` guarantees `error: string`. Validation always includes
+`expectedCaptures` and `status`; `isValid: false` guarantees `reason: string`.
+Success branches exclude error/reason strings and application failures exclude
+a committed state. Narrow on `success` or `isValid` before consuming branch data.
+
+W4 tightens exported TypeScript contracts without changing returned object shapes.
+Consumers constructing results must supply a literal discriminant and its required
+payload. `Piece` and result types are now aliases rather than extensible interfaces.
+Pieces require matching owner/type pairs, and their fields are readonly; replace
+a square's occupant instead of editing a piece. Custom `charMap` occupants use
+the same `Piece` type. Predeclared piece objects may need a `Piece` annotation or
+`satisfies Piece` to retain enum literals. Existing repository consumers type-check.
+
+Returned states remain mutable and shared; readonly piece fields are a TypeScript
+constraint, not runtime freezing. A saved state can have
 its capture counters changed by a later move; shallow board clones also share
 pieces (B5). Do not rely on snapshot isolation until W7 establishes it.
 
@@ -188,6 +202,13 @@ Custom layouts are arrays of square-board rows, ordered top to bottom:
 A lowercase-only king is rejected, but a layout with both `K` and `k` can produce
 two kings (B7). `transformLayoutToPosition` supports custom character mappings
 and flexible fixtures without that king-count check.
+Mappings replace the entire default mapping for a character, including terrain.
+Tests share two helpers in [src/test/fixtures.ts](src/test/fixtures.ts):
+`layoutFixture` preserves the production `K`/`T` shorthand; `positionFixture`
+places `K`/`k` on ordinary squares and requires `T` for throne terrain. Both allow
+small boards and missing kings for isolated rules tests. Facade tests use
+`engine.reset(layout)` to exercise initialization. These helpers are test-only,
+not a new public position-construction API.
 Although initialization accepts other square sizes, notation is fixed to 11×11
 and can throw on smaller layouts (B6). For current engine use, keep layouts
 11×11 with one uppercase `K` and no lowercase `k`. This is usage guidance pending
@@ -201,9 +222,9 @@ W6, not an enforced size/alphabet contract.
   T1 tooling gaps, reproduction fixtures, and W1–W8 work packages.
 - [Exit-fort notes](docs/exit-fort.md): structural semantics and regression examples.
 
-W1–W3 are complete: maintenance guidance and runtime/configuration/check
-commands are aligned, and UI/domain helpers are extracted. W4 covers contracts. Functional
-corrections belong in W5–W8.
+W1–W4 are complete: maintenance guidance and runtime/configuration/check
+commands are aligned, UI/domain helpers are extracted, and result/piece types
+and fixture conventions are explicit. Functional corrections belong in W5–W8.
 Resolve board-size/pass policy before W6 and state ownership before W7. Treat
 Load Game semantics and accessibility changes as separate decisions within W8.
 Do not infer the intended variant from the Rust reference project.
