@@ -86,8 +86,8 @@ For code/tooling changes, run tests, `npm run typecheck`, `npm run format:check`
 and the build.
 For UI changes or extraction, also check the browser: initial board, selection and
 possible-move highlights, validate/apply paths, capture display, input-mode
-precedence, history, and invalid notation. Distinguish known B4/B8 failures
-from regressions. Documentation-only edits need source/signature/command/link
+precedence, history, and invalid notation. B4 is fixed in W6; distinguish the
+remaining B8 history-label defect from regressions. Documentation-only edits need source/signature/command/link
 verification; a browser rerun is unnecessary unless UI behavior is changed.
 Record commands, runtime, and actual results instead of assuming this baseline
 still holds. Do not add tests solely for prose edits.
@@ -128,8 +128,8 @@ not `board`; squares use `isRestricted`, not `isCorner`.
 
 W5 guarantees unique captures, preview/apply equivalence, and legal facade move
 generation against the same state/history. Read the README's remaining caveats
-before depending on strict parsing, exception-free coordinates, or stable state
-snapshots. W5 replaces defender projections with `positionHistory` keys and the
+before depending on stable state snapshots. W6 enforces strict notation, 11×11
+game layouts, no passes, and guarded coordinate boundaries. W5 replaces defender projections with `positionHistory` keys and the
 raw validator's fifth argument with `string[]`; consumers should replay old games.
 Sequence application commits its valid prefix; UI Load Game only displays parsed
 notation. Initialization starts with the attacker.
@@ -160,12 +160,19 @@ migrated. No framework rewrite or Rust-rule port is implied by the work packages
   no defender-only anti-stalling rule remains. Board wins take precedence.
   Counters are calculated locally; runtime state isolation remains W7. See the
   review's W5 follow-up for tests, browser verification, and API migration.
-- W6: B4/B6/B7 parsing and layout boundaries; decide board-size/pass policy first.
+- W6 is implemented: B4/B6/B7 strict capture parsing, canonical history, indexed
+  sequence failures, guarded source/destination/capture coordinates, and exactly
+  11×11 production layouts with a supported alphabet and one transformed king.
+  Passes are rejected. Sequence application retains legal-prefix commits; the
+  parser now returns a discriminated result with a parsed prefix and zero-based
+  failure index. Load Game reports errors and still only views notation. Flexible
+  low-level fixtures retain their size/mapping/king conventions. See the README
+  for API migration and the review for validation.
 - W7: B5 state protection; select the ownership contract first.
 - W8: B8 history labels; select Load Game and accessibility changes separately.
 
 Use the review's acceptance criteria and reproduction fixtures for selected
-fixes. Parser tests cover supported syntax; strict capture parsing remains W6.
+fixes. Parser tests cover strict syntax, indexed failures, and serialization.
 There is no dedicated browser test suite. The large fort test count does not
 establish the deferred public contracts.
 

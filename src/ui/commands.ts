@@ -85,12 +85,16 @@ export function bindCommands(ui: UIElements, engine: HnefataflEngine): void {
     ui.validate.onclick = validate
     ui.apply.onclick = () => apply('manual')
     ui.clear.onclick = () => selection.clear()
-    ui.load.onclick = () =>
-        renderMoveList(
-            ui.loadedMoves,
-            parseMoveSequence(ui.notation.value),
-            selectHistory
-        )
+    ui.load.onclick = () => {
+        const result = parseMoveSequence(ui.notation.value)
+        if (!result.success) {
+            ui.loadedMoves.innerHTML = ''
+            ui.log.textContent = result.error
+            return
+        }
+        renderMoveList(ui.loadedMoves, result.moves, selectHistory)
+        ui.log.textContent = `Loaded ${result.moves.length} moves`
+    }
     ui.copy.onclick = () => {
         navigator.clipboard
             .writeText(engine.getState().moveHistory.join(', '))

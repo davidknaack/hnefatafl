@@ -1,5 +1,11 @@
 import { Coordinate, Square, Piece, Player, PieceType } from './types'
 
+/** Coordinates must be finite integer indices within the supplied board size. */
+export function isValidCoordinate(coord: Coordinate, size: number): boolean {
+    return coord != null && Number.isInteger(coord.x) && Number.isInteger(coord.y)
+        && coord.x >= 0 && coord.y >= 0 && coord.x < size && coord.y < size
+}
+
 export function isSameCoord(a: Coordinate, b: Coordinate): boolean {
     return a.x === b.x && a.y === b.y
 }

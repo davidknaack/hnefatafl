@@ -1,4 +1,4 @@
-import { isSameCoord, isPathClear, canMovePiece, canEnterSquare } from './movement'
+import { isSameCoord, isPathClear, canMovePiece, canEnterSquare, isValidCoordinate } from './movement'
 import {
     Square,
     Coordinate,
@@ -44,6 +44,14 @@ export function resolveMove(
     escapeTargets: Set<Coordinate>,
     positionHistory: string[] = []
 ): MoveResolution {
+    if (![move.from, move.to, ...move.captures].every((coord) =>
+        isValidCoordinate(coord, position.length)
+    )) {
+        return {
+            isValid: false, reason: 'Invalid move coordinates',
+            expectedCaptures: [], status: GameStatus.InProgress,
+        }
+    }
     const fromSquare = position[move.from.y][move.from.x]
     const toSquare = position[move.to.y][move.to.x]
 
