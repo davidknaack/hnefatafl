@@ -45,7 +45,8 @@ export interface GameState {
         defender: number
     }
     moveHistory: string[]
-    defenderPositions: string[][]
+    /** Full-board/side-to-move keys since initialization or the last capture. */
+    positionHistory: string[]
     status: GameStatus
 }
 

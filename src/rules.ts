@@ -9,16 +9,14 @@ import { defendersCanEscape } from './encirclement'
 import { defendersHaveFort } from './exitFort'
 import { extractEscapeTargets } from './board'
 
-// Returns the game status after a move is applied
+// Requires the post-move board with all resolved captures already removed.
+// Repetition is evaluated by the transition resolver, which owns its history.
 export function getGameStatusAfterMove(
     position: Square[][],
     move: Move,
     currentPlayer: Player
 ): GameStatus {
-    // Be robust whether the position has been mutated yet or not
-    const piece =
-        position[move.to.y][move.to.x].occupant ||
-        position[move.from.y][move.from.x].occupant
+    const piece = position[move.to.y][move.to.x].occupant
 
     if (isKingCaptured(position)) {
         return GameStatus.AttackerWin

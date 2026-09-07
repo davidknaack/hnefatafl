@@ -66,7 +66,15 @@ export function getAvailableCaptures(
     )
     captures.push(...edgeCaptures)
 
-    return captures
+    // A physical piece can satisfy both ordinary and shieldwall rules. Keep
+    // the first occurrence so every consumer sees one stable entry per piece.
+    const seen = new Set<string>()
+    return captures.filter(({ x, y }) => {
+        const key = `${x},${y}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+    })
 }
 
 function getStandardCaptures(

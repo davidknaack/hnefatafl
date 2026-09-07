@@ -2,7 +2,8 @@ import { describe, expect, test } from 'vitest'
 import { layoutFixture } from './test/fixtures'
 import { validateMove } from './validator'
 import { Player, PieceType, GameStatus } from './types'
-import { extractDefenderPosition, clonePosition } from './board'
+import { clonePosition } from './board'
+import { positionKey } from './repetition'
 
 describe('Validator Tests', () => {
     test('One piece cannot move through another piece', () => {
@@ -191,8 +192,7 @@ describe('Validator Tests', () => {
         expect(result.status).toBe(GameStatus.InProgress)
     })
 
-    test('Defender cannot repeat board position', () => {
-        // Reason: Core game rule, the defender cannot repeat a previous board position.
+    test('A second full-board occurrence is allowed; the third loses for defenders', () => {
         // prettier-ignore
         const boardLayout = [
             "R K  ",
@@ -202,7 +202,8 @@ describe('Validator Tests', () => {
             "     "
         ]
         const gameSetup = layoutFixture(boardLayout)
-        const history = [extractDefenderPosition(gameSetup.position)]
+        const key = positionKey(gameSetup.position, Player.Attacker)
+        const history = [key]
 
         const move1 = {
             from: { x: 2, y: 2 },
@@ -225,7 +226,7 @@ describe('Validator Tests', () => {
             owner: Player.Defender,
             type: PieceType.Defender,
         }
-        history.push(extractDefenderPosition(boardAfter))
+        history.push(positionKey(boardAfter, Player.Attacker))
 
         const move2 = {
             from: { x: 2, y: 3 },
@@ -239,9 +240,11 @@ describe('Validator Tests', () => {
             gameSetup.edgeSquares,
             history
         )
-        expect(result2.isValid).toBe(false)
-        expect(result2.reason).toContain('repeat')
+        expect(result2.isValid).toBe(true)
         expect(result2.status).toBe(GameStatus.InProgress)
+        const result3 = validateMove(boardAfter, Player.Defender, move2, gameSetup.edgeSquares, [...history, key])
+        expect(result3.isValid).toBe(true)
+        expect(result3.status).toBe(GameStatus.AttackerWin)
     })
 
     test('Diagonal move is invalid', () => {
