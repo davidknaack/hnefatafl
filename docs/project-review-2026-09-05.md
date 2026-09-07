@@ -120,6 +120,52 @@ D11-D10, F8-E8, D10-C10
 
 Future correction: explicitly separate geometric candidates from fully legal moves, then make the public/UI contract use the intended one. Acceptance: every advertised legal move validates against the same state and history. Preserve the repository's existing defender-only repetition rule unless separately changed.
 
+September 7 follow-up: this mismatch also affects **capturing king moves**. In
+[fixture C](#fixture-c-king-capture-advertised-but-rejected-for-repetition), the
+generator offers `C9-C11` with capture `B11`, but validation/application reject it
+with `Move would repeat defender board position`. With Auto Apply enabled, the
+UI logs the rejection and clears selection/highlights, leaving the board and
+defender turn unchanged. The same visible position accepts the capture when its
+defender history does not contain the earlier king position. Capturing does not
+bypass validation's repetition check; the capture-triggered history reset occurs
+later during application. This connects B3 to the existing capture/reset ordering
+decision, rather than establishing a separate king-capture prohibition.
+
+The engine reproduction passes on the September 5 review baseline, pre-W4
+`348ec40`, and post-W4 `0f15bb8`. The rejection-clearing UI branch also exists in
+the original inline UI and is unchanged by W4. The user's subsequently supplied
+41-move history also reproduces this exact rejection on all three revisions;
+see the [exact game replay](#exact-game-replay-for-fixture-c) below. Returning to
+`C11` would restore the defender layout recorded after move 38, `C3-C11`.
+The attacker moves and proposed attacker capture do not change that projection.
+
+**W5 acceptance extension:** cover a king capture beside a corner with and without
+a repeated defender layout. Resolve the already-open capture/repetition-reset
+ordering before deciding whether the repeated capturing move should be legal.
+In either policy, generated moves, validation, and application must agree;
+rejected moves must leave the board, counters, history, status, and turn unchanged.
+Include a browser check with Auto Apply to verify the advertised move can be
+applied and that any rejection reason is visible.
+
+**Copenhagen rules research (September 7):** the
+[current author-published rules](https://aagenielsen.dk/copenhagen_rules.php),
+rule 8, forbid perpetual repetition and assign the loss to the defenders, but
+do not specify a position key or repetition count. The
+[authors' Copenhagen discussion](https://aagenielsen.dk/hnefataflforum/phpBB3/viewtopic.php?start=110&t=2)
+distinguishes ordinary overall-board repetition (both sides) from a separate
+defender-only anti-draw-fort rule involving three occurrences without captures.
+The later [2021 clarification](https://aagenielsen.dk/hnefataflforum/phpBB3/viewtopic.php?start=10&t=112)
+simplifies who loses; it does not state that every first return of the defender
+layout must be rejected. These sources do not justify the engine's blanket
+defender-layout ban. In the exact replay, the king is returning to C11 for the
+second occurrence of that defender layout and capturing an attacker; the full
+board also differs. Under the described rules this capture should be permitted.
+W5 should therefore treat acceptance of `C9-C11(B11)` in the exact replay as the
+Copenhagen-oriented target, while explicitly specifying the general repetition
+key, threshold, and any retained defender-only anti-stalling rule before coding.
+This research refines the previously open policy question; it does not change
+the runtime or establish conformance of the rest of the engine to Copenhagen.
+
 ### B4 — P2: Malformed capture text and sequence entries are silently discarded
 
 Evidence: [capture extraction](../src/parser.ts#L14), [sequence parsing](../src/parser.ts#L28), [regex flags](../src/patterns.ts#L1), [history storage](../src/HnefataflEngine.ts#L149).
@@ -290,7 +336,7 @@ At the September 5 review, nothing in this table had been implemented. See the d
 | W2 — Align validation tooling | T1; runtime declaration, config typing, explicit type-check/format commands | Tooling changes; game behavior intended unchanged | Small–medium |
 | W3 — Extract UI and domain helpers | A1–A3; retain existing exports and branch behavior; characterize representative interactions | Behavior intended unchanged | Medium |
 | W4 — Make result and fixture contracts explicit | A4–A5; targeted tests, result narrowing, fixture cleanup | Internal/type-contract changes; review consumers | Medium |
-| W5 — Correct capture and transition consistency | B1–B3 with regression tests | **Functional correction** | Medium |
+| W5 — Correct capture and transition consistency | B1–B3 with regression tests, including fixture C's capturing-king repetition mismatch and capture/reset ordering decision | **Functional correction** | Medium |
 | W6 — Correct parsing and layout boundaries | B4, B6, B7; resolve board-size/pass policies first | **Functional/API correction** | Medium |
 | W7 — Protect engine state | B5; select ownership contract first | **Functional/API correction** | Medium |
 | W8 — Correct UI history and selected interactions | B8; separately choose Load/accessibility changes | **Functional/UI correction** | Small for B8; broader scope depends on decisions |
@@ -533,5 +579,104 @@ engine.applyMoveSequence('D11-D10,F8-E8,D10-C10')
 engine.getPossibleMoves({ x: 4, y: 3 }) // includes { x: 5, y: 3 } (F8)
 engine.validateMove('E8-F8')           // rejected: repeated defender position
 ```
+
+### Fixture C: king capture advertised but rejected for repetition
+
+This constructed 11×11 fixture reproduces the reported upper-left board pattern
+using only reset and legal setup moves. It is not a reconstruction of the user's
+full game; the supplied full history is preserved below. `T` explicitly keeps
+the king's edge square from implying a throne.
+
+```ts
+const layoutC = [
+    'R.K.......R',
+    '.A..A......',
+    'A..........',
+    '...........',
+    '...A.A.....',
+    'A...DT.....',
+    '...........',
+    '...........',
+    '...........',
+    '...........',
+    'R.........R',
+]
+engine.reset(layoutC)
+engine.applyMoveSequence('E10-E11,C11-C9,B10-B11') // succeeds
+// Defender turn. King C9, attacker B11, empty exit A11.
+engine.getPossibleMoves({ x: 2, y: 2 })
+// Includes { to: { x: 2, y: 0 }, captures: [{ x: 1, y: 0 }] }.
+engine.validateMove('C9-C11')
+// isValid: false, reason: 'Move would repeat defender board position',
+// expectedCaptures: [{ x: 1, y: 0 }], status: 'in_progress'.
+engine.applyMove('C9-C11')
+// success: false, error: 'Move would repeat defender board position'.
+// Entire state unchanged.
+```
+
+Control: reset a second engine to `layoutC` with rows 0, 1, and 2 replaced by
+`'RA........R'`, `'....A......'`, and `'A.K........'`, respectively, then apply
+`E10-E11`. The resulting board and side to move are identical, but the repetition
+history differs. `C9-C11` now succeeds, removes `B11`, and counts one attacker
+captured. This isolates repetition history from king movement and corner capture.
+
+Verification: temporary Node `v24.19.0` probes transpiled and loaded the source
+directly from each of `7b6f3b32db076610712875c02d17a2bae5bf4047`, `348ec40`, and
+`0f15bb8`. Assertions checked successful setup, advertised capture, rejection
+reason, full-state non-mutation, equal control positions/turns, and successful
+control capture with one attacker counted. All passed on all three revisions.
+UI failure handling was source-traced; the user's browser session was unavailable.
+No production code or tests were changed, and no suite/build rerun was needed for
+this documentation-only follow-up. The bad outcome is recorded here as evidence
+for W5, not added to the suite as a desired-rule assertion.
+
+### Exact game replay for fixture C
+
+The user supplied this history after the initial investigation. Starting from
+the standard opening, all 41 moves succeed on the review baseline, pre-W4
+`348ec40`, and post-W4 `0f15bb8`:
+
+```ts
+const history = [
+    'F10-C10,F8-H8,K8-I8,D6-D9,B6-B9,D9-H9,A4-E4,G7-G10',
+    'A8-G8(H8),H6-H8,G8-G9(G10),H9-I9,G9-G8(H8),G5-H5',
+    'C10-I10(I9),G6-H6,G1-G4(F4),F5-G5,G8-G6(G5),F7-G7',
+    'G4-G5,E5-F5(G5),J6-I6(H6),F5-G5(G6),F11-F7,G7-G6',
+    'D11-D7(E7),F6-F4,K4-H4,G6-G7,H4-G4,F4-F3,G4-G3,F3-A3',
+    'F2-A2,A3-C3,D1-C1,C3-C11,B9-B11,C11-C9,A7-A9',
+].join(',')
+engine.reset()
+engine.applyMoveSequence(history) // success; defender to move
+engine.getPossibleMoves({ x: 2, y: 2 })
+// Advertises C11 with capture B11.
+engine.validateMove('C9-C11')
+// isValid: false; reason: 'Move would repeat defender board position'.
+engine.applyMove('C9-C11')
+// success: false; same error; entire state unchanged.
+```
+
+The decisive portion of the history is:
+
+| Move number | Move | Effect relevant to repetition |
+| --- | --- | --- |
+| 38 | `C3-C11` | Records the defender layout with king at C11 |
+| 39 | `B9-B11` | Places the attacker beside A11; defender layout is unchanged |
+| 40 | `C11-C9` | Moves the king away and records its new layout |
+| 41 | `A7-A9` | Leaves the defender layout unchanged |
+| Attempted 42 | `C9-C11` | Would capture B11, but matches the defender layout from move 38 |
+
+The check compares only defender/king positions, ignoring attackers. It runs
+before application's capture-triggered history reset, so the proposed capture
+does not exempt this move. The user-visible bug includes the disagreement
+between advertisement and acceptance. The Copenhagen research under B3 also
+identifies the rejection itself as too restrictive for this capture; the general
+repetition contract still needs to be specified for W5.
+
+Temporary Node probes replayed each move individually and asserted successful
+setup, the exact advertised destination/capture, the rejection reason, and
+full-state non-mutation on all three revisions. Comparing defender projections
+identified the matching earlier layout after moves 38 and 39. This confirms the
+reported engine failure with the user's exact history, rather than only the
+constructed fixture. Browser failure handling remains source-traced.
 
 The snippets are evidence for the follow-up decision, not changes to the production test suite.
