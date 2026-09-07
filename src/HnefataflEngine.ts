@@ -4,8 +4,7 @@ import {
 } from './board'
 import { validateMove as validateRawMove, resolveMove } from './validator'
 import { positionKey } from './repetition'
-import { parseMove } from './parser'
-import { coordToString } from './coordinates'
+import { parseMove, parseMoveSequence, serializeMove } from './parser'
 import { generateMoveCandidates } from './moveGenerator'
 import {
     ApplyMoveResult,
@@ -95,19 +94,7 @@ export class HnefataflEngine {
             else if (piece) captured.defender++
         }
 
-        // Create a move string that includes captures if they occurred
-        let moveStrWithCaptures = moveStr
-        if (expectedCaptures.length > 0) {
-            // Check if the move string already has captures notation
-            if (!moveStr.includes('(')) {
-                // Add the captures to the notation
-                const capturesNotation =
-                    '(' +
-                    expectedCaptures.map((c) => coordToString(c)).join('') +
-                    ')'
-                moveStrWithCaptures = moveStr + capturesNotation
-            }
-        }
+        const moveStrWithCaptures = serializeMove(validation.move)
 
         const newState: GameState = {
             position: validation.position,
@@ -124,11 +111,14 @@ export class HnefataflEngine {
     }
 
     applyMoveSequence(moveList: string): ApplyMoveResult {
-        const parts = moveList.split(',').map((m) => m.trim())
-        for (const moveStr of parts) {
-            const result = this.applyMove(moveStr)
-            if (!result.success) return result
+        const parsed = parseMoveSequence(moveList)
+        for (const [index, move] of parsed.moves.entries()) {
+            const result = this.applyMove(serializeMove(move))
+            if (!result.success) {
+                return { success: false, error: `Move ${index + 1}: ${result.error}` }
+            }
         }
+        if (!parsed.success) return { success: false, error: parsed.error }
         return { success: true, newState: this.gameState }
     }
 

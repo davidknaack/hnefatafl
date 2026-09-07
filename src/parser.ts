@@ -1,9 +1,9 @@
 import { Move } from './types'
-import { coordFromString } from './coordinates'
+import { coordFromString, coordToString } from './coordinates'
 import { MOVE_RE, CAPTURE_RE } from './patterns'
 
 export function parseMove(input: string): Move | null {
-    const cleaned = input.trim().replace(/\s+/g, '')
+    const cleaned = input.replace(/\s+/g, '').toUpperCase()
     const match = MOVE_RE.exec(cleaned)
     if (!match) return null
 
@@ -14,21 +14,41 @@ export function parseMove(input: string): Move | null {
     const captures = []
     const captureChunk = match[3]
     if (captureChunk) {
-        // Parse captures by matching coordinate patterns
-        let captureMatch
-        while ((captureMatch = CAPTURE_RE.exec(captureChunk)) !== null) {
-            const cap = coordFromString(captureMatch[0])
-            if (cap) captures.push(cap)
+        // The whole capture section has already matched the strict grammar.
+        for (const token of captureChunk.match(CAPTURE_RE) ?? []) {
+            const cap = coordFromString(token)
+            if (!cap) return null
+            captures.push(cap)
         }
     }
 
     return { from, to, captures }
 }
 
-export function parseMoveSequence(input: string): (Move | 'pass')[] {
-    return input
-        .split(',')
-        .map((part) => part.trim().toUpperCase())
-        .map((token) => (token === 'P' ? 'pass' : parseMove(token)))
-        .filter((m) => m !== null) as (Move | 'pass')[]
+/** Uppercase, whitespace-free notation; captures retain their supplied order. */
+export function serializeMove(move: Move): string {
+    const captures = move.captures.length
+        ? `(${move.captures.map(coordToString).join('')})` : ''
+    return `${coordToString(move.from)}-${coordToString(move.to)}${captures}`
+}
+
+export type MoveSequenceParseResult =
+    | { success: true; moves: Move[] }
+    | { success: false; moves: Move[]; index: number; token: string; error: string }
+
+/** On failure, moves contains the parsed prefix and index is zero-based. */
+export function parseMoveSequence(input: string): MoveSequenceParseResult {
+    const moves: Move[] = []
+    const tokens = input.split(',')
+    for (const [index, part] of tokens.entries()) {
+        const token = part.trim()
+        const move = parseMove(token)
+        if (!move) {
+            const reason = token.toUpperCase() === 'P'
+                ? 'Passes are not supported' : 'Invalid move format'
+            return { success: false, moves, index, token, error: `Move ${index + 1}: ${reason}` }
+        }
+        moves.push(move)
+    }
+    return { success: true, moves }
 }

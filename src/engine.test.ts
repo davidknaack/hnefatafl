@@ -100,7 +100,7 @@ describe('Engine command contracts', () => {
         const prefix = new HnefataflEngine()
         expect(prefix.applyMove('D11-D10').success).toBe(true)
         expect(engine.applyMoveSequence('D11-D10,garbage,F8-E8')).toEqual({
-            success: false, error: 'Invalid move format',
+            success: false, error: 'Move 2: Invalid move format',
         })
         expect(engine.getState()).toEqual(prefix.getState())
     })

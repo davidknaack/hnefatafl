@@ -1,4 +1,5 @@
 import { Square, Move, Piece, Player, PieceType, Coordinate } from './types'
+import { BOARD_SIZE } from './coordinates'
 
 export function clonePosition(position: Square[][]): Square[][] {
     return position.map((row) => row.map((square) => ({ ...square })))
@@ -150,26 +151,23 @@ export function transformLayoutToPosition(
     return { position, edgeSquares }
 }
 
-/** Game setup adds the current uppercase-K count check to layout transformation.
- * Size/alphabet validation and transformed king invariants are deferred to W6.
- */
+/** Production games use the fixed notation size and exactly one transformed king. */
 export function initializeGame(boardLayout: string[]): GameSetup {
-    // Validation for game boards
-    let kingCount = 0
-
-    // Count kings and restricted squares
-    for (let y = 0; y < boardLayout.length; y++) {
-        for (let x = 0; x < boardLayout[y].length; x++) {
-            const c = boardLayout[y][x]
-            if (c === 'K') {
-                kingCount++
-            }
-        }
+    if (boardLayout.length !== BOARD_SIZE ||
+        !boardLayout.every((row) => row.length === BOARD_SIZE)) {
+        throw new Error('Game layouts must be exactly 11×11')
     }
+    if (boardLayout.some((row) => /[^AaDdKkRT .]/.test(row))) {
+        throw new Error('Unsupported game layout character; use A/a, D/d, K/k, R, T, space or .')
+    }
+
+    const gameSetup = transformLayoutToPosition(boardLayout)
+    const kingCount = gameSetup.position.flat().filter((square) =>
+        square.occupant?.type === PieceType.King
+    ).length
     if (kingCount !== 1)
         throw new Error('There must be exactly one king on the board')
 
-    const gameSetup = transformLayoutToPosition(boardLayout)
     return gameSetup
 }
 

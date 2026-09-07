@@ -1,4 +1,4 @@
-import { canMovePiece, canEnterSquare } from './movement'
+import { canMovePiece, canEnterSquare, isValidCoordinate } from './movement'
 import { Square, Coordinate, Player, PossibleMove } from './types'
 import { getAvailableCaptures } from './captures'
 
@@ -21,6 +21,7 @@ export function generateMoveCandidates(
     from: Coordinate,
     player: Player
 ): Coordinate[] {
+    if (!isValidCoordinate(from, position.length)) return []
     const fromSquare = position[from.y][from.x]
     
     // No piece at source

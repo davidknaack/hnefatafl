@@ -120,7 +120,7 @@ if (preview.isValid) {
 | `validateMove(moveStr: string): MoveValidationResult` | Parse and validate without committing. Return `isValid`, optional `reason`, `expectedCaptures: Coordinate[]`, and `status`. Captures and status agree with application against the same state, with or without capture notation. |
 | `applyMove(moveStr: string): ApplyMoveResult` | Revalidate and apply automatically discovered captures. Return `{ success: true, newState }` or `{ success: false, error }`. Advance the turn only while the resulting game remains in progress. |
 | `applyMoveSequence(moveList: string): ApplyMoveResult` | Split on commas and apply in order to the current game. Stop at the first failure, retaining all earlier successful moves. Does not reset or roll back the sequence. |
-| `getPossibleMoves(from: Coordinate): PossibleMove[]` | Return destinations and capture coordinates for one current-player piece using the same resolver/history as validation/application. Includes legal moves that end the game; returns `[]` after game end. Invalid coordinates can throw (B6). |
+| `getPossibleMoves(from: Coordinate): PossibleMove[]` | Return destinations and capture coordinates for one current-player piece using the same resolver/history as validation/application. Includes legal moves that end the game; returns `[]` after game end or for invalid coordinates. |
 
 There are no facade methods named `getGameState` or `generatePossibleMoves`.
 `generatePossibleMoves` is a lower-level geometry/capture function in
@@ -193,21 +193,32 @@ until W7 establishes it.
 Moves use files A–K and ranks 1–11: `D11-D10`. Optional capture annotations contain
 concatenated coordinates, such as `D11-C11(B11)` or `D6-D8(D7E7)` (syntax examples;
 legality depends on the position). A nonempty parsed capture list is checked
-against discovered captures. Use uppercase coordinates: lowercase capture text,
-out-of-range captures, and trailing junk are parsed inconsistently today (B4).
-The parser does not reliably reject all malformed capture text.
+against discovered captures. Case is normalized and whitespace is ignored throughout
+a move. The entire token must match: empty capture parentheses, out-of-range
+captures, punctuation, and trailing junk are rejected. `parseMove` returns `null`
+for invalid syntax; syntactically valid but incorrect captures fail validation.
 
-The engine appends discovered captures to history when the input has no `(`;
-otherwise it retains the supplied notation. History is not canonically
-serialized. `parseMoveSequence` from [src/parser.ts](src/parser.ts) uppercases
-tokens, recognizes `P` as `'pass'`, and silently drops unparseable tokens. It is
-not used by `applyMoveSequence`, which stops at invalid input instead.
+`serializeMove` from [src/parser.ts](src/parser.ts) produces uppercase notation
+without whitespace, retaining capture order. Engine history serializes the resolved
+move, including all discovered captures in discovery order, so equivalent input
+case/spacing and automatic/explicit captures yield the same history.
+
+**W6 API change:** `parseMoveSequence` returns a discriminated result instead of an
+array: `{ success: true, moves: Move[] }`, or
+`{ success: false, moves: Move[], index: number, token: string, error: string }`.
+On failure, `moves` is the parsed prefix, `index` is the zero-based comma-token
+index, and `token` is its trimmed text. Error messages use one-based move numbers.
+Empty input, empty tokens (including trailing commas), and `P` passes are rejected.
+Passing is unsupported throughout the command API; W6 adds no no-legal-move rule.
+`applyMoveSequence` shares this parser, commits the legal prefix, and reports the
+first syntax or legality failure with its move number. It is still non-atomic.
 
 In the UI, **Load Game** parses notation into a selectable move list. It does not
-reset or replay the engine. Current history labels start with the defender even
+reset or replay the engine. Invalid imports clear the loaded list and show an
+indexed error instead of silently omitting tokens. Current history labels start with the defender even
 though the engine starts with the attacker (B8).
 
-Custom layouts are arrays of square-board rows, ordered top to bottom:
+Production game layouts are exactly 11×11, with rows ordered top to bottom:
 
 | Character | Current default transformation |
 | --- | --- |
@@ -217,12 +228,14 @@ Custom layouts are arrays of square-board rows, ordered top to bottom:
 | `T` | Empty restricted throne; when present, the king's square is not implicitly a throne |
 | `R` | Empty restricted non-throne square |
 | Space / `.` | Empty ordinary square |
-| Any other character | Silently treated as empty by the default mapping |
+| Any other character | Rejected by game initialization |
 
-`initializeGame` checks for exactly one uppercase `K` before transformation.
-A lowercase-only king is rejected, but a layout with both `K` and `k` can produce
-two kings (B7). `transformLayoutToPosition` supports custom character mappings
-and flexible fixtures without that king-count check.
+`initializeGame` and `engine.reset(layout)` enforce the size and alphabet above,
+then require exactly one king on the transformed board. Either `K` or `k` is
+accepted; multiple kings are rejected regardless of case. Failed resets leave
+the existing game unchanged. `transformLayoutToPosition` remains a flexible
+square-layout utility: it supports other sizes, custom mappings, missing/multiple
+kings, and unknown characters as empty squares with the default mapping.
 Mappings replace the entire default mapping for a character, including terrain.
 Tests share two helpers in [src/test/fixtures.ts](src/test/fixtures.ts):
 `layoutFixture` preserves the production `K`/`T` shorthand; `positionFixture`
@@ -230,10 +243,13 @@ places `K`/`k` on ordinary squares and requires `T` for throne terrain. Both all
 small boards and missing kings for isolated rules tests. Facade tests use
 `engine.reset(layout)` to exercise initialization. These helpers are test-only,
 not a new public position-construction API.
-Although initialization accepts other square sizes, notation is fixed to 11×11
-and can throw on smaller layouts (B6). For current engine use, keep layouts
-11×11 with one uppercase `K` and no lowercase `k`. This is usage guidance pending
-W6, not an enforced size/alphabet contract.
+Coordinates must be finite integers within the board. Invalid sources return
+`[]` from facade and raw move generation; raw validation/resolution rejects
+invalid source, destination, or capture coordinates before indexing. Raw functions
+use the supplied board size, keeping small fixtures usable. Notation conversion
+is fixed to 11×11: `coordFromString` returns `null` for invalid notation, while
+`coordToString` (and consequently `serializeMove`) throws `RangeError` for invalid
+coordinates instead of emitting invalid notation.
 
 ## Maintenance and next work
 
@@ -243,11 +259,12 @@ W6, not an enforced size/alphabet contract.
   T1 tooling gaps, reproduction fixtures, and W1–W8 work packages.
 - [Exit-fort notes](docs/exit-fort.md): structural semantics and regression examples.
 
-W1–W5 are complete: maintenance guidance and runtime/configuration/check
+W1–W6 are complete: maintenance guidance and runtime/configuration/check
 commands are aligned, UI/domain helpers are extracted, result/piece types and
-fixture conventions are explicit, and capture/transition consistency is corrected.
-Parsing/layout, state ownership, and UI corrections remain in W6–W8.
-Resolve board-size/pass policy before W6 and state ownership before W7. Treat
+fixture conventions are explicit, capture/transition consistency is corrected,
+and strict parsing, coordinate boundaries, and production layouts are enforced.
+State ownership and UI corrections remain in W7–W8.
+Resolve state ownership before W7. Treat
 Load Game semantics and accessibility changes as separate decisions within W8.
 Do not infer the intended variant from the Rust reference project.
 

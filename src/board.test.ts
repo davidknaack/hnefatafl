@@ -1,18 +1,11 @@
 import { describe, expect, test } from 'vitest'
-import { initializeGame, transformLayoutToPosition } from './board'
+import { initializeGame, STANDARD_BOARD, transformLayoutToPosition } from './board'
 import { layoutFixture, positionFixture } from './test/fixtures'
 import { PieceType, Player } from './types'
 
 describe('Game initialization', () => {
     test('No kings on board fails initial board creation', () => {
-        // prettier-ignore
-        const boardLayout = [
-            "A D A",
-            "     ",
-            "     ",
-            "     ",
-            "     "
-        ]
+        const boardLayout = STANDARD_BOARD.map((row) => row.replace('K', '.'))
         expect(() => initializeGame(boardLayout)).toThrowError(
             /There must be exactly one king on the board/i
         )

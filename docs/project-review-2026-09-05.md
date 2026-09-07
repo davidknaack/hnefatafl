@@ -608,6 +608,76 @@ The reproduction snippets below remain evidence of the pre-W5 defects, not the
 current expected outcomes. Their B1–B3 failures are now covered by passing
 regressions. W6 is next.
 
+### September 7, 2026 — W6 parsing and layout boundaries
+
+W6 is complete. B4, B6, and B7 are corrected. The user selected exactly 11×11
+production games with passes rejected, while retaining flexible low-level fixtures.
+Production initialization now rejects unsupported characters and counts kings on
+the transformed board: a single lowercase king is valid, and mixed-case or
+same-case multiple kings are rejected. The supported alphabet is `A/a`, `D/d`,
+`K/k`, uppercase `R/T`, space, and dot. The existing implicit-throne convention
+and flexible transformation/custom-mapping behavior are retained. Failed resets
+leave the current game unchanged. No no-legal-move rule was added.
+
+Move parsing normalizes case/whitespace consistently and requires complete
+capture-section consumption. Empty parentheses, malformed/out-of-range captures,
+and trailing junk fail. `serializeMove` produces uppercase notation without
+whitespace; application stores the resolved move with mandatory captures in
+discovery order, including when the caller supplied explicit annotations.
+
+**API migration:** `parseMoveSequence` now returns a discriminated result, not an
+array containing moves/passes. Success includes `moves`; failure includes the
+parsed prefix in `moves`, a zero-based comma-token `index`, trimmed `token`, and
+`error`. Error messages use one-based move numbers. Empty input and empty tokens
+are errors. Consumers must check `success`. Engine sequence application shares
+the parser, commits only the legal prefix, and reports the first syntax or
+legality failure, including its move number. Load Game remains a notation viewer;
+invalid imports clear its list and display the indexed error.
+
+Generation rejects invalid source coordinates with `[]`. Raw validation and the
+shared resolver reject invalid source, destination, or capture coordinates before
+indexing. The checks require finite integers within the supplied board size, so
+small rule fixtures still work. `coordToString` now throws a defined `RangeError`
+outside the fixed notation range; `coordFromString` retains its `null` rejection.
+The serializer uses the same coordinate boundary.
+
+Validation used Node `v24.19.0` and installed dependencies:
+
+| Check | Result |
+| --- | --- |
+| Full Vitest suite | **345 passed**, 11 files; 60 added cases, including all 172 existing fort tests |
+| Source/tests and configuration TypeScript checks | Passed |
+| Tooling formatting and Git whitespace | Passed |
+| Vite production build | Passed, 24 transformed modules |
+| Production browser smoke check | Passed for W6 errors, normalized notation, board selection/highlights, preview/apply, input-mode precedence, captures, and history selection |
+
+Regressions exercise the review's malformed capture examples; lowercase and
+spaced captures; all 121 coordinate serialization round-trips; sequence empty
+tokens, passes, indexed failures, and prefix commits; canonical capture-history
+replay; negative, fractional, non-finite, and out-of-range coordinates; unsupported
+sizes/characters; transformed king counts; and failed-reset preservation.
+
+The production preview showed 121 squares and 37 pieces. A lowercase/spaced
+import loaded canonical moves and selecting one filled the inputs. The review's
+`D11-D10,garbage,P,F8-E8` input reported move 2 rather than dropping tokens;
+separate pass, malformed-capture, and trailing-comma imports also reported errors
+and left the game unchanged. Manual invalid validation/application failed visibly.
+The capture replay `D11-D8,F8-E8,F10-F8` verified selection/possible-move toggling,
+Auto Validate without a commit, Auto Apply precedence with both modes enabled,
+an E8 capture highlight and preview, and a lowercase/spaced explicit final move.
+Application removed E8, counted one defender capture, cleared highlights, advanced
+the turn, and stored `F10-F8(E8)`. No browser console errors were recorded. The
+known inverted history labels remain B8; W7 state ownership and W8 interactions
+remain separate work.
+
+Commands were the installed Node equivalents of the test, typecheck,
+format-check, and build scripts in the maintenance instructions. The first test
+startup encountered the documented esbuild configuration-access restriction;
+the suite/build ran with the required filesystem access. One new test assertion
+was corrected to treat an embedded comma as a sequence delimiter before the
+passing full run. No fresh install, hosted CI, persistent browser suite, commit,
+or deployment was performed.
+
 ## Reproduction fixtures
 
 Both fixtures are accepted by `engine.reset(layout)` and use the existing 11×11 notation. `.` is empty, `R` restricted, `A` attacker, `D` defender, and `K` king. Under the current shorthand, `K` also marks the throne when no `T` is supplied. These are valid custom engine positions; they were not shown to be reachable from the standard opening.
