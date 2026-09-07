@@ -73,17 +73,24 @@ rules decisions that remain open.
   orthogonal route through empty or defender-occupied squares to a physical edge
   or non-throne restricted square unoccupied by an attacker. This is connectivity
   analysis, not a search for a sequence of playable escape moves.
-- Repetition prevention applies only to the defender/king layout, ignoring
-  attackers. Defender moves are checked against stored layouts. Any capture
-  clears that history and records the resulting layout; the repetition check
-  currently happens before that reset. The intended ordering remains open.
+- Repetition compares full piece placement (attackers, defenders, and king)
+  plus the side to move. The initial position counts once. After any capture,
+  history restarts with the resulting position; otherwise each resulting position
+  is appended. A second occurrence is allowed; the third ends the game as an
+  attacker win, whichever side moved. The move is applied and recorded.
+  Immediate board wins take precedence over repetition. There is no separate
+  defender-only anti-stalling rule. Terrain is fixed within a game.
+  These key/threshold choices make the project's repetition policy explicit;
+  the [published Copenhagen rule 8](https://aagenielsen.dk/copenhagen_rules.php)
+  assigns perpetual repetition to a defender loss without specifying either.
 - There is no engine pass command or explicit no-legal-move terminal check.
   The notation sequence parser recognizes `P`, but engine application rejects it.
 
-Capture aggregation can return the same piece twice, overcounting captures and
-duplicating history coordinates (B1). Validation previews and generated moves
-also have known consistency defects (B2–B3). These rules describe current
-mechanisms, not a claim that those contracts are already correct.
+Capture coordinates are unique even when ordinary and shieldwall rules overlap.
+Validation and application use the same resolved captures, post-move board, and
+status. The facade's generated moves pass through that same resolver with the
+current repetition history. These W5 corrections resolve B1–B3; they do not
+establish full Copenhagen conformance for every other rule.
 
 ## Engine API
 
@@ -110,13 +117,15 @@ if (preview.isValid) {
 | --- | --- |
 | `reset(boardLayout?: string[]): void` | Initialize the standard or supplied layout; reset counters/history/status and start with the attacker. Invalid layouts can throw. |
 | `getState(): GameState` | Return the live internal state. Treat it as read-only; it is not a protected snapshot. |
-| `validateMove(moveStr: string): MoveValidationResult` | Parse and validate without committing. Return `isValid`, optional `reason`, `expectedCaptures: Coordinate[]`, and `status`. Preview status can disagree with application when capture notation is omitted (B2). |
+| `validateMove(moveStr: string): MoveValidationResult` | Parse and validate without committing. Return `isValid`, optional `reason`, `expectedCaptures: Coordinate[]`, and `status`. Captures and status agree with application against the same state, with or without capture notation. |
 | `applyMove(moveStr: string): ApplyMoveResult` | Revalidate and apply automatically discovered captures. Return `{ success: true, newState }` or `{ success: false, error }`. Advance the turn only while the resulting game remains in progress. |
 | `applyMoveSequence(moveList: string): ApplyMoveResult` | Split on commas and apply in order to the current game. Stop at the first failure, retaining all earlier successful moves. Does not reset or roll back the sequence. |
-| `getPossibleMoves(from: Coordinate): PossibleMove[]` | Return destinations and capture coordinates for one current-player piece. Does not check repetition (B3); returns `[]` after game end. Invalid coordinates can throw (B6). |
+| `getPossibleMoves(from: Coordinate): PossibleMove[]` | Return destinations and capture coordinates for one current-player piece using the same resolver/history as validation/application. Includes legal moves that end the game; returns `[]` after game end. Invalid coordinates can throw (B6). |
 
 There are no facade methods named `getGameState` or `generatePossibleMoves`.
-`generatePossibleMoves` is a lower-level function in `src/moveGenerator.ts`.
+`generatePossibleMoves` is a lower-level geometry/capture function in
+`src/moveGenerator.ts`, without game status or repetition context.
+`generateMoveCandidates` exposes geometry alone; use the facade for legal moves.
 
 The source of truth for exported types is [src/types.ts](src/types.ts):
 
@@ -126,7 +135,7 @@ interface GameState {
     currentPlayer: Player
     captured: { attacker: number; defender: number }
     moveHistory: string[]
-    defenderPositions: string[][]
+    positionHistory: string[]
     status: GameStatus
 }
 
@@ -162,10 +171,22 @@ a square's occupant instead of editing a piece. Custom `charMap` occupants use
 the same `Piece` type. Predeclared piece objects may need a `Piece` annotation or
 `satisfies Piece` to retain enum literals. Existing repository consumers type-check.
 
+W5 replaces `GameState.defenderPositions: string[][]` with
+`positionHistory: string[]`, containing full-board/side-to-move keys. The fifth
+argument of raw `validateMove` now takes those keys too. Raw callers must seed
+history with `positionKey(initialPosition, initialPlayer)` from
+`src/repetition.ts` and retain committed keys; omitting history provides no prior
+occurrences. Old defender projections cannot be migrated without the attackers'
+positions and turns; replay notation from the initial layout instead.
+`extractDefenderPosition` remains available as a board utility. The low-level
+`getGameStatusAfterMove` requires an already-applied board with captures removed;
+use the resolver/facade when repetition matters.
+
 Returned states remain mutable and shared; readonly piece fields are a TypeScript
-constraint, not runtime freezing. A saved state can have
-its capture counters changed by a later move; shallow board clones also share
-pieces (B5). Do not rely on snapshot isolation until W7 establishes it.
+constraint, not runtime freezing. Move application now calculates new counters
+without mutating previous states. Shallow board clones still share pieces, and
+callers can still modify engine state (B5). Do not rely on snapshot isolation
+until W7 establishes it.
 
 ## Notation and layouts
 
@@ -222,9 +243,10 @@ W6, not an enforced size/alphabet contract.
   T1 tooling gaps, reproduction fixtures, and W1–W8 work packages.
 - [Exit-fort notes](docs/exit-fort.md): structural semantics and regression examples.
 
-W1–W4 are complete: maintenance guidance and runtime/configuration/check
-commands are aligned, UI/domain helpers are extracted, and result/piece types
-and fixture conventions are explicit. Functional corrections belong in W5–W8.
+W1–W5 are complete: maintenance guidance and runtime/configuration/check
+commands are aligned, UI/domain helpers are extracted, result/piece types and
+fixture conventions are explicit, and capture/transition consistency is corrected.
+Parsing/layout, state ownership, and UI corrections remain in W6–W8.
 Resolve board-size/pass policy before W6 and state ownership before W7. Treat
 Load Game semantics and accessibility changes as separate decisions within W8.
 Do not infer the intended variant from the Rust reference project.

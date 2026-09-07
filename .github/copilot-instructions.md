@@ -86,7 +86,7 @@ For code/tooling changes, run tests, `npm run typecheck`, `npm run format:check`
 and the build.
 For UI changes or extraction, also check the browser: initial board, selection and
 possible-move highlights, validate/apply paths, capture display, input-mode
-precedence, history, and invalid notation. Distinguish known B3/B4/B8 failures
+precedence, history, and invalid notation. Distinguish known B4/B8 failures
 from regressions. Documentation-only edits need source/signature/command/link
 verification; a browser rerun is unnecessary unless UI behavior is changed.
 Record commands, runtime, and actual results instead of assuming this baseline
@@ -104,7 +104,8 @@ mask it.
 | --- | --- |
 | `src/HnefataflEngine.ts` | State, move commands, counters, history, turns |
 | `src/board.ts` | Layout transformation/initialization, position cloning/application, defender projection, edge extraction |
-| `src/validator.ts` | Raw move validation, repetition, status preview |
+| `src/validator.ts` | Shared resolved transition: validation, captures, repetition, post-move board/status |
+| `src/repetition.ts` | Full-board/side-to-move keys; three occurrences lose for defenders |
 | `src/moveGenerator.ts` | Candidate destinations and captures for one piece; no repetition context |
 | `src/captures.ts` | Ordinary/king/shieldwall captures and hostility; shared with fort analysis |
 | `src/rules.ts` | Terminal status; compatibility capture exports |
@@ -125,9 +126,11 @@ The facade methods are `reset`, `getState`, `validateMove`, `applyMove`,
 `Coordinate` objects, not notation strings. State uses `position: Square[][]`,
 not `board`; squares use `isRestricted`, not `isCorner`.
 
-Read the README's API caveats before depending on preview/apply equivalence,
-fully legal generated moves, strict parsing, exception-free coordinates, or
-stable state snapshots: these are pending contracts, not current guarantees.
+W5 guarantees unique captures, preview/apply equivalence, and legal facade move
+generation against the same state/history. Read the README's remaining caveats
+before depending on strict parsing, exception-free coordinates, or stable state
+snapshots. W5 replaces defender projections with `positionHistory` keys and the
+raw validator's fifth argument with `string[]`; consumers should replay old games.
 Sequence application commits its valid prefix; UI Load Game only displays parsed
 notation. Initialization starts with the attacker.
 
@@ -151,7 +154,12 @@ migrated. No framework rewrite or Rust-rule port is implied by the work packages
   Compile-only consumer checks in `src/test/type-contracts.ts` run through the
   source type check; Vitest alone does not check their expected compiler errors.
   See the README for exported-type compatibility and the review for validation.
-- W5: B1–B3 capture uniqueness, preview/commit agreement, and legal move generation.
+- W5 is implemented: B1–B3 capture uniqueness, preview/commit agreement, and legal
+  facade move generation. Full-board/side-to-move repetition allows a second
+  occurrence and applies the third as an attacker win. Captures restart history;
+  no defender-only anti-stalling rule remains. Board wins take precedence.
+  Counters are calculated locally; runtime state isolation remains W7. See the
+  review's W5 follow-up for tests, browser verification, and API migration.
 - W6: B4/B6/B7 parsing and layout boundaries; decide board-size/pass policy first.
 - W7: B5 state protection; select the ownership contract first.
 - W8: B8 history labels; select Load Game and accessibility changes separately.

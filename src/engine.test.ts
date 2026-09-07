@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'vitest'
+import { positionKey } from './repetition'
 import { HnefataflEngine } from './HnefataflEngine'
 import { GameStatus, Player, PieceType } from './types'
-import { extractDefenderPosition, initializeGame, STANDARD_BOARD } from './board'
+import { initializeGame, STANDARD_BOARD } from './board'
 
 describe('Engine initial state', () => {
     test('Attacker moves first', () => {
@@ -128,7 +129,7 @@ describe('Engine command contracts', () => {
         expect(engine.getState()).toEqual({
             position, currentPlayer: Player.Attacker,
             captured: { attacker: 0, defender: 0 }, moveHistory: [],
-            defenderPositions: [extractDefenderPosition(position)], status: GameStatus.InProgress,
+            positionHistory: [positionKey(position, Player.Attacker)], status: GameStatus.InProgress,
         })
         engine.reset()
         expect(engine.getState()).toEqual(new HnefataflEngine().getState())

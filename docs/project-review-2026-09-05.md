@@ -520,6 +520,94 @@ hosted CI run, or browser interaction check was performed. No UI behavior change
 B1–B8 remain deferred to W5–W8. No capture, move-transition, parsing, production
 layout policy, or runtime state-ownership corrections are included. W5 is next.
 
+### September 7, 2026 — W5 capture and transition consistency
+
+W5 is complete. B1–B3 are corrected. Capture aggregation returns each coordinate
+once, retaining its first discovery order across ordinary and shieldwall rules.
+The validator's shared `resolveMove` checks explicit captures, applies mandatory
+captures to a new board, and resolves status, repetition history, and turn.
+Validation projects that result; application commits it without recomputing the
+board or status. The facade resolves geometric candidates against the same state
+and history. The raw generator retains its geometry/capture-only contract, with
+`generateMoveCandidates` exposing geometry separately. The status helper now
+explicitly requires a post-move board with captures removed.
+
+The general repetition policy was specified before implementation:
+
+- The key includes every attacker's, defender's, and king's placement plus the
+  next side to move. Terrain stays fixed within a game and is excluded.
+- The initial position counts once. Each move contributes its resulting key.
+  Any capture restarts the history with that resulting key before repetition
+  is evaluated. A material decrease cannot recreate an earlier full board.
+- A second occurrence is legal. A third occurrence is applied and recorded,
+  ending the game as an attacker win regardless of which side just moved.
+  Immediate board wins take precedence. Terminal moves retain the moving player
+  in `currentPlayer`, as before; history keys encode the hypothetical next player.
+- No separate defender-only anti-stalling rule remains. A defender return with
+  changed attackers is allowed, including the exact replay's `C9-C11(B11)`.
+
+This is an explicit project interpretation. The author-published
+[Copenhagen rule 8](https://aagenielsen.dk/copenhagen_rules.php), checked again
+September 7, assigns perpetual repetition to a defender loss without specifying
+the key or count. The earlier discussion above supplies context, not a claim
+that every Copenhagen rule or historical anti-draw-fort variant is implemented.
+
+**API migration:** `GameState.defenderPositions: string[][]` is replaced by
+`positionHistory: string[]`; the raw validator's fifth argument now accepts those
+full-board/side-to-move keys. `positionKey` in `src/repetition.ts` constructs them.
+Replay old notation from its initial layout to rebuild history; defender-only
+projections lack enough information to convert. `extractDefenderPosition`
+remains available. Public validation/application result shapes are unchanged.
+
+Application computes capture totals locally, so normal moves no longer mutate
+old states' counters. This addresses that part of B5 as a consequence of making
+the transition consistent. Exposed state and shared piece objects remain mutable;
+runtime isolation and the broader B5 fix are still W7. B4/B6/B7 and B8 remain
+W6 and W8 respectively; parsing, layout policy, and UI interaction code were not
+changed by W5.
+
+Validation used Node `v24.19.0` and installed dependencies:
+
+| Check | Result |
+| --- | --- |
+| Full Vitest suite | **284 passed**, ten files, including all 172 fort tests |
+| Final focused W5 suite | **20 passed**, after adding one additional side-to-move regression; 285 total cases now exist |
+| Source/tests and configuration TypeScript checks | Passed, including UI and compile-only consumer contracts |
+| Tooling formatting and Git whitespace | Passed |
+| Vite production build | Passed, 24 transformed modules |
+| Development browser replay | All 41 supplied moves applied through the UI; Auto Apply completed move 42, `C9-C11(B11)` |
+
+The regressions cover capture overlap under all eight rotations/reflections,
+single-square notation, duplicate explicit annotation rejection without state
+changes, capture-count conservation, old-counter stability, and automatic versus
+explicit boards/status. Separate fixtures prove that omitting captured pieces
+from preview changes king-capture, encirclement, and fort outcomes. Corner-king
+captures pass with fresh history, returning defender layouts, and the exact
+replay. Both sides can complete the third occurrence; opposite-side keys do not
+count toward it. Tests also cover capture resets, ended-game rejection, reset,
+replay, and every advertised move at the exact replay position validating and
+applying with the advertised captures/status without changing the queried state.
+
+The browser check used the local development UI and its existing controls.
+After replay, selecting C9 with Auto Apply enabled highlighted C11 as possible
+and B11 as captured. Clicking C11 removed B11, moved the king, changed the
+attacker-loss counter from two to three, advanced the turn to attacker, and
+recorded `C9-C11(B11)` as move 42 with one repetition-history entry. Applying
+`C11-C10` on that attacker turn displayed `Not your piece` in the visible log.
+The existing inverted history labels remain B8. No production-browser run or
+hosted CI run was performed, and no persistent browser suite was added.
+
+Commands were the installed Node equivalents of the maintenance instructions'
+test, typecheck, format-check, and build scripts. The first test run hit the
+documented esbuild configuration-access error and succeeded with the required
+filesystem access. One new cycle fixture initially revisited the initial board
+earlier than intended; its setup was corrected before the passing full run.
+No dependency install, rules port from Rust, commit, or deployment was performed.
+
+The reproduction snippets below remain evidence of the pre-W5 defects, not the
+current expected outcomes. Their B1–B3 failures are now covered by passing
+regressions. W6 is next.
+
 ## Reproduction fixtures
 
 Both fixtures are accepted by `engine.reset(layout)` and use the existing 11×11 notation. `.` is empty, `R` restricted, `A` attacker, `D` defender, and `K` king. Under the current shorthand, `K` also marks the throne when no `T` is supplied. These are valid custom engine positions; they were not shown to be reachable from the standard opening.

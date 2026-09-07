@@ -10,15 +10,40 @@ import {
 import { coordToString } from './coordinates'
 import { getAvailableCaptures } from './captures'
 import { getGameStatusAfterMove } from './rules'
-import { extractDefenderPosition, applyMoveToPosition } from './board'
+import { applyMoveToPosition } from './board'
+import { positionKey } from './repetition'
+
+/** A successful resolution is the complete board transition used for commit. */
+export type MoveResolution =
+    | (Extract<MoveValidationResult, { isValid: true }> & {
+        move: Move
+        position: Square[][]
+        positionHistory: string[]
+        currentPlayer: Player
+    })
+    | Extract<MoveValidationResult, { isValid: false }>
 
 export function validateMove(
     position: Square[][],
     player: Player,
     move: Move,
     escapeTargets: Set<Coordinate>,
-    defenderPositions: string[][] = []
+    positionHistory: string[] = []
 ): MoveValidationResult {
+    const result = resolveMove(position, player, move, escapeTargets, positionHistory)
+    if (!result.isValid) return result
+    return {
+        isValid: true, expectedCaptures: result.expectedCaptures, status: result.status,
+    }
+}
+
+export function resolveMove(
+    position: Square[][],
+    player: Player,
+    move: Move,
+    escapeTargets: Set<Coordinate>,
+    positionHistory: string[] = []
+): MoveResolution {
     const fromSquare = position[move.from.y][move.from.x]
     const toSquare = position[move.to.y][move.to.x]
 
@@ -102,27 +127,24 @@ export function validateMove(
         }
     }
 
-    // At this point, either no captures were provided, or they exactly match the expected captures
-
-    if (player === 'defender') {
-        const pos = extractDefenderPosition(position, move)
-        const repeat = defenderPositions.some(
-            (p) => p.length === pos.length && p.every((r, i) => r === pos[i])
-        )
-        if (repeat) {
-            return {
-                isValid: false,
-                reason: 'Move would repeat defender board position',
-                expectedCaptures,
-                status: GameStatus.InProgress,
-            }
-        }
-    }
-
-    // Determine status on a simulated post-move board (including captures)
-    const previewPosition = applyMoveToPosition(position, move, {
+    // Resolve mandatory captures before either status or repetition evaluation.
+    const resolvedMove = { ...move, captures: expectedCaptures }
+    const previewPosition = applyMoveToPosition(position, resolvedMove, {
         applyCaptures: true,
     })
-    const status = getGameStatusAfterMove(previewPosition, move, player)
-    return { isValid: true, expectedCaptures, status }
+    const nextPlayer = player === Player.Attacker ? Player.Defender : Player.Attacker
+    const key = positionKey(previewPosition, nextPlayer)
+    const history = expectedCaptures.length > 0 ? [] : positionHistory
+    const nextHistory = [...history, key]
+    let status = getGameStatusAfterMove(previewPosition, resolvedMove, player)
+    // Immediate board wins take precedence. A third occurrence is applied and
+    // ends the game; it is not an illegal move that leaves the game running.
+    if (status === GameStatus.InProgress && nextHistory.filter((p) => p === key).length >= 3) {
+        status = GameStatus.AttackerWin
+    }
+    return {
+        isValid: true, expectedCaptures, status,
+        move: resolvedMove, position: previewPosition, positionHistory: nextHistory,
+        currentPlayer: status === GameStatus.InProgress ? nextPlayer : player,
+    }
 }

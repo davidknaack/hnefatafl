@@ -1,13 +1,26 @@
 import { canMovePiece, canEnterSquare } from './movement'
-import { Square, Coordinate, Move, Player, PossibleMove } from './types'
+import { Square, Coordinate, Player, PossibleMove } from './types'
 import { getAvailableCaptures } from './captures'
 
+/** Geometric moves with captures, without game status or repetition context. */
 export function generatePossibleMoves(
     position: Square[][],
     from: Coordinate,
     player: Player,
     escapeTargets: Set<Coordinate>
 ): PossibleMove[] {
+    return generateMoveCandidates(position, from, player).map((to) => ({
+        to,
+        captures: getAvailableCaptures(position, { from, to, captures: [] }, player, escapeTargets),
+    }))
+}
+
+/** Rook destinations satisfying ownership, path, and terrain constraints. */
+export function generateMoveCandidates(
+    position: Square[][],
+    from: Coordinate,
+    player: Player
+): Coordinate[] {
     const fromSquare = position[from.y][from.x]
     
     // No piece at source
@@ -18,7 +31,7 @@ export function generatePossibleMoves(
         return []
     }
 
-    const possibleMoves: PossibleMove[] = []
+    const possibleMoves: Coordinate[] = []
     const size = position.length
     
     // Check all four directions (orthogonal movement only)
@@ -57,15 +70,8 @@ export function generatePossibleMoves(
                 continue
             }
             
-            // The ray stops at its first occupant, so every intervening square is clear.
-            // This is a valid move - calculate captures
-            const move: Move = { from, to, captures: [] }
-            const captures = getAvailableCaptures(position, move, player, escapeTargets)
-            
-            possibleMoves.push({
-                to,
-                captures
-            })
+            // The ray has already checked every intervening square.
+            possibleMoves.push(to)
             
             distance++
         }
