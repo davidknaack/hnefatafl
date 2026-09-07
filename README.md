@@ -116,10 +116,10 @@ if (preview.isValid) {
 | Method | Current contract |
 | --- | --- |
 | `reset(boardLayout?: string[]): void` | Initialize the standard or supplied layout; reset counters/history/status and start with the attacker. Invalid layouts can throw. |
-| `getState(): GameState` | Return the live internal state. Treat it as read-only; it is not a protected snapshot. |
+| `getState(): GameState` | Return a detached snapshot, including independent rows, squares, pieces, counters, and histories. Editing it does not change the engine. |
 | `validateMove(moveStr: string): MoveValidationResult` | Parse and validate without committing. Return `isValid`, optional `reason`, `expectedCaptures: Coordinate[]`, and `status`. Captures and status agree with application against the same state, with or without capture notation. |
-| `applyMove(moveStr: string): ApplyMoveResult` | Revalidate and apply automatically discovered captures. Return `{ success: true, newState }` or `{ success: false, error }`. Advance the turn only while the resulting game remains in progress. |
-| `applyMoveSequence(moveList: string): ApplyMoveResult` | Split on commas and apply in order to the current game. Stop at the first failure, retaining all earlier successful moves. Does not reset or roll back the sequence. |
+| `applyMove(moveStr: string): ApplyMoveResult` | Revalidate and apply automatically discovered captures. Return `{ success: true, newState }` with a detached snapshot or `{ success: false, error }`. Advance the turn only while the resulting game remains in progress. |
+| `applyMoveSequence(moveList: string): ApplyMoveResult` | Split on commas and apply in order to the current game. Success returns a detached final snapshot. Stop at the first failure, retaining all earlier successful moves. Does not reset or roll back the sequence. |
 | `getPossibleMoves(from: Coordinate): PossibleMove[]` | Return destinations and capture coordinates for one current-player piece using the same resolver/history as validation/application. Includes legal moves that end the game; returns `[]` after game end or for invalid coordinates. |
 
 There are no facade methods named `getGameState` or `generatePossibleMoves`.
@@ -182,11 +182,20 @@ positions and turns; replay notation from the initial layout instead.
 `getGameStatusAfterMove` requires an already-applied board with captures removed;
 use the resolver/facade when repetition matters.
 
-Returned states remain mutable and shared; readonly piece fields are a TypeScript
-constraint, not runtime freezing. Move application now calculates new counters
-without mutating previous states. Shallow board clones still share pieces, and
-callers can still modify engine state (B5). Do not rely on snapshot isolation
-until W7 establishes it.
+**W7 ownership contract:** `getState()` and successful move/sequence results
+return fully detached, mutable snapshots. Every call owns its rows, squares,
+piece objects, counters, and history arrays. Editing a snapshot affects only that
+copy; subsequent moves, captures, failed commands, and resets leave saved
+snapshots unchanged. No runtime freezing is used; readonly piece fields remain
+a TypeScript constraint. Board cloning/application also copies occupants, and
+layout transformation creates independent pieces for each square, including
+pieces supplied through a custom `charMap`.
+
+Consumers must call `getState()` again or use the next successful command result
+to observe changes. Do not depend on reference equality between reads, or edit
+a returned state to set up an engine position; use `reset(layout)` and replay
+moves instead. Exported state/result shapes are unchanged. Snapshot copying
+allocates a board and history arrays on each return.
 
 ## Notation and layouts
 
@@ -259,12 +268,11 @@ coordinates instead of emitting invalid notation.
   T1 tooling gaps, reproduction fixtures, and W1–W8 work packages.
 - [Exit-fort notes](docs/exit-fort.md): structural semantics and regression examples.
 
-W1–W6 are complete: maintenance guidance and runtime/configuration/check
+W1–W7 are complete: maintenance guidance and runtime/configuration/check
 commands are aligned, UI/domain helpers are extracted, result/piece types and
 fixture conventions are explicit, capture/transition consistency is corrected,
-and strict parsing, coordinate boundaries, and production layouts are enforced.
-State ownership and UI corrections remain in W7–W8.
-Resolve state ownership before W7. Treat
+strict parsing, coordinate boundaries, and production layouts are enforced,
+and engine state is protected by detached snapshots. UI corrections remain in W8. Treat
 Load Game semantics and accessibility changes as separate decisions within W8.
 Do not infer the intended variant from the Rust reference project.
 

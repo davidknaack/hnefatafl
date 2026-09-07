@@ -1,7 +1,41 @@
 import { describe, expect, test } from 'vitest'
-import { initializeGame, STANDARD_BOARD, transformLayoutToPosition } from './board'
+import { applyMoveToPosition, clonePosition, initializeGame, STANDARD_BOARD, transformLayoutToPosition } from './board'
 import { layoutFixture, positionFixture } from './test/fixtures'
-import { PieceType, Player } from './types'
+import { Piece, PieceType, Player } from './types'
+
+describe('Board ownership', () => {
+    test('layout pieces are independent of neighboring pieces, custom mappings, and other boards', () => {
+        const occupant: Piece = { owner: Player.Attacker, type: PieceType.Attacker }
+        const options = { charMap: { X: { occupant } } }
+        const first = transformLayoutToPosition(['XX', 'AA'], options).position
+        const second = transformLayoutToPosition(['XX', 'AA'], options).position
+        Object.assign(first[0][0].occupant!, { owner: Player.Defender, type: PieceType.King })
+        Object.assign(first[1][0].occupant!, { owner: Player.Defender, type: PieceType.Defender })
+        expect(first[0][1].occupant).toEqual(occupant)
+        expect(first[1][1].occupant).toEqual(occupant)
+        expect(second.flat().every((square) => square.occupant?.type === PieceType.Attacker)).toBe(true)
+        Object.assign(occupant, { owner: Player.Defender, type: PieceType.King })
+        expect(first[0][1].occupant?.type).toBe(PieceType.Attacker)
+        expect(second[0][0].occupant?.type).toBe(PieceType.Attacker)
+    })
+
+    test.each(['clone', 'move'] as const)('%s detaches both moved and stationary occupants from its input', (operation) => {
+        const input = transformLayoutToPosition(['AA.', '.K.', '...']).position
+        const original = structuredClone(input)
+        const output = operation === 'clone' ? clonePosition(input)
+            : applyMoveToPosition(input, { from: { x: 0, y: 0 }, to: { x: 0, y: 2 }, captures: [] })
+        const moving = operation === 'clone' ? output[0][0] : output[2][0]
+        Object.assign(moving.occupant!, { owner: Player.Defender, type: PieceType.King })
+        Object.assign(output[0][1].occupant!, { owner: Player.Defender, type: PieceType.Defender })
+        output[1][1].isThrone = false
+        output[1][1].isRestricted = false
+        output[0].push({ occupant: null, isThrone: false, isRestricted: false })
+        expect(input).toEqual(original)
+        const savedOutput = structuredClone(output)
+        Object.assign(input[1][1].occupant!, { owner: Player.Attacker, type: PieceType.Attacker })
+        expect(output).toEqual(savedOutput)
+    })
+})
 
 describe('Game initialization', () => {
     test('No kings on board fails initial board creation', () => {

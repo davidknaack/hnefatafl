@@ -678,6 +678,53 @@ was corrected to treat an embedded comma as a sequence delimiter before the
 passing full run. No fresh install, hosted CI, persistent browser suite, commit,
 or deployment was performed.
 
+### September 7, 2026 — W7 engine state protection
+
+W7 is complete. B5's ownership contract is **detached, mutable snapshots**:
+`getState()` and successful `applyMove`/`applyMoveSequence` results copy the
+entire state graph, including board rows, squares, occupants, counters, and both
+history arrays. Editing a returned object cannot modify the engine or another
+snapshot. Saved snapshots remain consistent across later moves, captures,
+failed commands, sequence-prefix commits, and resets.
+
+Detached copies preserve the existing mutable `GameState` and result shapes
+without introducing runtime freezing or mutation exceptions. Piece fields remain
+readonly in TypeScript. Consumers must fetch another snapshot or use the next
+command result to see changes; returned objects can no longer be used to mutate
+engine state, and their reference identity is not stable across calls. Each
+return allocates a board and history arrays; no performance benchmark was run.
+
+`clonePosition` now copies occupants as well as squares, so board application
+also produces independent piece objects. Layout transformation copies each
+mapping's occupant per square, including custom mappings. Neither neighboring
+pieces nor separately initialized boards share those mutable objects. W5's
+local counter calculation remains in place.
+
+Regression coverage in `src/state.test.ts` exercises mutation through all three
+state-returning facade paths, including JavaScript writes to readonly piece
+fields, terrain, board arrays, counters, turn/status, and histories. It verifies
+unchanged validation/application against a control engine, stable saved states
+across captures/reset/failure, and isolation of preview/generated capture data.
+Board tests cover custom mapping isolation and both moved and stationary pieces
+in cloned/applied positions.
+
+Validation used Node `v24.19.0` and installed dependencies:
+
+- `node node_modules/vitest/vitest.mjs run`: **353 tests passed in 12 files**.
+- `node node_modules/typescript/bin/tsc --noEmit`: passed, including UI and
+  compile-only consumer contracts.
+- `node node_modules/typescript/bin/tsc --project tsconfig.node.json`: passed.
+- `node node_modules/prettier/bin/prettier.cjs --check package.json package-lock.json "tsconfig*.json" vite.config.ts .prettierrc ".github/workflows/*.yml"`: passed.
+- `node node_modules/vite/bin/vite.js build`: passed, **24 modules transformed**.
+- `git diff --check`: passed.
+
+Tests/build initially hit the documented esbuild sandbox directory-access error
+and passed with the required filesystem access. One new sequence test initially
+used an occupied destination; correcting that fixture produced the passing suite
+above. No fresh dependency install, hosted CI, or browser smoke check was run.
+UI source was unchanged. B8 history labels and the separate Load Game and
+accessibility decisions remain W8.
+
 ## Reproduction fixtures
 
 Both fixtures are accepted by `engine.reset(layout)` and use the existing 11×11 notation. `.` is empty, `R` restricted, `A` attacker, `D` defender, and `K` king. Under the current shorthand, `K` also marks the throne when no `T` is supplied. These are valid custom engine positions; they were not shown to be reachable from the standard opening.
