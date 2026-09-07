@@ -9,7 +9,7 @@ export enum PieceType {
     King = 'king',
 }
 
-/** Immutable in TypeScript; this does not freeze shared runtime objects. */
+/** Readonly in TypeScript; board helpers and engine snapshots copy these values. */
 export type Piece =
     | { readonly owner: Player.Attacker; readonly type: PieceType.Attacker }
     | { readonly owner: Player.Defender; readonly type: PieceType.Defender | PieceType.King }
@@ -37,6 +37,7 @@ export interface Square {
     isRestricted: boolean
 }
 
+/** Engine-returned states are detached, mutable snapshots, never live views. */
 export interface GameState {
     position: Square[][]
     currentPlayer: Player
@@ -59,7 +60,7 @@ export type MoveValidationResult = {
     | { isValid: false; reason: string }
 )
 
-/** Narrow on success before consuming the state or error. */
+/** Narrow on success before consuming the detached state snapshot or error. */
 export type ApplyMoveResult =
     | { success: true; newState: GameState; error?: never }
     | { success: false; error: string; newState?: never }

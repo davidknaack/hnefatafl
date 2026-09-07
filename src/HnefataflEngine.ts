@@ -1,4 +1,5 @@
 import {
+    clonePosition,
     initializeGame,
     STANDARD_BOARD,
 } from './board'
@@ -38,8 +39,15 @@ export class HnefataflEngine {
         }
     }
 
+    /** Return a detached snapshot, including independent squares and pieces. */
     getState(): GameState {
-        return this.gameState
+        return {
+            ...this.gameState,
+            position: clonePosition(this.gameState.position),
+            captured: { ...this.gameState.captured },
+            moveHistory: [...this.gameState.moveHistory],
+            positionHistory: [...this.gameState.positionHistory],
+        }
     }
 
     validateMove(moveStr: string): MoveValidationResult {
@@ -107,7 +115,7 @@ export class HnefataflEngine {
 
         this.gameState = newState
 
-        return { success: true, newState }
+        return { success: true, newState: this.getState() }
     }
 
     applyMoveSequence(moveList: string): ApplyMoveResult {
@@ -119,7 +127,7 @@ export class HnefataflEngine {
             }
         }
         if (!parsed.success) return { success: false, error: parsed.error }
-        return { success: true, newState: this.gameState }
+        return { success: true, newState: this.getState() }
     }
 
     getPossibleMoves(from: Coordinate): PossibleMove[] {

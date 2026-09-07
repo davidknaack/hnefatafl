@@ -1,8 +1,12 @@
 import { Square, Move, Piece, Player, PieceType, Coordinate } from './types'
 import { BOARD_SIZE } from './coordinates'
 
+/** Copy every row, square, and occupant so callers own the entire result. */
 export function clonePosition(position: Square[][]): Square[][] {
-    return position.map((row) => row.map((square) => ({ ...square })))
+    return position.map((row) => row.map((square) => ({
+        ...square,
+        occupant: square.occupant ? { ...square.occupant } : null,
+    })))
 }
 
 export function extractDefenderPosition(
@@ -86,7 +90,7 @@ export interface LayoutTransformOptions {
  * Does not require a king or enforce the engine's notation size. K/k imply a
  * restricted throne unless an uppercase T appears anywhere in the layout.
  * Custom mappings replace defaults; unknown characters become empty squares.
- * Occupants may be shared values; this function provides no runtime isolation.
+ * Each square owns its occupant, independent of other squares and custom mappings.
  */
 export function transformLayoutToPosition(
     boardLayout: string[],
@@ -134,7 +138,7 @@ export function transformLayoutToPosition(
             const mapping = charMap[c] || {}
 
             // Apply character mapping
-            let occupant: Square['occupant'] = mapping.occupant || null
+            let occupant: Square['occupant'] = mapping.occupant ? { ...mapping.occupant } : null
             let isThrone = mapping.isThrone || false
             let isRestricted = mapping.isRestricted || false
 

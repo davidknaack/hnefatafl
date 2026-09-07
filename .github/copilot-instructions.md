@@ -127,8 +127,9 @@ The facade methods are `reset`, `getState`, `validateMove`, `applyMove`,
 not `board`; squares use `isRestricted`, not `isCorner`.
 
 W5 guarantees unique captures, preview/apply equivalence, and legal facade move
-generation against the same state/history. Read the README's remaining caveats
-before depending on stable state snapshots. W6 enforces strict notation, 11×11
+generation against the same state/history. W7 returns detached snapshots from
+`getState` and successful move/sequence commands; edits cannot change engine state.
+Board clones and layout transformations also copy occupants. W6 enforces strict notation, 11×11
 game layouts, no passes, and guarded coordinate boundaries. W5 replaces defender projections with `positionHistory` keys and the
 raw validator's fifth argument with `string[]`; consumers should replay old games.
 Sequence application commits its valid prefix; UI Load Game only displays parsed
@@ -158,7 +159,7 @@ migrated. No framework rewrite or Rust-rule port is implied by the work packages
   facade move generation. Full-board/side-to-move repetition allows a second
   occurrence and applies the third as an attacker win. Captures restart history;
   no defender-only anti-stalling rule remains. Board wins take precedence.
-  Counters are calculated locally; runtime state isolation remains W7. See the
+  Counters are calculated locally; W7 adds runtime state isolation. See the
   review's W5 follow-up for tests, browser verification, and API migration.
 - W6 is implemented: B4/B6/B7 strict capture parsing, canonical history, indexed
   sequence failures, guarded source/destination/capture coordinates, and exactly
@@ -168,7 +169,11 @@ migrated. No framework rewrite or Rust-rule port is implied by the work packages
   failure index. Load Game reports errors and still only views notation. Flexible
   low-level fixtures retain their size/mapping/king conventions. See the README
   for API migration and the review for validation.
-- W7: B5 state protection; select the ownership contract first.
+- W7 is implemented: B5 state protection uses detached, mutable snapshots from
+  reads and successful commands, with independent board/piece/counter/history
+  objects. Layout pieces and cloned occupants are independent too. State/result
+  types retain their shapes; consumers must fetch a new snapshot to observe play.
+  See the README for ownership/migration and the review for validation.
 - W8: B8 history labels; select Load Game and accessibility changes separately.
 
 Use the review's acceptance criteria and reproduction fixtures for selected
