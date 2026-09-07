@@ -1,10 +1,10 @@
 import { expect, test } from 'vitest'
-import { transformLayoutToPosition } from './board'
+import { layoutFixture } from './test/fixtures'
 import { getAvailableCaptures } from './rules'
 import { Player } from './types'
 
 test('shieldwalls cannot join opposite edges into a fictitious capture line', () => {
-    const { position, edgeSquares } = transformLayoutToPosition([
+    const { position, edgeSquares } = layoutFixture([
         '..A....',
         '.......',
         '...T...',

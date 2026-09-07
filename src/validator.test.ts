@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { renderBoard } from './utils'
-import { transformLayoutToPosition } from './board'
+import { layoutFixture } from './test/fixtures'
 import { validateMove } from './validator'
 import { Player, PieceType, GameStatus } from './types'
 import { extractDefenderPosition, clonePosition } from './board'
@@ -16,7 +15,7 @@ describe('Validator Tests', () => {
                 "  D  ",
                 "     "
             ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 2, y: 2 }, // attacker
             to: { x: 2, y: 4 }, // try to move past defender
@@ -28,8 +27,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(false)
         expect(result.reason).toContain('Path is blocked')
         expect(result.status).toBe(GameStatus.InProgress)
@@ -45,7 +42,7 @@ describe('Validator Tests', () => {
             "  D  ",
             "     "
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 2, y: 2 },
             to: { x: 2, y: 3 }, // occupied by defender
@@ -57,7 +54,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(false)
         expect(result.reason).toContain('Destination is occupied')
         expect(result.status).toBe(GameStatus.InProgress)
@@ -73,7 +69,7 @@ describe('Validator Tests', () => {
             "  D  ",
             "     "
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 2, y: 3 }, // defender
             to: { x: 2, y: 4 },
@@ -85,7 +81,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(false)
         expect(result.reason).toContain('Not your piece')
         expect(result.status).toBe(GameStatus.InProgress)
@@ -101,7 +96,7 @@ describe('Validator Tests', () => {
             "     ",
             "     "
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 2, y: 2 }, // attacker
             to: { x: 0, y: 2 },
@@ -113,7 +108,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(false)
         expect(result.reason).toContain('Cannot move to restricted square')
         expect(result.status).toBe(GameStatus.InProgress)
@@ -129,7 +123,7 @@ describe('Validator Tests', () => {
             "     ",
             "     "
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 2, y: 0 }, // king
             to: { x: 0, y: 0 },
@@ -141,7 +135,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.status).toBe(GameStatus.DefenderWin)
     })
@@ -156,7 +149,7 @@ describe('Validator Tests', () => {
             "     ",
             "     "
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 2, y: 0 }, // king
             to: { x: 0, y: 0 },
@@ -168,7 +161,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.status).toBe(GameStatus.InProgress)
     })
@@ -183,7 +175,7 @@ describe('Validator Tests', () => {
             "  R  ",
             "     "
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const moveAttacker = {
             from: { x: 2, y: 2 }, // attacker
             to: { x: 2, y: 4 },
@@ -195,7 +187,6 @@ describe('Validator Tests', () => {
             moveAttacker,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.status).toBe(GameStatus.InProgress)
     })
@@ -210,7 +201,7 @@ describe('Validator Tests', () => {
             "     ",
             "     "
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const history = [extractDefenderPosition(gameSetup.position)]
 
         const move1 = {
@@ -263,7 +254,7 @@ describe('Validator Tests', () => {
             "     ",
             "R   R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 2, y: 2 },
             to: { x: 3, y: 3 },
@@ -275,7 +266,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(false)
         expect(result.status).toBe(GameStatus.InProgress)
     })
@@ -291,7 +281,7 @@ describe('Validator Tests', () => {
             "     ",
             "R   R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 0, y: 1 },
             to: { x: 0, y: 2 },
@@ -303,7 +293,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(false)
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.InProgress)
@@ -320,7 +309,7 @@ describe('Validator Tests', () => {
             "     ",
             "R   R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 0, y: 1 },
             to: { x: 0, y: 2 },
@@ -332,7 +321,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([{ x: 1, y: 2 }])
         expect(result.status).toBe(GameStatus.InProgress)
@@ -348,7 +336,7 @@ describe('Validator Tests', () => {
             "     ",
             "R   R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 0, y: 1 },
             to: { x: 0, y: 2 },
@@ -360,7 +348,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([{ x: 1, y: 2 }])
         expect(result.status).toBe(GameStatus.InProgress)
@@ -379,7 +366,7 @@ describe('Validator Tests', () => {
             "       ",
             "R     R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 1, y: 3 },
             to: { x: 0, y: 3 },
@@ -391,7 +378,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.InProgress)
@@ -410,7 +396,7 @@ describe('Validator Tests', () => {
             "       ",
             "R     R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 1, y: 3 },
             to: { x: 0, y: 3 },
@@ -422,7 +408,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.InProgress)
@@ -441,7 +426,7 @@ describe('Validator Tests', () => {
             "       ",
             "R     R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 1, y: 3 },
             to: { x: 0, y: 3 },
@@ -453,7 +438,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.InProgress)
@@ -472,7 +456,7 @@ describe('Validator Tests', () => {
             "       ",
             "R     R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 1, y: 3 },
             to: { x: 0, y: 3 },
@@ -484,7 +468,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.InProgress)
@@ -500,7 +483,7 @@ describe('Validator Tests', () => {
             "     ",
             "R   R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 0, y: 1 },
             to: { x: 0, y: 2 },
@@ -512,7 +495,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(false)
         expect(result.reason).toContain('Invalid captures')
         expect(result.expectedCaptures).toEqual([{ x: 1, y: 2 }])
@@ -531,7 +513,7 @@ describe('Validator Tests', () => {
             "       ",
             "R     R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 2, y: 3 },
             to: { x: 2, y: 2 },
@@ -543,7 +525,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([{ x: 1, y: 2 },{ x: 3, y: 2 }])
         expect(result.status).toBe(GameStatus.InProgress)
@@ -561,7 +542,7 @@ describe('Validator Tests', () => {
             "       ",
             "R     R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 2, y: 3 },
             to: { x: 2, y: 2 },
@@ -573,7 +554,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([{ x: 2, y: 1 },{ x: 1, y: 2},{ x: 3, y: 2 }])
         expect(result.status).toBe(GameStatus.InProgress)
@@ -591,7 +571,7 @@ describe('Validator Tests', () => {
             "       ",
             "R     R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 2, y: 3 },
             to: { x: 2, y: 2 },
@@ -603,7 +583,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([{ x: 1, y: 2 },{ x: 3, y: 2 }])
         expect(result.status).toBe(GameStatus.InProgress)
@@ -621,7 +600,7 @@ describe('Validator Tests', () => {
             "       ",
             "R     R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 2, y: 3 },
             to: { x: 2, y: 2 },
@@ -633,7 +612,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([{ x: 2, y: 1 },{ x: 1, y: 2},{ x: 3, y: 2 }])
         expect(result.status).toBe(GameStatus.InProgress)
@@ -652,7 +630,7 @@ describe('Validator Tests', () => {
             "A      ",
             "RA    R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         // Test with complete captures
         const moveComplete = {
             from: { x: 1, y: 6 },
@@ -705,7 +683,7 @@ describe('Validator Tests', () => {
             "D      ",
             "RA    R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 1, y: 6 },
             to: { x: 1, y: 5 },
@@ -721,7 +699,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toContainEqual({ x: 0, y: 3 })
         expect(result.expectedCaptures).toContainEqual({ x: 0, y: 4 })
@@ -742,7 +719,7 @@ describe('Validator Tests', () => {
             "      A",
             "R    AR"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 5, y: 6 },
             to: { x: 5, y: 4 },
@@ -775,7 +752,7 @@ describe('Validator Tests', () => {
             "A      ",
             "RA    R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         // Test with complete captures
         const moveComplete = {
             from: { x: 1, y: 6 },
@@ -812,7 +789,7 @@ describe('Validator Tests', () => {
             "A      ",
             "RD    R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 1, y: 6 },
             to: { x: 1, y: 5 },
@@ -852,7 +829,7 @@ describe('Validator Tests', () => {
             "           ",
             "R         R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 3, y: 5 },
             to: { x: 4, y: 5 },
@@ -864,7 +841,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toContainEqual({ x: 5, y: 5 })
         expect(result.status).toBe(GameStatus.AttackerWin)
@@ -886,7 +862,7 @@ describe('Validator Tests', () => {
             "           ",
             "R         R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 3, y: 5 },
             to: { x: 4, y: 5 },
@@ -898,7 +874,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toContainEqual({ x: 5, y: 5 })
         expect(result.status).toBe(GameStatus.AttackerWin)
@@ -921,7 +896,7 @@ describe('Validator Tests', () => {
             "           ",
             "R         R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 3, y: 5 },
             to: { x: 4, y: 5 },
@@ -933,7 +908,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toContainEqual({ x: 5, y: 5 })
         expect(result.status).toBe(GameStatus.AttackerWin)
@@ -955,7 +929,7 @@ describe('Validator Tests', () => {
             "     A     ",
             "R  A KA   R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 10, y: 3 },
             to: { x: 10, y: 4 },
@@ -967,7 +941,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(false)
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.InProgress)
@@ -989,7 +962,7 @@ describe('Validator Tests', () => {
             " A         ",
             "RK A      R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 10, y: 3 },
             to: { x: 10, y: 2 },
@@ -1001,7 +974,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(false)
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.InProgress)
@@ -1023,7 +995,7 @@ describe('Validator Tests', () => {
             " A         ",
             "RK A      R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 10, y: 3 },
             to: { x: 10, y: 2 },
@@ -1035,7 +1007,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(false)
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.InProgress)
@@ -1058,14 +1029,13 @@ describe('Validator Tests', () => {
             " D D       ",
             "RDKD      R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 2, y: 7 },
             to: { x: 2, y: 8 },
             captures: []
         }
         const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.InProgress)
@@ -1088,14 +1058,13 @@ describe('Validator Tests', () => {
             "   DD D    ",
             "R  DDKDD  R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 7, y: 8 },
             to: { x: 7, y: 9 },
             captures: []
         }
         const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.InProgress)
@@ -1120,14 +1089,13 @@ describe('Validator Tests', () => {
             "    D D    ",
             "R   DKD   R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 6, y: 8 },
             to: { x: 5, y: 8 },
             captures: []
         }
         const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.DefenderWin)
@@ -1150,14 +1118,13 @@ describe('Validator Tests', () => {
             "    DKD    ",
             "R   D D   R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 6, y: 8 },
             to: { x: 5, y: 8 },
             captures: []
         }
         const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.InProgress)
@@ -1180,14 +1147,13 @@ describe('Validator Tests', () => {
             "   K D     ",
             "R D  D    R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 3, y: 9 },
             to: { x: 4, y: 9 },
             captures: []
         }
         const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.InProgress)
@@ -1211,14 +1177,13 @@ describe('Validator Tests', () => {
             "   D D     ",
             "R DK D    R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 5, y: 9 },
             to: { x: 4, y: 9 },
             captures: []
         }
         const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.DefenderWin)
@@ -1239,7 +1204,7 @@ describe('Validator Tests', () => {
             "           ",
             "           ",
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 9, y: 5 },
             to: { x: 10, y: 5 },
@@ -1275,7 +1240,7 @@ describe('Validator Tests', () => {
             "           ",
             "           ",
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 9, y: 5 },
             to: { x: 10, y: 5 },
@@ -1310,14 +1275,13 @@ describe('Validator Tests', () => {
             "   D D     ",
             "R DK D    R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 5, y: 9 },
             to: { x: 4, y: 9 },
             captures: []
         }
         const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.DefenderWin)
@@ -1339,14 +1303,13 @@ describe('Validator Tests', () => {
             "   DDD     ",
             "R         R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 6, y: 6 },
             to: { x: 5, y: 6 },
             captures: []
         }
         const result = validateMove(gameSetup.position, Player.Defender, move, gameSetup.edgeSquares)
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.InProgress)
@@ -1367,7 +1330,7 @@ describe('Validator Tests', () => {
             "           ",
             "R         R"
         ]
-        const gameSetup = transformLayoutToPosition(boardLayout)
+        const gameSetup = layoutFixture(boardLayout)
         const move = {
             from: { x: 5, y: 1 },
             to: { x: 5, y: 2 },
@@ -1379,7 +1342,6 @@ describe('Validator Tests', () => {
             move,
             gameSetup.edgeSquares
         )
-        console.log(renderBoard(gameSetup.position, gameSetup.edgeSquares))
         expect(result.isValid).toBe(true)
         expect(result.expectedCaptures).toEqual([])
         expect(result.status).toBe(GameStatus.AttackerWin)

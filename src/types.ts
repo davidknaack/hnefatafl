@@ -9,10 +9,10 @@ export enum PieceType {
     King = 'king',
 }
 
-export interface Piece {
-    owner: Player
-    type: PieceType
-}
+/** Immutable in TypeScript; this does not freeze shared runtime objects. */
+export type Piece =
+    | { readonly owner: Player.Attacker; readonly type: PieceType.Attacker }
+    | { readonly owner: Player.Defender; readonly type: PieceType.Defender | PieceType.King }
 
 export enum GameStatus {
     InProgress = 'in_progress',
@@ -49,18 +49,19 @@ export interface GameState {
     status: GameStatus
 }
 
-export interface MoveValidationResult {
-    isValid: boolean
-    reason?: string
+/** Captures and status are available on both branches, including diagnostics. */
+export type MoveValidationResult = {
     expectedCaptures: Coordinate[]
     status: GameStatus
-}
+} & (
+    | { isValid: true; reason?: never }
+    | { isValid: false; reason: string }
+)
 
-export interface ApplyMoveResult {
-    success: boolean
-    error?: string
-    newState?: GameState
-}
+/** Narrow on success before consuming the state or error. */
+export type ApplyMoveResult =
+    | { success: true; newState: GameState; error?: never }
+    | { success: false; error: string; newState?: never }
 
 export interface PossibleMove {
     to: Coordinate

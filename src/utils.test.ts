@@ -1,134 +1,107 @@
 import { describe, test, expect } from 'vitest'
-import { defendersCanEscape, defendersHaveFort, renderBoard } from './utils'
-import {
-    transformLayoutToPosition,
-    extractEdgeSquares,
-    GameSetup,
-} from './board'
+import { layoutFixture } from './test/fixtures'
+import { defendersCanEscape, defendersHaveFort } from './utils'
+import { extractEdgeSquares } from './board'
 import { Square, Player, PieceType, Coordinate } from './types'
 
-// Helper to create a test board with the specified layout
-function createTestBoardAndEdges(layout: string[]): GameSetup {
-    // Use the shared transformation function with test-specific options
-    const gameSetup = transformLayoutToPosition(layout)
-
-    return gameSetup
-}
-
 describe('defendersCanEscape', () => {
-    test('returns true when king is on the edge', (context) => {
+    test('returns true when king is on the edge', () => {
         // prettier-ignore
-        const { position, edgeSquares } = createTestBoardAndEdges([
+        const { position, edgeSquares } = layoutFixture([
             'K....',
             '.....',
             '.....',
             '.....',
             '.....'
         ]);
-        console.log(context.task.name)
-        console.log(renderBoard(position, edgeSquares))
         expect(defendersCanEscape(position, edgeSquares)).toBe(true)
     })
 
-    test('returns true when a defender is on the edge', (context) => {
+    test('returns true when a defender is on the edge', () => {
         // prettier-ignore
-        const { position, edgeSquares } = createTestBoardAndEdges([
+        const { position, edgeSquares } = layoutFixture([
             'D....',
             '.....',
             '.....',
             '.....',
             '.....'
         ]);
-        console.log(context.task.name)
-        console.log(renderBoard(position, edgeSquares))
         expect(defendersCanEscape(position, edgeSquares)).toBe(true)
     })
 
-    test('returns false when an attacker is on the top edge', (context) => {
+    test('returns false when an attacker is on the top edge', () => {
         // prettier-ignore
-        const { position, edgeSquares } = createTestBoardAndEdges([
+        const { position, edgeSquares } = layoutFixture([
             'aaaaa',
             'a.d.a',
             'a...a',
             'a...a',
             'aaaaa'
         ]);
-        console.log(context.task.name)
-        console.log(renderBoard(position, edgeSquares))
         expect(defendersCanEscape(position, edgeSquares)).toBe(false)
     })
 
-    test('returns false when an attacker is on the right edge', (context) => {
+    test('returns false when an attacker is on the right edge', () => {
         // prettier-ignore
-        const { position, edgeSquares } = createTestBoardAndEdges([
+        const { position, edgeSquares } = layoutFixture([
             'aaaaa',
             'a.d.a',
             'a...a',
             'a...a',
             'aaaaa'
         ]);
-        console.log(context.task.name)
-        console.log(renderBoard(position, edgeSquares))
         expect(defendersCanEscape(position, edgeSquares)).toBe(false)
     })
 
-    test('returns true when a defender can reach the edge', (context) => {
+    test('returns true when a defender can reach the edge', () => {
         // prettier-ignore
-        const { position, edgeSquares } = createTestBoardAndEdges([
+        const { position, edgeSquares } = layoutFixture([
             '.....',
             '.....',
             '..d..',
             '.....',
             '.....'
         ]);
-        console.log(context.task.name)
-        console.log(renderBoard(position, edgeSquares))
         expect(defendersCanEscape(position, edgeSquares)).toBe(true)
     })
 
-    test('returns false when defenders are completely surrounded', (context) => {
+    test('returns false when defenders are completely surrounded', () => {
         // prettier-ignore
-        const { position, edgeSquares } = createTestBoardAndEdges([
+        const { position, edgeSquares } = layoutFixture([
             '.....',
             '.aaa.',
             '.ada.',
             '.aaa.',
             '.....'
         ]);
-        console.log(context.task.name)
-        console.log(renderBoard(position, edgeSquares))
         expect(defendersCanEscape(position, edgeSquares)).toBe(false)
     })
 
-    test('returns false when multiple defenders are surrounded', (context) => {
+    test('returns false when multiple defenders are surrounded', () => {
         // prettier-ignore
-        const { position, edgeSquares } = createTestBoardAndEdges([
+        const { position, edgeSquares } = layoutFixture([
             'aaaaa',
             'aaaa.',
             'a.kda',
             'aaaaa',
             'aaaaa'
         ]);
-        console.log(context.task.name)
-        console.log(renderBoard(position, edgeSquares))
         expect(defendersCanEscape(position, edgeSquares)).toBe(false)
     })
 
-    test('returns true for a winding path to the edge', (context) => {
+    test('returns true for an open route to the edge', () => {
         // prettier-ignore
-        const { position, edgeSquares } = createTestBoardAndEdges([
+        const { position, edgeSquares } = layoutFixture([
             '.....',
             '.....',
             '..d..',
             '.....',
             '.....'
         ]);
-        console.log(context.task.name)
-        console.log(renderBoard(position, edgeSquares))
         expect(defendersCanEscape(position, edgeSquares)).toBe(true)
     })
 
-    test('returns false for a large board with isolated defenders', (context) => {
+    test('returns false for a large board with isolated defenders', () => {
         const layout = Array.from({ length: 10 }, (_, y) =>
             Array.from({ length: 10 }, (_, x) => {
                 // Create a ring of attackers around positions (5,5) and (6,5)
@@ -143,44 +116,38 @@ describe('defendersCanEscape', () => {
             }).join('')
         )
 
-        const { position, edgeSquares } = createTestBoardAndEdges(layout)
-        console.log(context.task.name)
-        console.log(renderBoard(position, edgeSquares))
+        const { position, edgeSquares } = layoutFixture(layout)
         expect(defendersCanEscape(position, edgeSquares)).toBe(false)
     })
 
-    test('returns true for multiple defenders with one escape route', (context) => {
+    test('returns true for multiple defenders with one escape route', () => {
         // prettier-ignore
-        const { position, edgeSquares } = createTestBoardAndEdges([
+        const { position, edgeSquares } = layoutFixture([
             '.....',
             '.....',
             '..dd.',
             '.aa.a',
             '.....'
         ]);
-        console.log(context.task.name)
-        console.log(renderBoard(position, edgeSquares))
         expect(defendersCanEscape(position, edgeSquares)).toBe(true)
     })
 
-    test('returns false when edges are blocked', (context) => {
+    test('returns false when edges are blocked', () => {
         // prettier-ignore
-        const { position, edgeSquares} = createTestBoardAndEdges([
+        const { position, edgeSquares} = layoutFixture([
             'aaaaa',
             'a..da',
             'a.d.a',
             'aa.aa',
             'aaaaa'
         ]);
-        console.log(context.task.name)
-        console.log(renderBoard(position, edgeSquares))
         expect(defendersCanEscape(position, edgeSquares)).toBe(false)
     })
 })
 
 describe('defendersHaveFort', () => {
     test('returns false when the king is outside the fort wall', () => {
-        const { position } = createTestBoardAndEdges([
+        const { position } = layoutFixture([
             'A..........',
             '...........',
             '...........',
@@ -198,7 +165,7 @@ describe('defendersHaveFort', () => {
     })
 
     test('returns true when an enclosed attacker is isolated from the king', () => {
-        const { position } = createTestBoardAndEdges([
+        const { position } = layoutFixture([
             '...........',
             '...........',
             '...........',

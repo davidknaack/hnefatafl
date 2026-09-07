@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import {
-    initializeGame,
-    STANDARD_BOARD,
-    transformLayoutToPosition,
-} from './board'
+import { layoutFixture } from './test/fixtures'
+import { initializeGame, STANDARD_BOARD } from './board'
 import { generatePossibleMoves } from './moveGenerator'
 import { PieceType, Player, Square, Coordinate } from './types'
 
@@ -49,7 +46,7 @@ describe('movement extraction equivalence', () => {
         { name: 'standard opening', setup: initializeGame(STANDARD_BOARD) },
         {
             name: 'restricted transit and blockers',
-            setup: transformLayoutToPosition([
+            setup: layoutFixture([
                 'R...R',
                 '.A.D.',
                 '.R.T.',
@@ -59,7 +56,7 @@ describe('movement extraction equivalence', () => {
         },
         {
             name: 'open king and edge captures',
-            setup: transformLayoutToPosition([
+            setup: layoutFixture([
                 'RD.AR',
                 '.A...',
                 '..K..',
