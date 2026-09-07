@@ -84,7 +84,7 @@ rules decisions that remain open.
   the [published Copenhagen rule 8](https://aagenielsen.dk/copenhagen_rules.php)
   assigns perpetual repetition to a defender loss without specifying either.
 - There is no engine pass command or explicit no-legal-move terminal check.
-  The notation sequence parser recognizes `P`, but engine application rejects it.
+  Parsers reject `P`. Resignation concedes for the side to move.
 
 Capture coordinates are unique even when ordinary and shieldwall rules overlap.
 Validation and application use the same resolved captures, post-move board, and
@@ -121,6 +121,9 @@ if (preview.isValid) {
 | `applyMove(moveStr: string): ApplyMoveResult` | Revalidate and apply automatically discovered captures. Return `{ success: true, newState }` with a detached snapshot or `{ success: false, error }`. Advance the turn only while the resulting game remains in progress. |
 | `applyMoveSequence(moveList: string): ApplyMoveResult` | Split on commas and apply in order to the current game. Success returns a detached final snapshot. Stop at the first failure, retaining all earlier successful moves. Does not reset or roll back the sequence. |
 | `getPossibleMoves(from: Coordinate): PossibleMove[]` | Return destinations and capture coordinates for one current-player piece using the same resolver/history as validation/application. Includes legal moves that end the game; returns `[]` after game end or for invalid coordinates. |
+| `loadGame(input: string): ApplyMoveResult` | Parse the portable game format and replay from the standard opening. Replace the current game only when the entire replay succeeds; failure preserves all state and saved tags. |
+| `saveGame(): string` | Write canonical portable notation, including metadata, captures, and result. Throws for empty games or custom starting layouts, which the format cannot represent. |
+| `resign(): ApplyMoveResult` | End an in-progress game as a loss for the side to move and append `---` to history. Requires at least one move, as specified by the game grammar. |
 
 There are no facade methods named `getGameState` or `generatePossibleMoves`.
 `generatePossibleMoves` is a lower-level geometry/capture function in
@@ -197,7 +200,82 @@ a returned state to set up an engine position; use `reset(layout)` and replay
 moves instead. Exported state/result shapes are unchanged. Snapshot copying
 allocates a board and history arrays on each return.
 
-## Notation and layouts
+## Load/save game format
+
+**Load Game** validates and replays the complete game from the standard opening,
+then replaces the current board, turn, counters, history, and result. Invalid
+games show the first error with its move number and leave the current game and
+selection unchanged. Both played and loaded history start with **A**, then **D**.
+**Copy Game** writes canonical text; the input supports multiline tags and moves.
+
+```text
+[Event:Friendly game]
+d11-d8 f8-e8 f10-f8xe8
+```
+
+The portable grammar is:
+
+```ebnf
+game        = { tag }, move-list ;
+tag         = "[", tag-name, ":", tag-value, "]" ;
+move-list   = move, { whitespace, move }, [ whitespace, resignation ] ;
+move        = square, "-", square, [ captures ], [ terminal ] ;
+captures    = "x", square, { "/", square } ;
+terminal    = "++" | "--" ;
+resignation = "---" ;
+square      = letter, number ;
+```
+
+The reader accepts upper/lowercase letters, leading zeroes, surrounding
+whitespace, and whitespace around move punctuation and between a square's letter
+and digits. Moves require whitespace separators; spaces, tabs, and newlines all
+work. Every character in the move list must be consumed. Commas, parenthesized captures, passes,
+trailing junk, and empty move lists are not part of this game format. Squares must
+resolve to a1–k11. Loaded moves must obey ownership, movement, capture, and
+repetition rules. The reader also accepts repeated `x` separators (`a1-a3xb3xc3`)
+and collapses repeated capture squares (`a1-a3xb3xb3`). After deduplication,
+supplied captures must match the complete actual capture set; omitted captures
+are discovered automatically. Incorrect capture squares still fail validation.
+
+A single Copenhagen CSV row may be pasted directly. A trailing
+`,capture-count,capture-count,state` summary, with two nonnegative integer
+counts and `Ongoing`, `Black`, `White`, or `Draw`, is discarded. The counts and
+state are never used to populate the game. A final `timeout` token before that
+CSV summary is also discarded: external timeout results cannot be reconstructed
+from moves, so the loaded status comes only from replay. This does not import
+multiple rows or accept commas between moves. Metadata tags may still contain
+commas. Saving emits the canonical game format without CSV fields or timeout
+metadata. Genuine rule disagreements with games from other engines remain load
+errors; malformed moves are not silently dropped.
+
+`++` means the mover wins; `--` means the mover loses. Supplied markers must match
+the replayed result. Omitted result markers are inferred. A standalone `---`
+concedes for the side to move after the preceding move. Further moves or
+resignation after game end are rejected.
+
+Tags are optional, ordered, opaque metadata; they do not change the initial board,
+rules, turn, or result. Names must be nonempty and cannot contain a colon, brackets,
+or line breaks. Values may be empty and may contain colons, but cannot contain
+brackets or line breaks. Names and values are trimmed. Unknown and repeated tags
+are preserved in their original order and case. There is no escaping, reserved
+tag schema, or custom-position format.
+
+The writer emits one `[name:value]` tag per line, then one line of moves separated
+by single spaces. Squares are lowercase with positive ranks and no leading zeroes.
+All actual captures are included, sorted by file then numeric rank and separated
+with `/`; the final move includes its terminal marker when appropriate. Resignation
+is a separate final ` ---`, without marking the preceding move as a win or loss.
+There is no trailing whitespace or newline. Loading and saving canonical text is
+stable, and replay restores the same engine state. Empty games cannot be exported;
+Copy Game is disabled until the first move.
+
+`parseGame` in [src/gameFormat.ts](src/gameFormat.ts) consumes syntax and checks
+square bounds; use `engine.loadGame` for full semantic validation. `serializeGame`
+formats a validated record; use `engine.saveGame` for a resolved game. Custom
+engine layouts remain supported by `reset(layout)`, but cannot be saved without a
+setup representation, so saving one fails explicitly.
+
+## Move command compatibility and layouts
 
 Moves use files A–K and ranks 1–11: `D11-D10`. Optional capture annotations contain
 concatenated coordinates, such as `D11-C11(B11)` or `D6-D8(D7E7)` (syntax examples;
@@ -222,10 +300,11 @@ Passing is unsupported throughout the command API; W6 adds no no-legal-move rule
 `applyMoveSequence` shares this parser, commits the legal prefix, and reports the
 first syntax or legality failure with its move number. It is still non-atomic.
 
-In the UI, **Load Game** parses notation into a selectable move list. It does not
-reset or replay the engine. Invalid imports clear the loaded list and show an
-indexed error instead of silently omitting tokens. Current history labels start with the defender even
-though the engine starts with the attacker (B8).
+These existing `parseMove`/`serializeMove`, `applyMove`, and `applyMoveSequence`
+contracts remain available for command/API compatibility. Engine `moveHistory`
+retains this notation, with a final `---` entry for resignation. It is not the
+portable file format: use `loadGame`/`saveGame` for game interchange. UI history
+uses the new lowercase display format, including captures and terminal markers.
 
 Production game layouts are exactly 11×11, with rows ordered top to bottom:
 
@@ -268,12 +347,13 @@ coordinates instead of emitting invalid notation.
   T1 tooling gaps, reproduction fixtures, and W1–W8 work packages.
 - [Exit-fort notes](docs/exit-fort.md): structural semantics and regression examples.
 
-W1–W7 are complete: maintenance guidance and runtime/configuration/check
+W1–W8's selected scope is complete: maintenance guidance and runtime/configuration/check
 commands are aligned, UI/domain helpers are extracted, result/piece types and
 fixture conventions are explicit, capture/transition consistency is corrected,
 strict parsing, coordinate boundaries, and production layouts are enforced,
-and engine state is protected by detached snapshots. UI corrections remain in W8. Treat
-Load Game semantics and accessibility changes as separate decisions within W8.
+and engine state is protected by detached snapshots. W8 fixes history labels and
+adds validated, atomic loading and canonical saving. Board keyboard navigation
+and dialog focus changes remain outside the selected W8 scope.
 Do not infer the intended variant from the Rust reference project.
 
 The package is marked `private` and has no library entry point. An engine

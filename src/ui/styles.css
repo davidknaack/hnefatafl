@@ -97,8 +97,10 @@ body {
     border-style: solid;
 }
 
-.load-game-input input {
-    width: 60%;
+.load-game-input textarea {
+    width: 100%;
+    box-sizing: border-box;
+    resize: vertical;
 }
 
 .side-panel ul {
@@ -111,7 +113,8 @@ body {
     border: 1px solid #444;
 }
 
-input {
+input,
+textarea {
     background-color: #2a2a2a;
     color: #fff;
     border: 1px solid #555;

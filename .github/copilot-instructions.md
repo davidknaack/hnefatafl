@@ -87,7 +87,7 @@ and the build.
 For UI changes or extraction, also check the browser: initial board, selection and
 possible-move highlights, validate/apply paths, capture display, input-mode
 precedence, history, and invalid notation. B4 is fixed in W6; distinguish the
-remaining B8 history-label defect from regressions. Documentation-only edits need source/signature/command/link
+historical B8 reproduction from regressions (B8 is fixed in W8). Documentation-only edits need source/signature/command/link
 verification; a browser rerun is unnecessary unless UI behavior is changed.
 Record commands, runtime, and actual results instead of assuming this baseline
 still holds. Do not add tests solely for prose edits.
@@ -111,6 +111,7 @@ mask it.
 | `src/rules.ts` | Terminal status; compatibility capture exports |
 | `src/exitFort.ts` | Structural exit-fort evaluation |
 | `src/parser.ts`, `src/patterns.ts` | Move/sequence parsing and notation regexes |
+| `src/gameFormat.ts` | Portable game syntax, metadata, canonical writing, mover-relative result markers |
 | `src/coordinates.ts` | Fixed 11×11 notation/coordinate conversion |
 | `src/movement.ts` | Shared ownership, restricted-destination, path, and coordinate predicates |
 | `src/encirclement.ts`, `src/debug.ts` | Escape connectivity and text rendering, respectively |
@@ -121,7 +122,7 @@ mask it.
 | `public/main.js` | Minimal Vite bootstrap importing `src/ui/main.ts` |
 
 The facade methods are `reset`, `getState`, `validateMove`, `applyMove`,
-`applyMoveSequence`, and `getPossibleMoves(from)`. The lower-level
+`applyMoveSequence`, `loadGame`, `saveGame`, `resign`, and `getPossibleMoves(from)`. The lower-level
 `generatePossibleMoves` is not a facade method. Capture arrays contain
 `Coordinate` objects, not notation strings. State uses `position: Square[][]`,
 not `board`; squares use `isRestricted`, not `isCorner`.
@@ -132,8 +133,10 @@ generation against the same state/history. W7 returns detached snapshots from
 Board clones and layout transformations also copy occupants. W6 enforces strict notation, 11×11
 game layouts, no passes, and guarded coordinate boundaries. W5 replaces defender projections with `positionHistory` keys and the
 raw validator's fifth argument with `string[]`; consumers should replay old games.
-Sequence application commits its valid prefix; UI Load Game only displays parsed
-notation. Initialization starts with the attacker.
+Legacy command sequence application commits its valid prefix. W8 Load Game uses
+the whitespace-separated portable format, validates a complete replay from the
+standard opening, and replaces the current game atomically. Copy Game emits the
+canonical format. Initialization and history labels start with the attacker.
 
 Preserve the [exit-fort documentation](../docs/exit-fort.md) and symmetry/non-mutation
 tests. Low-level layout fixtures can use smaller boards and custom mappings;
@@ -174,7 +177,17 @@ migrated. No framework rewrite or Rust-rule port is implied by the work packages
   objects. Layout pieces and cloned occupants are independent too. State/result
   types retain their shapes; consumers must fetch a new snapshot to observe play.
   See the README for ownership/migration and the review for validation.
-- W8: B8 history labels; select Load Game and accessibility changes separately.
+- W8's selected scope is implemented: B8 attacker-first labels, multiline game
+  input, semantic replay validation and atomic replacement, canonical load/save
+  notation with opaque tags, captures, terminal markers, and resignation. The
+  existing move-command API keeps its syntax for compatibility. Custom starting
+  layouts and empty games cannot be exported. Board keyboard navigation and
+  dialog focus changes remain unselected. See the README for the format contract.
+  The loader also accepts individual Copenhagen CSV rows, ignoring summary
+  counts/state and a final CSV timeout token. Repeated `x` capture separators
+  and duplicate capture squares are normalized before semantic validation;
+  canonical saving omits these redundant representations. Wrong captures and
+  illegal moves still fail atomically.
 
 Use the review's acceptance criteria and reproduction fixtures for selected
 fixes. Parser tests cover strict syntax, indexed failures, and serialization.
