@@ -184,6 +184,30 @@ li:hover {
     background-color: #3a4a5a !important;
 }
 
+.cell.highlight-repeat-allowed,
+.move-legend .repeat-allowed {
+    background-color: #946600 !important;
+}
+
+.cell.highlight-repeat-loss,
+.move-legend .repeat-loss {
+    background-color: #b52840 !important;
+}
+
+.move-legend {
+    max-width: 22rem;
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    line-height: 1.6;
+}
+
+.move-legend span {
+    display: inline-block;
+    padding: 0 0.25rem;
+    border-radius: 0.1rem;
+    color: #fff;
+}
+
 /* Modal Styles */
 .modal-overlay {
     position: fixed;

@@ -204,7 +204,11 @@ export class HnefataflEngine {
                 this.edgeSquares,
                 this.gameState.positionHistory
             )
-            return result.isValid ? [{ to, captures: result.expectedCaptures }] : []
+            return result.isValid ? [{
+                to,
+                captures: result.expectedCaptures,
+                ...(result.repetition ? { repetition: result.repetition } : {}),
+            }] : []
         })
     }
 }

@@ -6,6 +6,7 @@ import {
     MoveValidationResult,
     Player,
     GameStatus,
+    RepetitionWarning,
 } from './types'
 import { coordToString } from './coordinates'
 import { getAvailableCaptures } from './captures'
@@ -20,6 +21,7 @@ export type MoveResolution =
         position: Square[][]
         positionHistory: string[]
         currentPlayer: Player
+        repetition?: RepetitionWarning
     })
     | Extract<MoveValidationResult, { isValid: false }>
 
@@ -145,14 +147,18 @@ export function resolveMove(
     const history = expectedCaptures.length > 0 ? [] : positionHistory
     const nextHistory = [...history, key]
     let status = getGameStatusAfterMove(previewPosition, resolvedMove, player)
+    const occurrences = nextHistory.filter((p) => p === key).length
+    let repetition: RepetitionWarning | undefined = occurrences > 1 ? 'allowed' : undefined
     // Immediate board wins take precedence. A third occurrence is applied and
     // ends the game; it is not an illegal move that leaves the game running.
-    if (status === GameStatus.InProgress && nextHistory.filter((p) => p === key).length >= 3) {
+    if (status === GameStatus.InProgress && occurrences >= 3) {
         status = GameStatus.AttackerWin
+        repetition = 'loss'
     }
     return {
         isValid: true, expectedCaptures, status,
         move: resolvedMove, position: previewPosition, positionHistory: nextHistory,
         currentPlayer: status === GameStatus.InProgress ? nextPlayer : player,
+        ...(repetition ? { repetition } : {}),
     }
 }

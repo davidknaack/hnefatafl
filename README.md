@@ -158,7 +158,14 @@ type Piece =
 Capture counters count pieces lost by the named side, including the king as a
 defender. `Coordinate` is `{ x: number, y: number }`, indexed as `position[y][x]`:
 `A11` is `{ x: 0, y: 0 }`, and `K1` is `{ x: 10, y: 10 }`.
-`PossibleMove` contains `to: Coordinate` and `captures: Coordinate[]`.
+`PossibleMove` contains `to: Coordinate`, `captures: Coordinate[]`, and optional
+`repetition: 'allowed' | 'loss'`. The engine omits the flag for new positions,
+uses `allowed` for a repeat that does not trigger the repetition penalty, and
+uses `loss` when the third occurrence ends the game as a defender loss (even
+when the attacker makes that move). Immediate board wins retain precedence.
+Both flagged moves remain legal and selectable. The debug UI shows allowed
+repeats in amber and repetition losses in red, with a legend and hover text.
+The lower-level geometry/capture generator does not supply repetition flags.
 
 Result types are discriminated unions: `success: true` guarantees `newState`,
 and `success: false` guarantees `error: string`. Validation always includes
