@@ -162,13 +162,17 @@ describe('W5 repetition and legal moves', () => {
         const engine = new HnefataflEngine()
         if (offset) play(engine, 'D11-D10')
         const cycle = offset ? ['F8-E8', 'D10-C10', 'E8-F8', 'C10-D10'] : ['D11-D10', 'F8-E8', 'D10-D11', 'E8-F8']
-        play(engine, cycle.join(','))
+        const move = parseMove(cycle[3])!
+        play(engine, cycle.slice(0, 3).join(','))
+        const beforeRepeat = engine.getState()
+        expect(engine.getPossibleMoves(move.from)).toContainEqual({ to: move.to, captures: [], repetition: 'allowed' })
+        expect(engine.getState()).toEqual(beforeRepeat)
+        play(engine, cycle[3])
         expect(engine.getState().status).toBe(GameStatus.InProgress)
         play(engine, cycle.slice(0, 3).join(','))
         const final = cycle[3]
-        const move = parseMove(final)!
         const before = structuredClone(engine.getState())
-        expect(engine.getPossibleMoves(move.from)).toContainEqual({ to: move.to, captures: [] })
+        expect(engine.getPossibleMoves(move.from)).toContainEqual({ to: move.to, captures: [], repetition: 'loss' })
         expect(engine.validateMove(final)).toEqual({ isValid: true, expectedCaptures: [], status: GameStatus.AttackerWin })
         expect(engine.getState()).toEqual(before)
         play(engine, final)
@@ -192,6 +196,7 @@ describe('W5 repetition and legal moves', () => {
         if (!resolved.isValid) throw new Error(resolved.reason)
         expect(resolved.status).toBe(GameStatus.InProgress)
         expect(resolved.positionHistory).toEqual([key])
+        expect(resolved.repetition).toBeUndefined()
     })
 
     test('occurrences with the opposite side to move do not trigger a loss', () => {
@@ -204,14 +209,28 @@ describe('W5 repetition and legal moves', () => {
         const after = applyMoveToPosition(position, move)
         const opposite = positionKey(after, Player.Attacker)
         const matching = positionKey(after, Player.Defender)
-        expect(resolveMove(position, Player.Attacker, move, edgeSquares, [opposite, opposite]).status)
-            .toBe(GameStatus.InProgress)
-        expect(resolveMove(position, Player.Attacker, move, edgeSquares, [matching, matching]).status)
-            .toBe(GameStatus.AttackerWin)
+        const differentTurn = resolveMove(position, Player.Attacker, move, edgeSquares, [opposite, opposite])
+        expect(differentTurn.status).toBe(GameStatus.InProgress)
+        if (!differentTurn.isValid) throw new Error(differentTurn.reason)
+        expect(differentTurn.repetition).toBeUndefined()
+        expect(resolveMove(position, Player.Attacker, move, edgeSquares, [matching, matching]))
+            .toMatchObject({ status: GameStatus.AttackerWin, repetition: 'loss' })
         // Reset starts counting at the initial board, rather than retaining a prior game.
         play(engine, 'D11-D10,F8-E8,D10-D11,E8-F8')
         engine.reset()
         expect(engine.getState().positionHistory).toHaveLength(1)
+        expect(engine.getPossibleMoves({ x: 3, y: 0 }).every((candidate) => !candidate.repetition)).toBe(true)
+    })
+
+    test('an immediate board win takes precedence over a repetition loss warning', () => {
+        const { position, edgeSquares } = layoutFixture([
+            'R.K.......R', '...........', 'A..........', '...........', '...........',
+            '.....T.....', '...........', '...........', '...........', '...........', 'R.........R',
+        ])
+        const move = parseMove('C11-A11')!
+        const key = positionKey(applyMoveToPosition(position, move), Player.Attacker)
+        expect(resolveMove(position, Player.Defender, move, edgeSquares, [key, key]))
+            .toMatchObject({ isValid: true, status: GameStatus.DefenderWin, repetition: 'allowed' })
     })
 
     test('every advertised move validates and applies against the same replay state', () => {

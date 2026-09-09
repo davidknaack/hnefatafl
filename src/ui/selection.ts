@@ -18,9 +18,12 @@ export class Selection {
         this.highlights.forEach((cell) => {
             cell.classList.remove(
                 'highlight-possible',
+                'highlight-repeat-allowed',
+                'highlight-repeat-loss',
                 'highlight-capture',
                 'highlight-selected'
             )
+            cell.removeAttribute('title')
         })
         this.highlights = []
     }
@@ -35,6 +38,15 @@ export class Selection {
         this.highlight(from, 'highlight-selected')
         moves.forEach((move) => {
             this.highlight(move.to, 'highlight-possible')
+            if (move.repetition) {
+                this.highlight(move.to, `highlight-repeat-${move.repetition}`)
+                this.ui.board.children[move.to.y * 11 + move.to.x].setAttribute(
+                    'title',
+                    move.repetition === 'loss'
+                        ? 'Third occurrence: defenders lose. This move can still be played.'
+                        : 'Repeated position allowed. This move can still be played.'
+                )
+            }
             move.captures.forEach((capture) =>
                 this.highlight(capture, 'highlight-capture')
             )
@@ -55,7 +67,7 @@ export class Selection {
         if (!this.ui.displayMoves.checked || !this.from) return
         this.clearHighlights()
         const move = this.possibleMoves.find((move) => isSameCoord(move.to, to))
-        this.show(this.from, [{ to, captures: move?.captures ?? [] }])
+        this.show(this.from, [move ?? { to, captures: [] }])
     }
 
     toggleVisibility(): void {

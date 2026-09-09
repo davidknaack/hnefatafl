@@ -65,7 +65,12 @@ export type ApplyMoveResult =
     | { success: true; newState: GameState; error?: never }
     | { success: false; error: string; newState?: never }
 
+/** Repetition loss is always a defender loss, regardless of the moving side. */
+export type RepetitionWarning = 'allowed' | 'loss'
+
 export interface PossibleMove {
     to: Coordinate
     captures: Coordinate[]
+    /** Absent for a new position; advisory only, never makes a move illegal. */
+    repetition?: RepetitionWarning
 }
