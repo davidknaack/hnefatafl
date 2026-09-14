@@ -3,6 +3,10 @@ import { LocalGameSession } from '../session/LocalGameSession'
 import { OnlineGameSession, OnlineStart } from '../session/OnlineGameSession'
 import { bindCommands } from './commands'
 import { UIElements } from './elements'
+import { RecoveryEnvelope, RecoveryStore } from '../online/recovery'
+import { CLIENT_VERSION } from '../online/clientVersion'
+import { versionWarning } from '../../shared/relayProtocol'
+import { compareRecords } from '../online/record'
 
 /** Owns session replacement; board/selection commands only see GameSession. */
 export function bindSessionControls(ui: UIElements, configuredEndpoint?: string): () => void {
@@ -21,6 +25,40 @@ export function bindSessionControls(ui: UIElements, configuredEndpoint?: string)
     let confirmation: (() => void) | undefined
     let unbind = () => {}
     let unsubscribe = () => {}
+    const recoveryStore = new RecoveryStore()
+    const loaded = recoveryStore.load()
+    let saved: RecoveryEnvelope | null = loaded.kind === 'saved' ? loaded.value : null
+    let storageStatus = loaded.kind === 'invalid' ? `Saved recovery could not be opened: ${loaded.error}. It has been preserved; download a private backup before replacing it.`
+        : loaded.kind === 'unavailable' ? loaded.error : ''
+    let savedWarning = saved ? versionWarning(CLIENT_VERSION, saved.clientVersion) : null
+    let savingEnabled = false
+    // Restoring/duplicating a tab must not rewrite an unchanged save or steal
+    // ownership from the still-live tab merely by changing its timestamp.
+    let lastSavedSignature = saved ? JSON.stringify({ storageVersion: 1, endpoint: saved.endpoint,
+        credentials: saved.credentials, record: saved.record, clientVersion: CLIENT_VERSION,
+        resume: saved.resume, conflict: saved.conflict }) : ''
+
+    function persist(resume: boolean): void {
+        if (!(session instanceof OnlineGameSession)) return
+        const snapshot = session.getRecovery()
+        if (!snapshot) return
+        const conflict = session.getConflictRecord() ?? (saved && compareRecords(saved.record, snapshot.record) === 'equal' ? saved.conflict : null)
+        const content = { storageVersion: 1 as const, ...snapshot, clientVersion: CLIENT_VERSION, resume: resume && !conflict, conflict }
+        const signature = JSON.stringify(content)
+        if (signature === lastSavedSignature) return
+        const envelope = { ...content, savedAt: Date.now() }
+        const result = recoveryStore.save(envelope)
+        if (result.success) {
+            saved = envelope; lastSavedSignature = signature
+            storageStatus = envelope.resume ? 'Online game saved in this browser. Refresh will replay it and reconnect.'
+                : 'Online record retained for review. It will not reconnect automatically.'
+        } else storageStatus = result.error
+    }
+
+    function archive(): void {
+        if (session instanceof OnlineGameSession) persist(false)
+        savingEnabled = false
+    }
 
     function render(view: SessionView): void {
         if (!active) return
@@ -36,8 +74,8 @@ export function bindSessionControls(ui: UIElements, configuredEndpoint?: string)
         }
         ui.connection.textContent = online ? labels[view.connection] : 'Local play is ready.'
         ui.sessionError.textContent = notice || view.online?.error || configurationError
-        ui.sessionWarning.textContent = view.online?.warning ?? ''
-        ui.sessionHelp.textContent = online ? 'Refresh recovery is not available yet. Keep this tab open; Copy Game saves the moves without room credentials.'
+        ui.sessionWarning.textContent = view.online?.warning || savedWarning || ''
+        ui.sessionHelp.textContent = online ? 'Copy Game exports moves without room credentials. Check the recovery save status before closing this tab.'
             : endpoint ? 'Create starts a new standard game. Share the room code with the other player.' : 'Online play is not configured. Local play is available.'
         ui.onlineSetup.hidden = online
         ui.onlineActions.hidden = !online
@@ -51,10 +89,17 @@ export function bindSessionControls(ui: UIElements, configuredEndpoint?: string)
         ui.reconnect.disabled = !online || conflict || !['error', 'disconnected'].includes(view.connection)
         ui.leaveRoom.disabled = !online || view.connection === 'closed'
         ui.continueLocal.disabled = !online
+        ui.recoveryStatus.textContent = storageStatus
+        ui.backupRecovery.hidden = !recoveryStore.hasSaved()
+        ui.recoveryBackupHelp.hidden = !recoveryStore.hasSaved()
+        ui.reviewRecovery.hidden = online || !saved
     }
     function bind(): void {
         unbind = bindCommands(ui, session)
-        unsubscribe = session.subscribe(render)
+        unsubscribe = session.subscribe(view => {
+            if (savingEnabled) persist(view.connection !== 'closed')
+            render(view)
+        })
     }
     function cancel(): void {
         confirmation = undefined; ui.confirmation.hidden = true
@@ -79,8 +124,12 @@ export function bindSessionControls(ui: UIElements, configuredEndpoint?: string)
     }
     function startOnline(start: OnlineStart): void {
         if (!endpoint || session.getView().mode !== 'local') return
-        ask('Replace the current local game with a new online game? Copy Game first if you want to keep these moves.',
-            () => replace(new OnlineGameSession({ endpoint, start })), session.getView().state.moveHistory.length > 0)
+        ask('Start a new online game? This replaces the current board and the browser’s saved recovery slot when the room is assigned. Copy Game or download a private recovery backup first if needed.',
+            () => {
+                const next = new OnlineGameSession({ endpoint, start })
+                recoveryStore.permitReplacement(); savingEnabled = true; lastSavedSignature = ''; savedWarning = null
+                replace(next)
+            }, session.getView().state.moveHistory.length > 0 || recoveryStore.hasSaved())
     }
     ui.createRoom.onclick = () => startOnline({ type: 'create', side: ui.onlineSide.value === 'defender' ? 'defender' : 'attacker' })
     ui.joinRoom.onclick = () => {
@@ -91,7 +140,7 @@ export function bindSessionControls(ui: UIElements, configuredEndpoint?: string)
         startOnline({ type: 'join', roomCode })
     }
     ui.newLocal.onclick = () => ask('Start a new local game? This replaces the current board and stops this tab’s online connection.',
-        () => replace(new LocalGameSession()), session.getView().mode === 'online' || session.getView().state.moveHistory.length > 0)
+        () => { archive(); replace(new LocalGameSession()) }, session.getView().mode === 'online' || session.getView().state.moveHistory.length > 0)
     ui.continueLocal.onclick = () => {
         if (!(session instanceof OnlineGameSession)) return
         ask('Continue this game locally? This tab will disconnect from online play and control both sides. Local moves will never be sent to the room.', () => {
@@ -101,7 +150,9 @@ export function bindSessionControls(ui: UIElements, configuredEndpoint?: string)
                 const result = next.loadGame(session.saveGame(), next.getView().generation)
                 if (!result.success) { next.dispose(); throw new Error(result.error) }
             }
-            replace(next)
+            archive(); replace(next)
+            storageStatus += ' Local continuation moves are not autosaved; use Copy Game to retain them.'
+            render(session.getView())
         })
     }
     ui.reconnect.onclick = () => guarded(() => { notice = ''; if (session instanceof OnlineGameSession) session.reconnect() })
@@ -121,13 +172,48 @@ export function bindSessionControls(ui: UIElements, configuredEndpoint?: string)
             if (active && session === source) { notice = 'Could not copy the room code. Select the displayed code to copy it manually.'; render(session.getView()) }
         }
     }
+    ui.reviewRecovery.onclick = () => {
+        if (!saved) return
+        ask('Review the saved online record? This replaces the current local board without reconnecting.', () => {
+            if (!saved) return
+            const next = new OnlineGameSession({ endpoint: saved.endpoint, start: { type: 'resume', credentials: saved.credentials, record: saved.record }, autoConnect: false })
+            savingEnabled = false; replace(next)
+        }, session.getView().state.moveHistory.length > 0)
+    }
+    ui.backupRecovery.onclick = () => guarded(() => {
+        const raw = recoveryStore.backup()
+        if (raw === null) return
+        const url = URL.createObjectURL(new Blob([raw], { type: 'application/json' }))
+        const link = document.createElement('a')
+        link.href = url; link.download = 'hnefatafl-private-recovery.json'
+        link.click()
+        setTimeout(() => URL.revokeObjectURL(url), 0)
+    })
     ui.confirmSession.onclick = () => { const action = confirmation; cancel(); action?.() }
     ui.cancelSession.onclick = cancel
+    if (saved?.resume) {
+        // Only send saved credentials to the currently configured relay. A changed
+        // endpoint still permits local review, never an automatic credential send.
+        const permitted = !!endpoint && new URL(endpoint).href === new URL(saved.endpoint).href
+        try {
+            session.dispose()
+            session = new OnlineGameSession({ endpoint: saved.endpoint,
+                start: { type: 'resume', credentials: saved.credentials, record: saved.record }, autoConnect: permitted })
+            savingEnabled = permitted
+            storageStatus = permitted ? 'Saved game recovered in this browser. See the connection status above before playing.'
+                : 'Saved game opened for review. Configure its original relay to reconnect; no credentials were sent.'
+        } catch {
+            session = new LocalGameSession()
+            storageStatus = 'Saved recovery could not be restored. The original data is preserved for private backup.'
+        }
+    } else if (saved) storageStatus = saved.conflict
+        ? 'Saved histories diverged. Both records are retained in the private backup; automatic reconnect is disabled.'
+        : 'A saved online record is available for review. It will not reconnect automatically.'
     bind()
     return () => {
         if (!active) return
         active = false; cancel(); unbind(); unsubscribe(); session.dispose()
         for (const button of [ui.createRoom, ui.joinRoom, ui.newLocal, ui.continueLocal, ui.reconnect,
-            ui.leaveRoom, ui.copyRoom, ui.confirmSession, ui.cancelSession]) button.onclick = null
+            ui.leaveRoom, ui.copyRoom, ui.confirmSession, ui.cancelSession, ui.reviewRecovery, ui.backupRecovery]) button.onclick = null
     }
 }

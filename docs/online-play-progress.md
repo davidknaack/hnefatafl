@@ -350,9 +350,77 @@ completed afterward. Tests/build used the established Vite filesystem permission
 retry. No dependency changes or hosted CI run. Permanent browser automation remains
 P8; these were direct browser acceptance checks.
 
-### Next checkpoint — P7
+### Handoff after P6 — P7 (historical)
 
 Add bounded versioned browser recovery storage, validated restore and refresh/resume
 UX, save-failure reporting and preserved incompatible records. Use P5's recovery
 snapshot and P6's session owner without exposing tokens. Restore the detailed P7
 scope before starting. No P7 work has started.
+
+## P7 — Complete (September 14, 2026)
+
+Implemented bounded version-1 browser recovery in `src/online/recovery.ts` and
+connected it to the UI session owner. One localStorage slot per origin retains
+endpoint, seat credentials, client version, save time, complete record, resume
+intent and optional conflicting history. It saves room assignment/zero moves,
+local unacknowledged commits, adopted records and lifecycle intent. Neither the
+engine nor relay knows about storage.
+
+Untrusted saves are bounded and independently replayed before restoration. Active
+saves resume only against the matching configured relay; other valid saves open
+for inert review. `OnlineGameSession.autoConnect: false` supports that path.
+Leave/new-local/continuation disables automatic resume of the saved online record.
+Continue Locally retains the prior online snapshot for review; local continuation
+moves are explicitly not autosaved and never sent online.
+
+Incompatible data remains byte-for-byte available through a clearly labeled private
+backup download. New online sessions require confirmation before replacing a saved
+slot, and only replace it after assignment. Storage getter/read/write/quota/readback
+failures show recovery warnings without disabling in-memory play. Stale-write and
+prefix/seat guards protect existing saves; unchanged restores do not rewrite
+timestamps or disrupt the original tab. These are bounded stale-write safeguards,
+not transactional multi-tab storage. Branch conflicts remain in private backups
+with automatic reconnect disabled, including when reviewing/continuing them.
+
+See [browser recovery](browser-recovery.md) for API, limits, one-origin behavior,
+backup privacy and refresh/local-continuation semantics.
+
+### Verification
+
+| Check | Result |
+| --- | --- |
+| Full Vitest suite, explicit Node 24 | **547 passed**, 21 files |
+| Source/tests, Vite configuration and server TypeScript/build | Passed |
+| Tooling formatting | Passed |
+| Browser production build | Passed, 35 modules |
+| Diff whitespace | Passed |
+
+Thirteen new recovery tests cover empty/capture/terminal records, metadata/schema/
+endpoint/credential/replay rejection, incompatible-byte preservation and explicit
+replacement, detached snapshots, newer/shorter/divergent/other-seat writes, duplicate
+restores, repeated invalid loads, access/quota/silent-write failures, retained
+branches, and review-only sessions that never create sockets.
+
+Actual browser clients on `127.0.0.1` and `localhost` (separate localStorage origins)
+verified assignment save, one-player refresh, both-player refresh after a capture,
+matching histories and resumed turns. A same-origin duplicate tab reports
+seat_in_use while the first tab continues saving moves. Continue Locally marks the
+online snapshot inactive; refresh opens local mode and Review Saved Game opens the
+four-move record without reconnect capability. Relay restart followed by refresh
+reports room_not_found while retaining all four moves and Copy Game; local
+continuation still works. No browser error logs observed on the checked peer.
+
+The private backup file was generated and its schema/revision/inactive flag were
+verified without logging credentials. The browser download-event wait timed out,
+but the resulting file was present and valid; the test backup was removed afterward.
+Storage fault paths were verified with injected storage tests, not browser quota
+exhaustion. Test tabs and owned relay/Vite processes were cleaned up. No dependencies,
+public deployment or hosted CI changed. No unresolved check failures.
+
+### Next checkpoint — P8
+
+Restore the final integration/hardening package from the plan: repeatable browser
+acceptance coverage, deployment/run guidance and end-to-end failure-path review.
+Keep production UI redesign and additional game-server features outside this work.
+Public hosting still requires its separate concrete deployment decision. P8 has
+not started.

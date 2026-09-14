@@ -33,7 +33,7 @@ can preserve it instead of overwriting it with an empty game.
   Tokens are deliberately absent. Board outcome is independent of connection state.
 - `getRecovery()` returns a detached `{ endpoint, credentials, record }`, or null
   before assignment. Credentials contain room/game IDs, seat and private token.
-  P7 can wrap this in its versioned storage envelope. P5 does not write storage.
+  P7's UI owner wraps this in its versioned storage envelope. The session itself does not write storage.
   Never log or share that object. Resume with
   `start: { type: 'resume', credentials: saved.credentials, record: saved.record }`.
 - `reconnect()` deliberately replaces the transport and resumes the same seat.
@@ -90,6 +90,6 @@ for tests. Production defaults use native WebSocket, UUIDs and normal timers.
 
 The implementation is tested with controlled message ordering/loss and two native
 WebSocket sessions against the real relay. P6 adds controls and deliberate reconnect;
-browser storage, refresh automation and production hosting remain later work. See
+P7 adds browser storage and refresh recovery. Production hosting remains later work. See
 [relay setup](relay.md), [wire protocol](online-protocol.md), and
 [progress](online-play-progress.md).

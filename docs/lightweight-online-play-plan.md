@@ -210,3 +210,25 @@ No storage (P7), public hosting or production UI redesign. Verify local regressi
 paths and two browser clients against the relay, including side/turn gating,
 remote moves/captures, room refusal, reconnect/leave and local continuation. Run
 repository checks and record results before stopping at P7.
+
+### P7 — Browser recovery persistence
+
+Implement one bounded versioned localStorage slot per origin containing endpoint,
+seat credentials, software version, save time, complete record and reconnect intent.
+Replay untrusted saves before restore. Automatically reconnect active saves only
+to the currently configured matching relay. Preserve read-only review/export after
+leave, expiry or endpoint changes. Explicit local continuation disables automatic
+resume of the saved online branch; local-mode moves still use Copy Game.
+
+Save credentials and each committed/adopted record, including zero moves and
+unacknowledged extensions. Catch storage getter/read/write/quota failures and show
+actual recovery status without disabling in-memory play. Preserve incompatible
+bytes for private backup; require explicit replacement. Protect the shared slot
+against another tab's changes and shorter/divergent writes. Keep conflicting
+records in a bounded backup with automatic reconnect disabled.
+
+Test empty/capture/terminal saves, malformed/version/replay failures, storage
+faults, overwrite protection and inactive review. Browser checks cover one/both
+players refreshing, duplicate live seats, room restart loss and local continuation.
+Use separate browser profiles/origins for the two players: v1 intentionally stores
+one recent online identity per origin. Stop before P8 hosting/final hardening.

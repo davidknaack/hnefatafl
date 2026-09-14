@@ -57,9 +57,10 @@ into a local session, disconnects this browser and enables control of both sides
 subsequent local moves are never sent. New Local Game starts a fresh board.
 Replacement/continuation/leave actions ask for confirmation when appropriate.
 
-P6 does not save browser recovery data. Keep the tab open during play; Copy Game
-before refreshing if you want to retain the moves. Refresh/resume storage and UX
-are P7. Public hosting and the production UI redesign remain later work.
+P7 saves online recovery data in one localStorage slot per origin and replays it
+before refresh/resume. Check the displayed save status; failures preserve the
+in-memory game but require Copy Game for unsaved moves. See [browser recovery](browser-recovery.md).
+Public hosting and the production UI redesign remain later work.
 
 ## Configuration
 

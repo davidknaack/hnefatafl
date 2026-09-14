@@ -399,8 +399,9 @@ owner handles online/local replacement and asks before replacing a nonempty game
 Rendering comes from
 session updates, with generation/binding guards for stale board callbacks and
 asynchronous results. Create/join, copy room code, reconnect, leave and explicit
-local continuation are wired. Refresh recovery is not yet available; keep the
-tab open or Copy Game before refreshing. Browser storage is P7.
+local continuation are wired. P7 saves online games and replays them before refresh
+recovery. See [browser recovery](docs/browser-recovery.md) for storage failures,
+private backups, one-slot behavior and local-continuation limits.
 
 P2 adds pure online record and message contracts under `src/online` and `shared`;
 see [protocol APIs and examples](docs/online-protocol.md) and
@@ -408,8 +409,7 @@ see [protocol APIs and examples](docs/online-protocol.md) and
 zero moves and independently replay with structured outcome checks. P4 provides
 the standalone relay; P5 adds `OnlineGameSession` with seat-gated commands,
 complete-record synchronization, correlated acknowledgements and explicit reconnect.
-See [the online session API](docs/online-session.md). Browser storage remains a
-later phase. Shared transport contracts contain no
+See [the online session API](docs/online-session.md). Shared transport contracts contain no
 engine imports. The source type-check root is now the repository root to include
 `shared/`; Vite still builds the same browser entry and output. Client version
 metadata is injected from `package.json` by the Vite/Vitest configuration.

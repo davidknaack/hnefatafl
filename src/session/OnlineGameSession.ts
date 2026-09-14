@@ -21,6 +21,8 @@ export interface OnlineSessionOptions {
     clearTimer?: (timer: ReturnType<typeof setTimeout>) => void
     /** May lower the shared ceiling for a constrained transport; never raise it. */
     maxWireBytes?: number
+    /** Open a retained game for review without sending credentials or reconnecting. */
+    autoConnect?: boolean
 }
 type Pending = { message: GameRecordMessage; id: string; connection: number }
 
@@ -55,7 +57,7 @@ export class OnlineGameSession implements GameSession {
         if (!['ws:', 'wss:'].includes(url.protocol) || url.username || url.password || url.hash) throw new Error('Invalid relay endpoint')
         this.options = { socketFactory: browserSocket, messageId: () => crypto.randomUUID(), timeoutMs: 5000,
             setTimer: (callback, ms) => setTimeout(callback, ms), clearTimer: (timer) => clearTimeout(timer),
-            maxWireBytes: MAX_MESSAGE_BYTES, ...options,
+            maxWireBytes: MAX_MESSAGE_BYTES, autoConnect: true, ...options,
             start: structuredClone(options.start) }
         if (!Number.isSafeInteger(this.options.timeoutMs) || this.options.timeoutMs < 1 ||
             !Number.isSafeInteger(this.options.maxWireBytes) || this.options.maxWireBytes < 1 ||
@@ -69,7 +71,8 @@ export class OnlineGameSession implements GameSession {
             this.engine = replay.value.engine; this.record = replay.value.record
             this.credentials = { ...credentials, roomCode: credentials.roomCode.toUpperCase() }
         }
-        this.connect()
+        if (this.options.autoConnect) this.connect()
+        else this.connection = 'closed'
     }
 
     private base() { return { protocolVersion: 1 as const, messageId: this.options.messageId(), clientVersion: CLIENT_VERSION } }

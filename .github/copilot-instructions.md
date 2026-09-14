@@ -155,8 +155,13 @@ canonical prefix comparison, current-connection ack matching and retained local
 extensions after send loss. P6's `src/ui/sessionControls.ts` owns local/online
 replacement, room controls and status. Keep board commands on `GameSession`.
 `VITE_RELAY_URL` is optional public build-time configuration; `.env.local` is ignored.
-Local continuation must prepare replay before disposing the online source. P7
-storage is not implemented; do not imply refresh automatically resumes a room.
+Local continuation must prepare replay before disposing the online source. P7's
+`src/online/recovery.ts` owns bounded envelope validation and guarded storage;
+the UI owner saves/recovers online sessions. See `docs/browser-recovery.md`.
+Never overwrite incompatible data automatically or claim success after storage
+failure. Automatic resume must target the configured matching relay; archived
+records and local continuations must not reconnect. Keep tokens out of normal
+DOM/clipboard/logging; only the explicitly private backup contains credentials.
 Native WebSocket integration tests require the supported Node 24 runtime; verify
 the executable when a shell or permission boundary changes PATH.
 
