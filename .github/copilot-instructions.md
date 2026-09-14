@@ -49,9 +49,10 @@ node node_modules/prettier/bin/prettier.cjs --check package.json package-lock.js
 node node_modules/vite/bin/vite.js build
 ```
 
-`tsconfig.json` covers `src` and tests. `tsconfig.node.json` inherits its strict
-compiler options and checks `vite.config.ts` without emitting files; this keeps
-the source project's `rootDir` unchanged. `npm run typecheck` runs both checks.
+`tsconfig.json` covers `src`, `shared`, and tests, with the repository as `rootDir`
+since P2 added engine-independent transport contracts. `tsconfig.node.json`
+inherits its strict compiler options and checks `vite.config.ts` without emitting
+files. `npm run typecheck` runs both checks.
 The extracted browser code under `src/ui` is included in the source check.
 `public/main.js` only imports that checked entry for Vite's public root.
 Vite's build is not a type check.

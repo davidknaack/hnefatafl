@@ -366,6 +366,15 @@ coordinates instead of emitting invalid notation.
 
 ## Maintenance and next work
 
+P2 adds pure online record and message contracts under `src/online` and `shared`;
+see [protocol APIs and examples](docs/online-protocol.md) and
+[implementation progress](docs/online-play-progress.md). Complete records support
+zero moves and independently replay with structured outcome checks. No relay,
+online session, or online UI is wired yet. Shared transport contracts contain no
+engine imports. The source type-check root is now the repository root to include
+`shared/`; Vite still builds the same browser entry and output. Client version
+metadata is injected from `package.json` by the Vite/Vitest configuration.
+
 - [Maintenance instructions](.github/copilot-instructions.md): commands, validation,
   module boundaries, and deployment behavior.
 - [September 5 project review](docs/project-review-2026-09-05.md): B1–B8 defects,

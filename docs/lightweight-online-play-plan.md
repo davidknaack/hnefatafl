@@ -113,3 +113,23 @@ Add `GameOutcome = { winner: Player; reason: ... }` and `GameState.outcome: Game
 **Acceptance:** existing ending scenarios report the expected reason/winner; repetition and immediate-win precedence remain unchanged; resignation and load/save round-trip preserve outcome; mutating a returned outcome cannot change engine state; failed commands retain the old outcome. Add assertions to existing scenarios rather than duplicating the fort suite. No no-legal-move policy change.
 
 **Stop:** engine/contracts/tests/documentation only. No transport, session, or new UI controls. Run tests, source/config type checks, tooling formatting check, and production build. Record results and the next checkpoint in [online-play progress](online-play-progress.md).
+
+### P2 — Complete-record codec and protocol contracts
+
+Restored from the agreed scope on September 14. Depends on P1. Implement pure,
+bounded record encoding/decoding with zero-move support, canonical resolved
+captures, fresh-engine replay, final position/outcome checks, and prefix
+comparison. Failed decoding must not mutate an active engine. Retain the existing
+portable format and engine history ordering.
+
+Define runtime-checked room control/assignment/presence/error envelopes and an
+opaque typed peer envelope in engine-independent shared code. Client-owned bodies
+cover synchronization requests, full game records, and correlated acknowledgements.
+Include package-derived client version separately from protocol/record versions;
+major software differences warn without rejecting valid replay. Document samples
+and acknowledgement connection-generation responsibilities in `docs/online-protocol.md`.
+
+Acceptance covers empty/capture/terminal records, stable canonical comparisons,
+invalid/partial replay, omitted captures, bounds, versions, opaque future messages,
+and acknowledgement mismatches. Run repository tests/checks/build. Stop before
+sockets, server implementation, storage, or P3's session/UI adaptation.
