@@ -400,8 +400,11 @@ asynchronous results. No online controls or transport are wired yet.
 P2 adds pure online record and message contracts under `src/online` and `shared`;
 see [protocol APIs and examples](docs/online-protocol.md) and
 [implementation progress](docs/online-play-progress.md). Complete records support
-zero moves and independently replay with structured outcome checks. No relay,
-online session, or online UI is wired yet. Shared transport contracts contain no
+zero moves and independently replay with structured outcome checks. P4 provides
+the standalone relay; P5 adds `OnlineGameSession` with seat-gated commands,
+complete-record synchronization, correlated acknowledgements and explicit reconnect.
+See [the online session API](docs/online-session.md). Online UI and browser storage
+are still later phases. Shared transport contracts contain no
 engine imports. The source type-check root is now the repository root to include
 `shared/`; Vite still builds the same browser entry and output. Client version
 metadata is injected from `package.json` by the Vite/Vitest configuration.

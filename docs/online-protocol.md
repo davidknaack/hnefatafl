@@ -184,8 +184,9 @@ socket identities, issues tokens/IDs, and implements room lifecycle/resource lim
 See [relay operation](relay.md) for startup, limits, and reconnect semantics.
 Unknown peer payloads near the full limit can grow when wrapped for forwarding;
 check the final forwarded size rather than assuming incoming size is sufficient.
-P5 must preflight the complete prospective move record/envelope before committing
-live state, gate actions by seat, handle stale/duplicate/branch records, require
-current-connection acknowledgement, and adopt candidates atomically. P7 adds
+P5's [online session](online-session.md) preflights the complete prospective move
+record/envelope before committing live state, gates actions by seat, handles
+stale/duplicate/branch records, requires current-connection acknowledgement, and
+adopts candidates atomically. P7 adds
 storage-envelope versioning and recovery. None of those behaviors are claimed
 by P2's pure shape/replay tests.

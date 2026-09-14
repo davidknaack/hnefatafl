@@ -230,10 +230,71 @@ test failures. Tests/build used permitted filesystem access for Vite's known
 configuration loader restriction. No public deployment or hosted CI execution.
 P4 changes no browser UI behavior, so P3's browser smoke was not repeated.
 
-### Next checkpoint — P5
+### Handoff after P4 — P5 (historical)
 
 Implement the online `GameSession` using P2 records/envelopes and P3's interface:
 connection generations, seat/capability gating, complete-record synchronization,
 atomic replay/adoption, stale/duplicate/branch handling and correlated peer
-acknowledgements. Restore the detailed P5 scope before starting. P5 is not started;
+acknowledgements. Restore the detailed P5 scope before starting. At this checkpoint P5 was not started;
 the debug UI continues to run locally.
+
+## P5 — Complete (September 14, 2026)
+
+Implemented `OnlineGameSession` behind the existing session interface. Restored
+the package scope from the agreed plan's synchronization and lifecycle decisions.
+No debug UI controls, browser storage or public deployment were added.
+
+- Native WebSocket adapter with listener cleanup and injectable transport/timers.
+  Create/join/resume, explicit reconnect, leave and dispose. Replaced connections
+  invalidate callbacks, pending acknowledgements and timers.
+- Detached state/status, credential-free online view, explicit private recovery
+  snapshot access and retained competing-record access. Recovered records replay
+  before connecting; invalid recovery input throws without creating a blank game.
+- Seat/turn/outcome/readiness capability checks, async generation checks, candidate
+  replay and both-envelope size preflight before local commit. Send failures retain
+  the local extension. Online import/reset are rejected; portable export survives
+  loss of the room for nonempty games.
+- Complete-record exchange, atomic prefix extension, equal-record deduplication,
+  no rollback, branch retention/error, correlated current-connection acceptance,
+  immediate peer replies, one-move/side checking in established play, and requested
+  multi-move recovery. Unknown features are harmless; major versions warn.
+- A 5-second default deadline permits one record resynchronization attempt and
+  then stops unsynchronized. No offline queue or engine-command retries. Peer
+  absence/room errors never set a board outcome.
+- [Online session API](online-session.md) documents lifecycle, command semantics,
+  private recovery data, timeout behavior and the P6/P7 integration boundaries.
+
+### Verification
+
+| Check | Result |
+| --- | --- |
+| Full Vitest suite, explicit Node 24 | **534 passed**, 20 files |
+| Source/tests and Vite config TypeScript checks | Passed |
+| Server type check/build | Passed |
+| Tooling formatting | Passed |
+| Browser production build | Passed, 26 modules |
+| Diff whitespace | Passed |
+
+Twelve P5 tests cover controlled message ordering/loss, exact/stale acks, duplicate
+records, immediate reply, requested recovery, divergent/malformed/foreign/out-of-turn
+records, detached snapshots/subscriptions, capabilities, absence/room loss, timeout
+budgets, send failure, wire preflight, disposal and terminal restore. Real native
+WebSocket pairs exercise the actual relay: both sides move, a shorter restored
+browser catches up, a retained unacknowledged move survives reconnect to a
+continuously connected shorter peer, both peers refresh, and explicit leave
+preserves the record.
+
+An initial integration run selected the elevated shell's older Node executable,
+which lacks native WebSocket. The explicit supported Node 24 executable passed;
+no application workaround or dependency was added. Tests/build used permitted
+filesystem access for Vite's known configuration-loader restriction. No fresh
+dependency installation or hosted CI run. Browser UI behavior is unchanged; no
+browser UI smoke was repeated. No unresolved check failures.
+
+### Next checkpoint — P6
+
+Wire create/join/side selection and online status into the existing debug UI using
+the session boundary. Keep board rendering transport-independent and preserve
+local mode when no relay is configured. Restore the detailed P6 package scope
+before implementation. Storage-envelope persistence/refresh UX remains P7;
+P5 supplies the detached recovery API but does not persist anything automatically.

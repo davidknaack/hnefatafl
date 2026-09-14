@@ -170,3 +170,26 @@ cross-room isolation, unknown peer payload forwarding, expiry/leave, resource
 limits and complete shutdown. Test using deterministic room peers and real
 WebSocket clients. Document local start/config/health and restart behavior. Stop
 before public hosting and P5's online client implementation.
+
+### P5 — Online session and complete-record synchronization
+
+Restored September 14 from decisions A–E. Implement `OnlineGameSession` behind
+P3's interface, with a native browser WebSocket adapter and injectable transport,
+IDs and timers. Create/join/resume, detached room/record access for later recovery,
+explicit reconnect/leave/dispose, connection-generation guards and visible errors
+belong here. No DOM controls or browser storage (P6/P7).
+
+Gate validation/moves by readiness, seat, turn and outcome. Build/replay a candidate
+complete record and check both wire envelopes before committing once. Await peer
+acceptance with bounded resynchronization retries; preserve unacknowledged moves.
+Compare canonical prefixes, adopt atomically, ignore duplicate moves, never roll
+back, retain divergent records, and require correlated current-generation acks.
+Established play accepts one move by the opposite side; larger extensions require
+a requested recovery exchange. Unknown features remain harmless, major version
+differences warn, invalid records disable play without replacing the current game.
+
+Acceptance uses controlled transports/timers for ordering, loss, stale callbacks,
+wrong acks, branches, timeouts and disposal, plus two sessions against P4's real
+relay. Cover refresh-style resume, longer-prefix recovery, immediate replies,
+terminal state, detached access, capability checks and size rejection. Run the
+full repository checks, document the public session API and stop before P6.

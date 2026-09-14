@@ -125,7 +125,8 @@ mask it.
 | `src/utils.ts` | Compatibility exports for coordinates, encirclement, debug rendering, and forts |
 | `src/types.ts` | Exported state, piece, move, and result types |
 | `src/ui/` | Checked DOM bindings, board/history rendering, selection/highlighting, commands, modal wiring, and CSS |
-| `src/session/` | Session contract and local engine ownership, detached subscriptions, capabilities, generation guards, disposal |
+| `src/session/` | Local/online engine ownership, subscriptions, capabilities, generation guards, record synchronization, disposal |
+| `src/online/` | Client record replay, peer messages, version metadata and native socket adapter |
 | `shared/` | Engine-independent JSON and relay envelope contracts |
 | `server/` | Ephemeral room metadata, opaque WebSocket relay, configuration and lifecycle |
 | `public/index.html` | HTML entry and modal content |
@@ -146,6 +147,14 @@ P4's relay must not import the engine or client session code, retain peer payloa
 or infer moves/outcomes. Sender identity comes from socket membership; reconnect
 tokens reserve seats. Run server tests and build as well as browser checks above
 when changing shared protocol or relay code. See `docs/relay.md` for local setup.
+
+P5 adds `OnlineGameSession`; see `docs/online-session.md`. A successful local
+submission can still await peer acceptance. Never enable online moves based only
+on socket send, revision count or presence. Preserve complete-record replay,
+canonical prefix comparison, current-connection ack matching and retained local
+extensions after send loss. The debug UI still uses the local session until P6.
+Native WebSocket integration tests require the supported Node 24 runtime; verify
+the executable when a shell or permission boundary changes PATH.
 
 W5 guarantees unique captures, preview/apply equivalence, and legal facade move
 generation against the same state/history. W7 returns detached snapshots from

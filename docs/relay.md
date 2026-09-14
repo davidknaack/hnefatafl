@@ -1,7 +1,7 @@
 # Lightweight online relay
 
-P4 supplies the standalone relay. The debug UI still uses local sessions; P5
-will implement the online session and subsequent phases will wire the UI.
+P4 supplies the standalone relay. P5 implements the [online session](online-session.md);
+the debug UI still uses local sessions until P6 wires the controls.
 The server forwards opaque peer messages and owns only room/connection metadata.
 It does not import the game engine, validate moves, store records, or acknowledge
 that an opponent applied a move. See [the protocol](online-protocol.md).

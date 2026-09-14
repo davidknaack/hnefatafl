@@ -17,6 +17,15 @@ export interface SessionView {
     /** null means local control of both sides. */
     localSide: Player | null
     capabilities: SessionCapabilities
+    /** Online status contains no reconnect credentials. */
+    online?: {
+        roomCode: string | null
+        gameId: string | null
+        peerConnected: boolean
+        pendingAcceptance: boolean
+        error: string | null
+        warning: string | null
+    }
 }
 
 export type SessionResult = ApplyMoveResult & { generation: number }
