@@ -140,6 +140,7 @@ interface GameState {
     moveHistory: string[]
     positionHistory: string[]
     status: GameStatus
+    outcome: GameOutcome | null
 }
 
 interface Square {
@@ -158,6 +159,23 @@ type Piece =
 Capture counters count pieces lost by the named side, including the king as a
 defender. `Coordinate` is `{ x: number, y: number }`, indexed as `position[y][x]`:
 `A11` is `{ x: 0, y: 0 }`, and `K1` is `{ x: 10, y: 10 }`.
+
+**P1 structured outcomes:** `GameState.outcome` is `null` while in progress, or
+`{ winner: Player, reason }` after completion. Reasons are `king_capture`,
+`king_escape`, `exit_fort`, `encirclement`, `repetition`, and `resignation`.
+Status is derived from the outcome; board wins retain precedence over repetition.
+The outcome object is detached on every state/result read, just like counters.
+Reset clears it, failed commands preserve it, and load/save replay reconstructs
+it without changing the portable notation. Consumers constructing `GameState`
+must now supply `outcome`. Existing validation result shapes remain unchanged.
+
+The raw `getGameOutcomeAfterMove` in `src/rules.ts` evaluates an already-applied
+board with captures removed, excluding repetition. `getGameStatusAfterMove`
+remains a compatibility wrapper; `statusForOutcome` maps an outcome to the legacy
+status. Successful `resolveMove` results include the outcome with repetition
+accounted for. These additions do not change rules, resignation restrictions,
+or the meaning of `currentPlayer` after game end.
+
 `PossibleMove` contains `to: Coordinate`, `captures: Coordinate[]`, and optional
 `repetition: 'allowed' | 'loss'`. The engine omits the flag for new positions,
 uses `allowed` for a repeat that does not trigger the repetition penalty, and

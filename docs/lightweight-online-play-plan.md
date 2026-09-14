@@ -101,3 +101,15 @@ Deployment configuration and a local two-browser test are in scope. Provisioning
 Each package below is intended as one focused implementation session. P5 and P7 have explicit fallback splits if their failure-path work grows. Use **eight planned sessions, with two reserved continuations**, as a conservative scheduling estimate rather than promising the previous three-session pace. Scope and acceptance gates are the sizing mechanism; no fixed subscription token allowance is assumed or guaranteed.
 
 Do packages in order. P4 depends on P2 but does not need UI work; this is a dependency observation, not a request for parallel agents. Do not combine P5/P7 with unrelated cleanup. Preserve passing build/type checks at every stopping point.
+
+### P1 — Structured engine outcomes
+
+Restored September 13 from the agreed package scope after the original appendix write was interrupted.
+
+**Depends on:** nothing. **Result:** existing wins have explicit machine-readable causes without changing legality or terminal precedence.
+
+Add `GameOutcome = { winner: Player; reason: ... }` and `GameState.outcome: GameOutcome | null`. Reasons: king capture, king escape, exit fort, encirclement, repetition, and resignation. Introduce an outcome-returning board evaluator in `src/rules.ts`; preserve `getGameStatusAfterMove` as a compatibility wrapper. The resolver evaluates once, preserves existing board-win/repetition precedence, and carries the outcome into the engine. Keep `GameStatus` and existing method signatures available; derive status from the outcome. Reset sets a null outcome; load/replay reconstructs it; resignation retains its existing API/grammar restrictions. Clone the new outcome object in detached snapshots.
+
+**Acceptance:** existing ending scenarios report the expected reason/winner; repetition and immediate-win precedence remain unchanged; resignation and load/save round-trip preserve outcome; mutating a returned outcome cannot change engine state; failed commands retain the old outcome. Add assertions to existing scenarios rather than duplicating the fort suite. No no-legal-move policy change.
+
+**Stop:** engine/contracts/tests/documentation only. No transport, session, or new UI controls. Run tests, source/config type checks, tooling formatting check, and production build. Record results and the next checkpoint in [online-play progress](online-play-progress.md).

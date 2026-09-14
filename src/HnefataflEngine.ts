@@ -5,12 +5,14 @@ import {
 } from './board'
 import { validateMove as validateRawMove, resolveMove } from './validator'
 import { positionKey } from './repetition'
+import { statusForOutcome } from './rules'
 import { parseMove, parseMoveSequence, serializeMove } from './parser'
 import { generateMoveCandidates } from './moveGenerator'
 import { GameTag, parseGame, RecordedMove, serializeGame, terminalFor } from './gameFormat'
 import {
     ApplyMoveResult,
     GameState,
+    GameOutcome,
     MoveValidationResult,
     Player,
     GameStatus,
@@ -41,6 +43,7 @@ export class HnefataflEngine {
             moveHistory: [],
             positionHistory: [positionKey(gameSetup.position, Player.Attacker)],
             status: GameStatus.InProgress,
+            outcome: null,
         }
     }
 
@@ -50,6 +53,7 @@ export class HnefataflEngine {
             ...this.gameState,
             position: clonePosition(this.gameState.position),
             captured: { ...this.gameState.captured },
+            outcome: this.gameState.outcome ? { ...this.gameState.outcome } : null,
             moveHistory: [...this.gameState.moveHistory],
             positionHistory: [...this.gameState.positionHistory],
         }
@@ -116,6 +120,7 @@ export class HnefataflEngine {
             moveHistory: [...this.gameState.moveHistory, moveStrWithCaptures],
             positionHistory: validation.positionHistory,
             status: validation.status,
+            outcome: validation.outcome,
         }
 
         this.gameState = newState
@@ -163,9 +168,14 @@ export class HnefataflEngine {
     resign(): ApplyMoveResult {
         if (this.gameState.status !== GameStatus.InProgress) return { success: false, error: 'Game is not in progress' }
         if (!this.gameState.moveHistory.length) return { success: false, error: 'At least one move is required before resignation' }
+        const outcome: GameOutcome = {
+            winner: this.gameState.currentPlayer === Player.Attacker ? Player.Defender : Player.Attacker,
+            reason: 'resignation',
+        }
         this.gameState = {
             ...this.gameState,
-            status: this.gameState.currentPlayer === Player.Attacker ? GameStatus.DefenderWin : GameStatus.AttackerWin,
+            status: statusForOutcome(outcome),
+            outcome,
             moveHistory: [...this.gameState.moveHistory, '---'],
         }
         return { success: true, newState: this.getState() }

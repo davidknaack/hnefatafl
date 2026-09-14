@@ -9,6 +9,7 @@ describe('Engine initial state', () => {
         const engine = new HnefataflEngine()
         const state = engine.getState()
         expect(state.currentPlayer).toBe(Player.Attacker)
+        expect(state.outcome).toBeNull()
     })
 
     test('King starts on throne which is restricted', () => {
@@ -44,6 +45,7 @@ test('an edge move into a disconnected exit fort ends the game without applying 
     expect(engine.validateMove('J2-J1').status).toBe(GameStatus.DefenderWin)
     expect(engine.applyMove('J2-J1').success).toBe(true)
     expect(engine.getState().status).toBe(GameStatus.DefenderWin)
+    expect(engine.getState().outcome).toEqual({ winner: Player.Defender, reason: 'exit_fort' })
     expect(engine.getState().position[4][4].occupant?.type).toBe(PieceType.Defender)
     expect(engine.getState().captured).toEqual({ attacker: 0, defender: 0 })
     expect(engine.applyMove('B10-B9')).toEqual({
@@ -93,6 +95,7 @@ describe('Engine command contracts', () => {
         expect(result.newState.currentPlayer).toBe(Player.Defender)
         expect(result.newState.moveHistory).toEqual(['D11-D10'])
         expect(result.newState.status).toBe(GameStatus.InProgress)
+        expect(result.newState.outcome).toBeNull()
     })
 
     test('sequence failure retains its valid prefix and skips the suffix', () => {
@@ -130,6 +133,7 @@ describe('Engine command contracts', () => {
             position, currentPlayer: Player.Attacker,
             captured: { attacker: 0, defender: 0 }, moveHistory: [],
             positionHistory: [positionKey(position, Player.Attacker)], status: GameStatus.InProgress,
+            outcome: null,
         })
         engine.reset()
         expect(engine.getState()).toEqual(new HnefataflEngine().getState())

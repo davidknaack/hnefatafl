@@ -6,11 +6,12 @@ import {
     MoveValidationResult,
     Player,
     GameStatus,
+    GameOutcome,
     RepetitionWarning,
 } from './types'
 import { coordToString } from './coordinates'
 import { getAvailableCaptures } from './captures'
-import { getGameStatusAfterMove } from './rules'
+import { getGameOutcomeAfterMove, statusForOutcome } from './rules'
 import { applyMoveToPosition } from './board'
 import { positionKey } from './repetition'
 
@@ -21,6 +22,7 @@ export type MoveResolution =
         position: Square[][]
         positionHistory: string[]
         currentPlayer: Player
+        outcome: GameOutcome | null
         repetition?: RepetitionWarning
     })
     | Extract<MoveValidationResult, { isValid: false }>
@@ -146,17 +148,18 @@ export function resolveMove(
     const key = positionKey(previewPosition, nextPlayer)
     const history = expectedCaptures.length > 0 ? [] : positionHistory
     const nextHistory = [...history, key]
-    let status = getGameStatusAfterMove(previewPosition, resolvedMove, player)
+    let outcome = getGameOutcomeAfterMove(previewPosition, resolvedMove, player)
     const occurrences = nextHistory.filter((p) => p === key).length
     let repetition: RepetitionWarning | undefined = occurrences > 1 ? 'allowed' : undefined
     // Immediate board wins take precedence. A third occurrence is applied and
     // ends the game; it is not an illegal move that leaves the game running.
-    if (status === GameStatus.InProgress && occurrences >= 3) {
-        status = GameStatus.AttackerWin
+    if (!outcome && occurrences >= 3) {
+        outcome = { winner: Player.Attacker, reason: 'repetition' }
         repetition = 'loss'
     }
+    const status = statusForOutcome(outcome)
     return {
-        isValid: true, expectedCaptures, status,
+        isValid: true, expectedCaptures, status, outcome,
         move: resolvedMove, position: previewPosition, positionHistory: nextHistory,
         currentPlayer: status === GameStatus.InProgress ? nextPlayer : player,
         ...(repetition ? { repetition } : {}),
