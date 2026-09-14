@@ -1,4 +1,4 @@
-import { HnefataflEngine } from '../HnefataflEngine'
+import { LocalGameSession } from '../session/LocalGameSession'
 import { bindCommands } from './commands'
 import { getElements } from './elements'
 
@@ -12,5 +12,10 @@ ui.closeModal.onclick = () => {
 ui.modal.onclick = (event) => {
     if (event.target === ui.modal) ui.modal.style.display = 'none'
 }
-bindCommands(ui, new HnefataflEngine())
+const session = new LocalGameSession()
+const unbind = bindCommands(ui, session)
+if (import.meta.hot) import.meta.hot.dispose(() => {
+    unbind()
+    session.dispose()
+})
 import './styles.css'

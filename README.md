@@ -10,7 +10,8 @@ an exit fort. Attackers win by capturing the king or encircling the defenders.
 This is an experimental project built largely with AI coding assistance. The
 current target is a browser application bundled by Vite for static hosting.
 Reusing the engine for reinforcement learning is a possible future direction,
-not a supported distribution today. There are no production package dependencies.
+not a supported distribution today. The standalone online relay uses `ws`;
+the browser engine has no production package dependencies.
 
 ## Run locally
 
@@ -30,20 +31,27 @@ Vite opens the browser and normally serves the app at
 | --- | --- |
 | `npm test` | Run the Vitest suite once |
 | `npm run testlive` | Run Vitest in watch mode |
-| `npm run typecheck` | Check source/tests and the Vite/Vitest configuration |
+| `npm run typecheck` | Check source/tests, Vite/Vitest configuration, and server |
+| `npm run build:server` | Compile the Node relay into ignored `dist-server/` |
+| `npm run start:server` | Start the compiled relay on loopback port 8787 |
+| `npm run test:server` | Run room and real WebSocket tests |
 | `npm run format` | Format tooling/configuration files with pinned Prettier |
 | `npm run format:check` | Check tooling/configuration formatting without writing |
 | `npm run build` | Bundle the browser app into ignored `dist/` output |
 | `npm run preview` | Serve the existing build, normally at `http://localhost:4173/hnefatafl/` |
 
-The build does not perform TypeScript checking; run `npm run typecheck` separately.
-CI runs type checking, formatting checks, tests, and the build. Browser code in
+The browser build does not perform TypeScript checking; run `npm run typecheck` separately.
+CI runs type checking, formatting checks, tests, and both builds. Browser code in
 `src/ui` is included in type checking. Formatting currently covers
 package/lock metadata, TypeScript configs, `vite.config.ts`, `.prettierrc`, and
 workflow YAML. Source, tests, UI, and Markdown are outside this initial formatting
 scope to keep W2 focused; expand that scope in separately reviewed work. No
 lint command is declared. See the [maintenance instructions](.github/copilot-instructions.md)
 for validation details and the dated baseline.
+
+P4's ephemeral room relay is runnable separately; online UI/session integration
+comes in subsequent phases. See [relay setup and configuration](docs/relay.md)
+for endpoints, resource limits, reconnect behavior and restart limitations.
 
 ## Current rules and behavior
 
@@ -365,6 +373,29 @@ is fixed to 11×11: `coordFromString` returns `null` for invalid notation, while
 coordinates instead of emitting invalid notation.
 
 ## Maintenance and next work
+
+P3 routes the debug UI through `GameSession` in `src/session/GameSession.ts`.
+`LocalGameSession` owns its engine and controls both sides. `getView()` returns
+detached state, a monotonically increasing `generation`, mode/connection/side,
+and move/validate/import/export/reset capabilities. `subscribe` immediately sends
+a detached view and then publishes successful changes; it returns an unsubscribe
+function. Each subscriber owns its copy. Observer errors are logged without
+turning a committed move into a failed command.
+
+`submitMove(command, generation)` is asynchronous and rechecks the observed
+generation before committing. Validation, move generation, import and reset also
+require that generation. Imports/reset advance it even if history gets shorter;
+failed operations leave it unchanged. Results include the generation they describe.
+Disposal publishes a closed view, releases subscribers and rejects queued/future
+mutations. Export is available only for nonempty standard-opening games.
+
+`bindCommands(ui, session)` subscribes without resetting the game and returns an
+idempotent cleanup function. Rebinding the same board removes the previous binding.
+The owner must also dispose a session when replacing it; UI cleanup alone does
+not own the session lifetime. Bootstrap creates the initial local session and
+cleans up both binding and session on Vite hot replacement. Rendering comes from
+session updates, with generation/binding guards for stale board callbacks and
+asynchronous results. No online controls or transport are wired yet.
 
 P2 adds pure online record and message contracts under `src/online` and `shared`;
 see [protocol APIs and examples](docs/online-protocol.md) and

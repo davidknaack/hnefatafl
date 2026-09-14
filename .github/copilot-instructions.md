@@ -23,7 +23,10 @@ so no compatibility shim is needed.
 | --- | --- |
 | `npm test` | One Vitest run |
 | `npm run testlive` | Vitest watch mode |
-| `npm run typecheck` | Source/tests plus Vite/Vitest configuration type check |
+| `npm run typecheck` | Source/tests, Vite/Vitest configuration and server type check |
+| `npm run build:server` | Node relay build into ignored `dist-server/` |
+| `npm run start:server` | Run the compiled standalone relay |
+| `npm run test:server` | Room and real WebSocket tests |
 | `npm run format` | Format tooling/configuration files |
 | `npm run format:check` | Check tooling/configuration formatting without writing |
 | `npm run build` | Vite browser build into ignored `dist/` |
@@ -45,14 +48,17 @@ already installed dependencies are:
 node node_modules/vitest/vitest.mjs run
 node node_modules/typescript/bin/tsc --noEmit
 node node_modules/typescript/bin/tsc --project tsconfig.node.json
+node node_modules/typescript/bin/tsc --project tsconfig.server.json --noEmit
 node node_modules/prettier/bin/prettier.cjs --check package.json package-lock.json "tsconfig*.json" vite.config.ts .prettierrc ".github/workflows/*.yml"
 node node_modules/vite/bin/vite.js build
+node node_modules/typescript/bin/tsc --project tsconfig.server.json
 ```
 
 `tsconfig.json` covers `src`, `shared`, and tests, with the repository as `rootDir`
 since P2 added engine-independent transport contracts. `tsconfig.node.json`
 inherits its strict compiler options and checks `vite.config.ts` without emitting
-files. `npm run typecheck` runs both checks.
+files. `tsconfig.server.json` checks/emits NodeNext server and shared modules;
+tests are excluded from its output. `npm run typecheck` runs all three checks.
 The extracted browser code under `src/ui` is included in the source check.
 `public/main.js` only imports that checked entry for Vite's public root.
 Vite's build is not a type check.
@@ -119,6 +125,9 @@ mask it.
 | `src/utils.ts` | Compatibility exports for coordinates, encirclement, debug rendering, and forts |
 | `src/types.ts` | Exported state, piece, move, and result types |
 | `src/ui/` | Checked DOM bindings, board/history rendering, selection/highlighting, commands, modal wiring, and CSS |
+| `src/session/` | Session contract and local engine ownership, detached subscriptions, capabilities, generation guards, disposal |
+| `shared/` | Engine-independent JSON and relay envelope contracts |
+| `server/` | Ephemeral room metadata, opaque WebSocket relay, configuration and lifecycle |
 | `public/index.html` | HTML entry and modal content |
 | `public/main.js` | Minimal Vite bootstrap importing `src/ui/main.ts` |
 
@@ -127,6 +136,16 @@ The facade methods are `reset`, `getState`, `validateMove`, `applyMove`,
 `generatePossibleMoves` is not a facade method. Capture arrays contain
 `Coordinate` objects, not notation strings. State uses `position: Square[][]`,
 not `board`; squares use `isRestricted`, not `isCorner`.
+
+P3's debug UI uses `GameSession` rather than directly owning the engine.
+`bindCommands` returns UI cleanup and does not reset the bound game. The caller
+owns session disposal. Session commands carry the observed generation; subscribers
+drive rendering. See README and `docs/online-play-progress.md` for the contract.
+
+P4's relay must not import the engine or client session code, retain peer payloads,
+or infer moves/outcomes. Sender identity comes from socket membership; reconnect
+tokens reserve seats. Run server tests and build as well as browser checks above
+when changing shared protocol or relay code. See `docs/relay.md` for local setup.
 
 W5 guarantees unique captures, preview/apply equivalence, and legal facade move
 generation against the same state/history. W7 returns detached snapshots from
@@ -198,7 +217,7 @@ establish the deferred public contracts.
 ## Deployment
 
 [deploy.yml](workflows/deploy.yml) runs `npm ci`, type and tooling-format checks,
-tests, and the build on pushes to
+tests, and browser/server builds on pushes to
 `main` and pull requests targeting `main`, then uploads `dist/` as a Pages artifact.
 The deploy job requires `github.ref == 'refs/heads/main'`; pull requests validate
 but do not deploy. There is no `workflow_dispatch` trigger. The application base

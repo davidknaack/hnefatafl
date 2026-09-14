@@ -1,4 +1,4 @@
-import { failure, id, object, readJson, text, JsonValue, Result } from './json'
+import { failure, id, object, readJson, text, JsonValue, Result } from './json.js'
 
 export const PROTOCOL_VERSION = 1
 export type Seat = 'attacker' | 'defender'

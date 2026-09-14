@@ -47,6 +47,9 @@ jobs:
       - name: Build project
         run: npm run build
 
+      - name: Build relay
+        run: npm run build:server
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 

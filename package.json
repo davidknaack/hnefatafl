@@ -11,7 +11,10 @@
     "repomix": "npx repomix@latest",
     "testlive": "vitest",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit && tsc --project tsconfig.node.json",
+    "typecheck": "tsc --noEmit && tsc --project tsconfig.node.json && tsc --project tsconfig.server.json --noEmit",
+    "build:server": "tsc --project tsconfig.server.json",
+    "start:server": "node dist-server/server/main.js",
+    "test:server": "vitest run server",
     "format": "prettier --write package.json package-lock.json \"tsconfig*.json\" vite.config.ts .prettierrc \".github/workflows/*.yml\"",
     "format:check": "prettier --check package.json package-lock.json \"tsconfig*.json\" vite.config.ts .prettierrc \".github/workflows/*.yml\"",
     "dev": "vite",
@@ -23,9 +26,13 @@
   "license": "ISC",
   "devDependencies": {
     "@types/node": "24.2.0",
+    "@types/ws": "8.18.1",
     "prettier": "3.9.6",
     "typescript": "^5.8.3",
     "vite": "^7.0.6",
     "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "ws": "8.21.3"
   }
 }

@@ -179,8 +179,9 @@ names with invalid payloads are errors and must not be ignored as future feature
 - Feature names: up to 64 lowercase letters/digits/hyphens, starting with a letter.
   Error text: 512 characters; software version strings: 64 characters.
 
-P4 must enforce the same byte limit on incoming and forwarded envelopes, bind
-socket identities, issue tokens/IDs, and implement room lifecycle/resource limits.
+P4 now enforces the same byte limit on incoming and forwarded envelopes, binds
+socket identities, issues tokens/IDs, and implements room lifecycle/resource limits.
+See [relay operation](relay.md) for startup, limits, and reconnect semantics.
 Unknown peer payloads near the full limit can grow when wrapped for forwarding;
 check the final forwarded size rather than assuming incoming size is sufficient.
 P5 must preflight the complete prospective move record/envelope before committing

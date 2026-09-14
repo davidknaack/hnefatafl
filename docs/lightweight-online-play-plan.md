@@ -133,3 +133,40 @@ Acceptance covers empty/capture/terminal records, stable canonical comparisons,
 invalid/partial replay, omitted captures, bounds, versions, opaque future messages,
 and acknowledgement mismatches. Run repository tests/checks/build. Stop before
 sockets, server implementation, storage, or P3's session/UI adaptation.
+
+### P3 — Local session boundary and debug UI adaptation
+
+Restored September 14 from the agreed scope. Introduce a small `GameSession`
+interface and local implementation owning its engine, with detached views,
+subscriptions/unsubscribe, action capabilities, async move submission, local
+import/export/reset, generation guards and disposal. Local mode controls both
+sides. Board rendering remains independent of transport and mode policies.
+
+Adapt debug commands/selection to sessions and render from published updates.
+Preserve history formatting, validation, input-mode precedence, successful import
+and copy, and failure behavior. Binding must not reset an existing game. Clear
+stale selection and ignore async results from a disposed/replaced binding or an
+older generation; enforce capabilities inside the session as well as controls.
+
+Acceptance: one coherent update per successful change, no state changes on
+rejection, detached subscribers/views, stale and disposed commands rejected,
+proper unsubscription, existing local UI smoke paths including highlights,
+manual/automatic moves, capture display, invalid input and load/save. Run all
+repository checks and a browser smoke test. Stop before online controls/P4.
+
+### P4 — Ephemeral room relay
+
+Restored September 14. Build a separately runnable Node 24 relay with `ws`, an
+in-memory room store, injected clock/randomness for deterministic tests, and
+explicit startup/shutdown. Use P2 envelopes for create/join/resume/leave, side
+assignment, short room IDs, private seat tokens, socket-bound identity, opaque
+forwarding, presence, heartbeat and room expiry. Enforce message/rate/connection/
+room/buffer limits. No engine imports, retained game records or database.
+
+Add `build:server`, `start:server`, and server type checking with a separate output
+directory from the Vite frontend. Verify both creator sides, third-player refusal,
+token-only reclaim of disconnected seats, duplicate live resume rejection,
+cross-room isolation, unknown peer payload forwarding, expiry/leave, resource
+limits and complete shutdown. Test using deterministic room peers and real
+WebSocket clients. Document local start/config/health and restart behavior. Stop
+before public hosting and P5's online client implementation.

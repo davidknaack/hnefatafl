@@ -91,7 +91,7 @@ construction error was corrected during focused verification; no unresolved
 failures remain. No fresh install, hosted CI, browser or server test was run;
 P2 adds no UI/socket behavior. New online modules are not yet wired into the app.
 
-### Next checkpoint — P3, not started
+### Handoff after P2 (historical)
 
 Restore P3's detailed scope: introduce a local `GameSession` interface/implementation
 with detached views, subscriptions, action capabilities, async move submission,
@@ -101,3 +101,139 @@ all current local interaction behavior. Clear stale selection/async work when th
 session changes; do not reset the engine implicitly when binding UI. Verify the
 existing browser smoke paths. No online controls or AI hierarchy yet; P4 later
 implements the ephemeral relay against P2's shared protocol.
+
+## P3 — Complete (September 14, 2026)
+
+Restored the P3 package scope and implemented the local session boundary plus
+debug UI adaptation. No online controls, relay, AI hierarchy, or rules changes.
+
+### Contracts and files
+
+- `src/session/GameSession.ts`: detached `SessionView`, action capabilities,
+  subscription/unsubscribe, generation-checked commands, async `submitMove`,
+  local import/export/reset and disposal. `SessionResult` includes generation.
+- `src/session/LocalGameSession.ts`: private engine ownership; both sides local;
+  one initial subscription view and updates on successful changes. Failed actions
+  leave state/generation unchanged. Import/reset/disposal invalidate queued moves.
+  Views, subscriber data and command results are independent. Closed sessions
+  disable actions and release observers; callback exceptions cannot fail a commit.
+- `src/ui/commands.ts` and `selection.ts`: use the session interface. Subscription
+  updates render and clear stale selection. Capability checks guard controls and
+  session methods. Manual rejection retains highlights, automatic rejection clears
+  them, and Auto Apply retains precedence. Async results/old board callbacks cannot
+  overwrite a newer view/binding. Rebinding removes old UI callbacks without
+  resetting the supplied game; caller remains responsible for session disposal.
+- `src/ui/main.ts` and `src/vite-env.d.ts`: explicit local session bootstrap and
+  Vite hot-replacement cleanup. Board rendering remains independent of mode/sockets.
+- `LocalGameSession.test.ts`: 11 new cases for generations, duplicate queued
+  submissions, import/reset/disposal cancellation, observer ownership, failures,
+  export eligibility, observer errors and cleanup. README/maintenance guidance
+  document the contract and its ownership requirements.
+
+### Verification
+
+Node 24, installed dependencies; documented direct executable equivalents used:
+
+| Check | Result |
+| --- | --- |
+| Full Vitest suite | **504 passed**, 17 files |
+| Source and Vite config TypeScript checks | Passed |
+| Tooling formatting | Passed |
+| Production build | Passed, 26 modules |
+| Diff whitespace | Passed |
+
+Tests/build/dev server used permitted filesystem access for the known Vite
+configuration sandbox restriction. No dependencies or configuration versions
+changed; no fresh install or hosted CI run.
+
+Browser smoke at the local `/hnefatafl/` URL passed: 121-square initial board,
+attacker-first manual move, highlights and clear-on-success, both-toggles Auto
+Apply precedence, automatic capture validation, highlight visibility toggling,
+capture counters/history after import, invalid import preserving selection/state,
+manual rejection preserving highlights, canonical Copy Game, repetition terminal
+controls/history, and modal open/close. No browser console errors observed.
+
+A temporary browser fixture using the actual bindings and controlled delayed
+sessions also passed six checks: binding an already-loaded game does not reset it;
+old callbacks/results cannot alter a replacement; old cleanup cannot remove new
+handlers; import invalidates a delayed submission/result; automatic rejection
+clears selection and shows its error; unsubscribing removes callbacks and stops
+rendering. The temporary fixture was removed after verification. This is browser
+verification evidence, not a new permanent browser-test runner (P8 remains later).
+
+No unresolved failures at the P3 checkpoint. P4 is now complete below.
+
+### Handoff after P3 — P4 (historical)
+
+Restore P4's detailed scope from the agreed plan: a separately runnable Node 24
+ephemeral relay implementing P2's engine-independent envelopes. In-memory rooms,
+side assignment, room/game IDs, private reconnect tokens, socket-bound sender
+identity, seat reservation, presence, explicit leave, heartbeat/expiry and basic
+resource limits. Add deterministic room tests plus real two-client opaque relay
+tests, server build/typecheck scripts and separate output directory. No engine
+imports, stored game records, public deployment or online UI work. P5 later supplies
+the online session implementation of P3's interface.
+
+## P4 — Complete (September 14, 2026)
+
+Implemented the standalone ephemeral relay, with no engine imports or online UI
+integration. Existing P3 changes remain in the working tree.
+
+- `server/rooms.ts`: room/game identifiers, random private seat tokens, creator
+  side selection, opposite-side join, reserved disconnected seats, token resume,
+  duplicate-live-seat refusal, socket-bound forwarding, presence, leave, idle and
+  absolute expiry. Room metadata never retains peer bodies. Expiry cannot assign
+  a new room to a connection that is already being closed.
+- `server/relay.ts`: HTTP health and WebSocket upgrade endpoints, exact browser
+  origin checks, bounded messages/output buffers/connections/rates, heartbeat and
+  unjoined socket timeout, explicit startup/shutdown. Unknown peer body types pass
+  through unchanged; incoming identity claims cannot redirect messages. Failed
+  sends report delivery failure; client acknowledgements remain necessary.
+- `server/config.ts` / `main.ts`: validated environment settings, package-derived
+  server version, shutdown signal handlers, no payload/token logging.
+- Pinned `ws` 8.21.3 and `@types/ws` 8.18.1; added server build/start/test scripts,
+  NodeNext server type checking/output, and CI server compilation. Browser Pages
+  deployment still uploads only `dist/`. Shared relay imports now use a `.js`
+  extension for emitted Node ESM compatibility.
+- [Relay operation](relay.md) documents local startup, all environment settings,
+  protocol limits, token/presence semantics, restart loss and deployment boundaries.
+
+### Verification
+
+Node `v24.19.0`; dependencies/lockfile installed with scripts disabled. The npm
+launcher initially selected Node 20 and reported the repository engine warning;
+installation was repeated successfully using the explicit Node 24 runtime and
+npm CLI. Direct repository check equivalents were used.
+
+| Check | Result |
+| --- | --- |
+| Full Vitest suite | **521 passed**, 19 files |
+| Final server regression run after adding expiry guard/test | **18 passed**, 2 files (522 total tests now present) |
+| Source/tests, Vite config and server TypeScript checks | Passed |
+| Tooling formatting | Passed |
+| Vite production build | Passed, 26 modules |
+| Node server build | Passed |
+| Compiled CLI smoke | Started on ephemeral loopback port; GET health returned 200/ok; child process cleaned up |
+
+Deterministic room tests cover both sides, reservation/resume, version pinning,
+cross-room isolation, opaque bodies, leave/expiry, capacity/code collisions and
+rate/config validation. Real WebSocket tests cover forwarding both directions,
+third-seat refusal, reconnect, origins/path/health, connection cap, malformed and
+binary/oversized messages, final envelope growth, buffer bound, heartbeat/unjoined
+timeouts, timer expiry, full/idempotent shutdown, and restart loss/port reuse.
+
+Initial validation caught a close-handler termination that suppressed ws's 1009
+oversize close code; fixed and verified. Short wall-clock expiry tests were flaky
+under full-suite CPU contention; injected clocks now control those deadlines
+while real sockets and interval callbacks exercise the transport. No unresolved
+test failures. Tests/build used permitted filesystem access for Vite's known
+configuration loader restriction. No public deployment or hosted CI execution.
+P4 changes no browser UI behavior, so P3's browser smoke was not repeated.
+
+### Next checkpoint — P5
+
+Implement the online `GameSession` using P2 records/envelopes and P3's interface:
+connection generations, seat/capability gating, complete-record synchronization,
+atomic replay/adoption, stale/duplicate/branch handling and correlated peer
+acknowledgements. Restore the detailed P5 scope before starting. P5 is not started;
+the debug UI continues to run locally.
