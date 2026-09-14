@@ -26,6 +26,7 @@ export function bindCommands(ui: UIElements, session: GameSession): () => void {
         ui.apply.disabled = pending || !view.capabilities.move
         ui.validate.disabled = !view.capabilities.validate
         ui.load.disabled = !view.capabilities.import
+        ui.notation.disabled = !view.capabilities.import
         ui.copy.disabled = !view.capabilities.export
         ui.autoApply.disabled = !view.capabilities.move
         ui.autoValidate.disabled = !view.capabilities.validate

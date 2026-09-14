@@ -1,5 +1,4 @@
-import { LocalGameSession } from '../session/LocalGameSession'
-import { bindCommands } from './commands'
+import { bindSessionControls } from './sessionControls'
 import { getElements } from './elements'
 
 const ui = getElements()
@@ -12,10 +11,8 @@ ui.closeModal.onclick = () => {
 ui.modal.onclick = (event) => {
     if (event.target === ui.modal) ui.modal.style.display = 'none'
 }
-const session = new LocalGameSession()
-const unbind = bindCommands(ui, session)
+const unbind = bindSessionControls(ui, import.meta.env.VITE_RELAY_URL)
 if (import.meta.hot) import.meta.hot.dispose(() => {
     unbind()
-    session.dispose()
 })
 import './styles.css'

@@ -49,8 +49,9 @@ scope to keep W2 focused; expand that scope in separately reviewed work. No
 lint command is declared. See the [maintenance instructions](.github/copilot-instructions.md)
 for validation details and the dated baseline.
 
-P4's ephemeral room relay is runnable separately; online UI/session integration
-comes in subsequent phases. See [relay setup and configuration](docs/relay.md)
+P6 adds online controls to the debug UI. Set `VITE_RELAY_URL` in `.env.local`
+(see `.env.example`), start the relay, and restart Vite. With no relay URL, the UI
+continues to support local play. See [relay setup and configuration](docs/relay.md)
 for endpoints, resource limits, reconnect behavior and restart limitations.
 
 ## Current rules and behavior
@@ -393,9 +394,13 @@ mutations. Export is available only for nonempty standard-opening games.
 idempotent cleanup function. Rebinding the same board removes the previous binding.
 The owner must also dispose a session when replacing it; UI cleanup alone does
 not own the session lifetime. Bootstrap creates the initial local session and
-cleans up both binding and session on Vite hot replacement. Rendering comes from
+cleans up both binding and session on Vite hot replacement. P6's session-controls
+owner handles online/local replacement and asks before replacing a nonempty game.
+Rendering comes from
 session updates, with generation/binding guards for stale board callbacks and
-asynchronous results. No online controls or transport are wired yet.
+asynchronous results. Create/join, copy room code, reconnect, leave and explicit
+local continuation are wired. Refresh recovery is not yet available; keep the
+tab open or Copy Game before refreshing. Browser storage is P7.
 
 P2 adds pure online record and message contracts under `src/online` and `shared`;
 see [protocol APIs and examples](docs/online-protocol.md) and
@@ -403,8 +408,8 @@ see [protocol APIs and examples](docs/online-protocol.md) and
 zero moves and independently replay with structured outcome checks. P4 provides
 the standalone relay; P5 adds `OnlineGameSession` with seat-gated commands,
 complete-record synchronization, correlated acknowledgements and explicit reconnect.
-See [the online session API](docs/online-session.md). Online UI and browser storage
-are still later phases. Shared transport contracts contain no
+See [the online session API](docs/online-session.md). Browser storage remains a
+later phase. Shared transport contracts contain no
 engine imports. The source type-check root is now the repository root to include
 `shared/`; Vite still builds the same browser entry and output. Client version
 metadata is injected from `package.json` by the Vite/Vitest configuration.

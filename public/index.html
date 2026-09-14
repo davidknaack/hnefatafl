@@ -6,6 +6,38 @@
 </head>
 <body>
     <h1>Hnefatafl Debug UI</h1>
+
+    <section class="session-panel" aria-label="Game session">
+        <div class="session-row">
+            <strong id="sessionMode">Local game</strong>
+            <span id="sessionSide">You control both sides</span>
+            <button id="newLocalBtn">New Local Game</button>
+        </div>
+        <div id="connectionStatus" role="status" aria-live="polite"></div>
+        <div id="sessionError" role="alert"></div>
+        <div id="sessionWarning"></div>
+        <div id="onlineSetup" class="session-row">
+            <label for="onlineSide">Play as</label>
+            <select id="onlineSide"><option value="attacker">Attackers</option><option value="defender">Defenders</option></select>
+            <button id="createRoomBtn">Create Room</button>
+            <label for="roomCodeInput">Room code</label>
+            <input id="roomCodeInput" maxlength="6" autocomplete="off" spellcheck="false" placeholder="ABCDEF">
+            <button id="joinRoomBtn">Join Room</button>
+        </div>
+        <div id="onlineActions" class="session-row" hidden>
+            <span>Room: <strong id="roomCodeDisplay"></strong></span>
+            <button id="copyRoomBtn">Copy Room Code</button>
+            <button id="reconnectBtn">Reconnect</button>
+            <button id="leaveRoomBtn">Leave Room</button>
+            <button id="continueLocalBtn">Continue Locally</button>
+        </div>
+        <small id="sessionHelp"></small>
+        <div id="sessionConfirmation" hidden>
+            <p id="sessionConfirmationText"></p>
+            <button id="confirmSessionBtn">Continue</button>
+            <button id="cancelSessionBtn">Cancel</button>
+        </div>
+    </section>
     
     <div class="controls-row">
         <button id="howToPlayBtn">How to Play</button>

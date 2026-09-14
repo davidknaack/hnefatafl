@@ -54,7 +54,8 @@ export class OnlineGameSession implements GameSession {
         const url = new URL(options.endpoint)
         if (!['ws:', 'wss:'].includes(url.protocol) || url.username || url.password || url.hash) throw new Error('Invalid relay endpoint')
         this.options = { socketFactory: browserSocket, messageId: () => crypto.randomUUID(), timeoutMs: 5000,
-            setTimer: setTimeout, clearTimer: clearTimeout, maxWireBytes: MAX_MESSAGE_BYTES, ...options,
+            setTimer: (callback, ms) => setTimeout(callback, ms), clearTimer: (timer) => clearTimeout(timer),
+            maxWireBytes: MAX_MESSAGE_BYTES, ...options,
             start: structuredClone(options.start) }
         if (!Number.isSafeInteger(this.options.timeoutMs) || this.options.timeoutMs < 1 ||
             !Number.isSafeInteger(this.options.maxWireBytes) || this.options.maxWireBytes < 1 ||

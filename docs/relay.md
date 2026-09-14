@@ -1,7 +1,7 @@
 # Lightweight online relay
 
 P4 supplies the standalone relay. P5 implements the [online session](online-session.md);
-the debug UI still uses local sessions until P6 wires the controls.
+P6 connects the debug UI's room controls to it.
 The server forwards opaque peer messages and owns only room/connection metadata.
 It does not import the game engine, validate moves, store records, or acknowledge
 that an opponent applied a move. See [the protocol](online-protocol.md).
@@ -28,6 +28,38 @@ and installed production dependencies when running it. `start:server` uses the
 compiled entry and reads the package version; rebuild after source changes.
 The browser build remains in `dist/`. CI builds both, but only uploads the browser
 artifact to Pages. No server hosting is configured.
+
+## Debug UI setup
+
+Copy `.env.example` to `.env.local`, or set `VITE_RELAY_URL` before running Vite:
+
+```powershell
+$env:VITE_RELAY_URL = 'ws://127.0.0.1:8787/relay'
+npm run dev
+```
+
+The URL is a public build-time setting, never a place for tokens. Restart Vite
+after changing it; production builds need the setting at build time. No URL (or
+an invalid URL) disables Create/Join while leaving local play available. HTTPS
+pages require a `wss://` endpoint. If Vite uses another port, include its exact
+origin in `RELAY_ORIGINS` before starting the relay.
+
+Open the UI in two tabs. Choose a side and Create Room in one, then enter the
+six-character code and Join Room in the other. Each browser controls its assigned
+side only after synchronization. Status distinguishes waiting, synchronization,
+turn, disconnection and room errors; board outcome remains separate. Load is
+disabled online. Copy Room Code copies only the code; Copy Game copies notation.
+
+Reconnect retries the current room/seat after a connection error. A relay restart
+loses rooms and displays an error while retaining the board. Leave Room explicitly
+closes online play for both players. Continue Locally replays the current game
+into a local session, disconnects this browser and enables control of both sides;
+subsequent local moves are never sent. New Local Game starts a fresh board.
+Replacement/continuation/leave actions ask for confirmation when appropriate.
+
+P6 does not save browser recovery data. Keep the tab open during play; Copy Game
+before refreshing if you want to retain the moves. Refresh/resume storage and UX
+are P7. Public hosting and the production UI redesign remain later work.
 
 ## Configuration
 

@@ -152,7 +152,11 @@ P5 adds `OnlineGameSession`; see `docs/online-session.md`. A successful local
 submission can still await peer acceptance. Never enable online moves based only
 on socket send, revision count or presence. Preserve complete-record replay,
 canonical prefix comparison, current-connection ack matching and retained local
-extensions after send loss. The debug UI still uses the local session until P6.
+extensions after send loss. P6's `src/ui/sessionControls.ts` owns local/online
+replacement, room controls and status. Keep board commands on `GameSession`.
+`VITE_RELAY_URL` is optional public build-time configuration; `.env.local` is ignored.
+Local continuation must prepare replay before disposing the online source. P7
+storage is not implemented; do not imply refresh automatically resumes a room.
 Native WebSocket integration tests require the supported Node 24 runtime; verify
 the executable when a shell or permission boundary changes PATH.
 

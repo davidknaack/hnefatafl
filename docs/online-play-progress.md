@@ -291,10 +291,68 @@ filesystem access for Vite's known configuration-loader restriction. No fresh
 dependency installation or hosted CI run. Browser UI behavior is unchanged; no
 browser UI smoke was repeated. No unresolved check failures.
 
-### Next checkpoint — P6
+### Handoff after P5 — P6 (historical)
 
 Wire create/join/side selection and online status into the existing debug UI using
 the session boundary. Keep board rendering transport-independent and preserve
 local mode when no relay is configured. Restore the detailed P6 package scope
 before implementation. Storage-envelope persistence/refresh UX remains P7;
 P5 supplies the detached recovery API but does not persist anything automatically.
+
+## P6 — Complete (September 14, 2026)
+
+Added the existing debug UI's online flow: chosen-side create, case-insensitive
+join, copy room code, assigned side, connection/acceptance/error/warning status,
+deliberate reconnect, leave, new local game and explicit local continuation.
+`bindSessionControls` owns replacement and cleanup; board commands remain on
+`GameSession`. Nonempty game replacement and leaving/continuing online games use
+inline confirmation with cancellation. Continuation prepares a local replay before
+disposing the online source. Online load input follows import capability.
+
+Added optional `VITE_RELAY_URL`, `.env.example`, ignored local overrides and setup
+documentation. Missing/invalid configuration preserves local play. Tokens never
+enter the controls or clipboard. The UI explicitly states that refresh recovery
+is not yet available; no storage or public deployment was added.
+
+Browser testing found P5's default timer functions were invoked with an options
+object receiver, which browsers reject. Defaults now call timers through wrapper
+functions; actual browser creation/join/synchronization verifies the fix.
+
+### Verification
+
+| Check | Result |
+| --- | --- |
+| Full Vitest suite, explicit Node 24 | **534 passed**, 20 files |
+| Source/tests, Vite config, server TypeScript/build | Passed |
+| Tooling formatting | Passed |
+| Browser production build | Passed, 34 modules |
+| Browser UI checks | Passed, details below |
+
+Two actual browser tabs against the relay verified both creator-side choices,
+opposite-side join, readiness/turn gating, three moves including a capture,
+matching history/counters, 121-square board, selection/highlight toggling and
+Auto Apply precedence with both toggles checked. Reserved disconnected seats
+reject a fresh join. Leave closes online play and retains the board. Continue
+Locally cancellation preserves the online session; confirmation retains moves,
+restores local import/control and leaves the peer waiting. Copy Room Code was
+read back as the six-character code only; Copy Game reports success.
+
+Relay shutdown disables moves while leaving Copy Game available. Restart followed
+by Reconnect reports room_not_found without losing history. Local-only configuration
+disables online setup, keeps local controls available, and supports validated
+import, invalid-import preservation, terminal repetition display/disabled moves,
+new-game replacement and modal open/close. Screenshot inspection found the new
+controls readable within the existing debug layout. No peer console errors observed.
+
+The browser workflow was interrupted by an automatic-review model usage limit;
+verification resumed after the user's continuation request. All checks above
+completed afterward. Tests/build used the established Vite filesystem permission
+retry. No dependency changes or hosted CI run. Permanent browser automation remains
+P8; these were direct browser acceptance checks.
+
+### Next checkpoint — P7
+
+Add bounded versioned browser recovery storage, validated restore and refresh/resume
+UX, save-failure reporting and preserved incompatible records. Use P5's recovery
+snapshot and P6's session owner without exposing tokens. Restore the detailed P7
+scope before starting. No P7 work has started.

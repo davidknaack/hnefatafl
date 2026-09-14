@@ -193,3 +193,20 @@ wrong acks, branches, timeouts and disposal, plus two sessions against P4's real
 relay. Cover refresh-style resume, longer-prefix recovery, immediate replies,
 terminal state, detached access, capability checks and size rejection. Run the
 full repository checks, document the public session API and stop before P6.
+
+### P6 — Debug UI online controls
+
+Restore the package from the agreed UI/lifecycle decisions. Add configured relay
+URL, create with chosen side, join by code, copy code, connection/seat/pending/error
+status, deliberate reconnect and leave, and explicit local continuation/new game.
+Keep session replacement ownership in the UI bootstrap/controller and board commands
+on `GameSession`. Confirm replacement of a nonempty game; prepare a local candidate
+before disposing its online source. Clear stale selection/results on replacement.
+
+Absent/invalid relay configuration preserves local play and disables room creation
+and joining. Online load/reset remain disabled by capabilities. Keep tokens out of
+DOM, logs, URLs and clipboard. Warn that refresh recovery is not yet available.
+No storage (P7), public hosting or production UI redesign. Verify local regression
+paths and two browser clients against the relay, including side/turn gating,
+remote moves/captures, room refusal, reconnect/leave and local continuation. Run
+repository checks and record results before stopping at P7.

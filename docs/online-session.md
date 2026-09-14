@@ -2,7 +2,8 @@
 
 `src/session/OnlineGameSession.ts` implements `GameSession` using the P2 record
 codec and P4 relay. It is browser code with no DOM or storage dependency. The
-debug UI still creates `LocalGameSession`; P6 will add online controls.
+debug UI starts with `LocalGameSession`; P6's `bindSessionControls` owns replacement
+when the user creates/joins a room or continues locally.
 
 ```ts
 const session = new OnlineGameSession({
@@ -47,8 +48,8 @@ can preserve it instead of overwriting it with an empty game.
   diagnosis/export. Invalid records never replace the live game.
 - `saveGame()` exports portable game text for nonempty games, including after
   disconnect/leave/disposal. Zero-move records are available through `getRecovery()`.
-  Import/reset are always rejected online. Explicit local continuation remains
-  later UI/recovery work; it must dispose the online owner before local play.
+  Import/reset are always rejected online. P6's explicit local continuation
+  prepares a local replay, then disposes the online owner before local play.
 
 ## Synchronization and commands
 
@@ -88,7 +89,7 @@ for tests. Production defaults use native WebSocket, UUIDs and normal timers.
 `src/online/socket.ts` removes every listener when detached.
 
 The implementation is tested with controlled message ordering/loss and two native
-WebSocket sessions against the real relay. Browser storage, reconnect UI, browser
-refresh automation and production hosting remain P6–P8 work. See
+WebSocket sessions against the real relay. P6 adds controls and deliberate reconnect;
+browser storage, refresh automation and production hosting remain later work. See
 [relay setup](relay.md), [wire protocol](online-protocol.md), and
 [progress](online-play-progress.md).
