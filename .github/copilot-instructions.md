@@ -229,8 +229,12 @@ migrated. No framework rewrite or Rust-rule port is implied by the work packages
 
 Use the review's acceptance criteria and reproduction fixtures for selected
 fixes. Parser tests cover strict syntax, indexed failures, and serialization.
-There is no dedicated browser test suite. The large fort test count does not
-establish the deferred public contracts.
+P8 provides a browser-invoked acceptance runner at `/hnefatafl/acceptance.html`
+on the Vite development server. Follow [the acceptance guide](../docs/online-acceptance.md)
+for the local relay setup and manual release gate. The runner uses actual UI
+bindings with isolated storage, is excluded from `dist/`, and does not run in
+Vitest or hosted CI. The large fort test count does not establish the deferred
+public contracts.
 
 ## Deployment
 
@@ -240,6 +244,11 @@ tests, and browser/server builds on pushes to
 The deploy job requires `github.ref == 'refs/heads/main'`; pull requests validate
 but do not deploy. There is no `workflow_dispatch` trigger. The application base
 path is `/hnefatafl/`, configured in `vite.config.ts`.
+
+The browser build receives optional public Actions variable `VITE_RELAY_URL`.
+See [relay deployment](../docs/relay-deployment.md) for the separate single-process
+relay artifact, configuration, release checks and rollback limitations. P8 did
+not provision a public host or set a repository variable.
 
 The package is a private application, with no library entry point or supported
 exports/types entry. Node/RL packaging is future scope. Do not

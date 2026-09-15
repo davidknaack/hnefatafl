@@ -417,10 +417,55 @@ Storage fault paths were verified with injected storage tests, not browser quota
 exhaustion. Test tabs and owned relay/Vite processes were cleaned up. No dependencies,
 public deployment or hosted CI changed. No unresolved check failures.
 
-### Next checkpoint — P8
+### Handoff after P7 — P8 (historical)
 
 Restore the final integration/hardening package from the plan: repeatable browser
 acceptance coverage, deployment/run guidance and end-to-end failure-path review.
 Keep production UI redesign and additional game-server features outside this work.
 Public hosting still requires its separate concrete deployment decision. P8 has
 not started.
+
+## P8 — Complete (September 15, 2026)
+
+Added a repeatable development browser acceptance entry using the actual debug
+markup, command bindings, session owner, native WebSockets and local relay.
+Scoped element lookup and optional session-owner dependencies let fixtures use
+independent memory storage and controlled failures while production defaults
+remain unchanged. The runner is invoked manually in a browser and is not part
+of Vitest or hosted CI. It adds no dependency and is absent from `dist/`.
+
+Final contract review corrected a concrete mismatch: UI/session relay addresses
+could contain queries that recovery storage rejected. All three now share bounded
+endpoint validation; HTTPS pages additionally require WSS. Existing tests plus
+the new endpoint test cover the affected contracts.
+
+Added the acceptance matrix/manual release gate and single-process relay
+deployment/rollback guide. The Pages build accepts optional public Actions
+variable `VITE_RELAY_URL`. No repository variable, public host or deployment was
+created. Hosting and cross-network validation remain a separate deployment step.
+
+### Verification
+
+- Explicit Node 24: **548 tests passed across 22 files**.
+- Source/tests, Vite configuration and server TypeScript checks passed.
+- Tooling formatting and both builds passed; browser build transformed 36 modules.
+- Browser runner: **9 passed; 0 failed**, with no browser error logs observed.
+  Cases cover local selection/auto-apply/imports, two-player capture play, saved
+  owner remounts, quota failure, duplicate seats, changed endpoints, incompatible
+  save replacement, local continuation and lost acceptance timeout.
+- Inspected production output: only app HTML and bundled JS/CSS, no test entry.
+
+Checks used installed dependencies and the established Vite filesystem-access
+retry. P6/P7 entries retain the actual two-origin refresh, relay-restart and
+private-backup evidence; owner remount tests do not claim full browser navigation
+or process-crash coverage. Hosted CI and public-network checks were not run.
+
+### Handoff after P8
+
+P1–P8 are complete for the trusted lightweight online-play scope. Production UI
+development can build on `GameSession`, capabilities, detached views, structured
+outcomes and the recovery contracts. Keep rules, synchronization and persistence
+outside board rendering. The final review found no further major architectural
+blocker within this scope. One-origin storage, ephemeral rooms, local-continuation
+save limits and future server requirements remain explicit in the
+[acceptance handoff](online-acceptance.md) and [deployment guide](relay-deployment.md).

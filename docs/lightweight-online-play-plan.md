@@ -232,3 +232,21 @@ faults, overwrite protection and inactive review. Browser checks cover one/both
 players refreshing, duplicate live seats, room restart loss and local continuation.
 Use separate browser profiles/origins for the two players: v1 intentionally stores
 one recent online identity per origin. Stop before P8 hosting/final hardening.
+
+### P8 — Acceptance and operational handoff
+
+Restored September 15 from the final integration boundary. Add repeatable browser
+acceptance using actual UI bindings, native WebSockets and a local relay, with
+isolated storage and controlled failure injection. Keep the runner out of the
+production bundle. Cover local fallback/input behavior, two-player capture play,
+saved-owner recovery, storage faults, explicit replacement, duplicate seats,
+endpoint changes, local continuation and bounded acceptance timeout.
+
+Review transport/session/storage contracts and correct concrete integration gaps
+without broadening into server adjudication, accounts, databases or production UI.
+Document the automated/manual acceptance matrix, single-process deployment and
+rollback procedure, configured public relay URL, restart limitations and deferred
+work. Wire the optional public URL into the existing Pages build. Verify both
+builds, all repository checks and browser acceptance. Public host selection,
+provisioning, external publication and cross-network smoke remain a separate
+deployment decision; no paid/public infrastructure is implied by P8.

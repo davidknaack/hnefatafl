@@ -2,6 +2,7 @@ import { failure, object, readJson, Result, text } from '../../shared/json'
 import { decodeClientMessage, isClientVersion } from '../../shared/relayProtocol'
 import type { RoomCredentials } from '../session/OnlineGameSession'
 import { compareRecords, decodeGameRecord, OnlineGameRecordV1 } from './record'
+import { validRelayEndpoint } from './endpoint'
 
 export const RECOVERY_KEY = 'hnefatafl.online.recent.v1'
 export const MAX_RECOVERY_BYTES = 128 * 1024
@@ -26,10 +27,7 @@ export function decodeRecovery(input: unknown): Result<RecoveryEnvelope> {
     if (!object(v) || v.storageVersion !== 1) return failure('Unsupported recovery storage version')
     if (!text(v.endpoint, 2048) || !isClientVersion(v.clientVersion) || !Number.isSafeInteger(v.savedAt) ||
         typeof v.savedAt !== 'number' || v.savedAt < 0 || typeof v.resume !== 'boolean' || !object(v.credentials)) return failure('Invalid recovery metadata')
-    try {
-        const url = new URL(v.endpoint)
-        if (!['ws:', 'wss:'].includes(url.protocol) || url.username || url.password || url.hash || url.search) return failure('Invalid saved relay endpoint')
-    } catch { return failure('Invalid saved relay endpoint') }
+    if (!validRelayEndpoint(v.endpoint)) return failure('Invalid saved relay endpoint')
     const c = v.credentials
     const control = decodeClientMessage({ protocolVersion: 1, messageId: 'restore', clientVersion: v.clientVersion,
         type: 'resume', roomCode: c.roomCode, gameId: c.gameId, token: c.token })

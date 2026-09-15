@@ -1,10 +1,9 @@
-function element<T extends HTMLElement>(id: string, type: new () => T): T {
-    const found = document.getElementById(id)
-    if (!(found instanceof type)) throw new Error(`Missing UI element: ${id}`)
-    return found
-}
-
-export function getElements() {
+export function getElements(root: ParentNode = document) {
+    function element<T extends HTMLElement>(id: string, type: new () => T): T {
+        const found = root.querySelector(`#${id}`)
+        if (!(found instanceof type)) throw new Error(`Missing UI element: ${id}`)
+        return found
+    }
     return {
         board: element('board', HTMLDivElement),
         from: element('fromInput', HTMLInputElement),

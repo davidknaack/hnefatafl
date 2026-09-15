@@ -2,6 +2,7 @@ import { MAX_MESSAGE_BYTES, readJson } from '../../shared/json'
 import { ClientMessage, decodeClientMessage, decodeRelayMessage, RelayMessage, Seat, versionWarning } from '../../shared/relayProtocol'
 import { HnefataflEngine } from '../HnefataflEngine'
 import { CLIENT_VERSION } from '../online/clientVersion'
+import { validRelayEndpoint } from '../online/endpoint'
 import { acknowledgesRecord, decodePeerMessage, GameRecordMessage } from '../online/messages'
 import { compareRecords, createGameRecord, decodeGameRecord, OnlineGameRecordV1 } from '../online/record'
 import { browserSocket, SessionSocket } from '../online/socket'
@@ -53,8 +54,7 @@ export class OnlineGameSession implements GameSession {
     private readonly options: Required<Omit<OnlineSessionOptions, 'start'>> & { start: OnlineStart }
 
     constructor(options: OnlineSessionOptions) {
-        const url = new URL(options.endpoint)
-        if (!['ws:', 'wss:'].includes(url.protocol) || url.username || url.password || url.hash) throw new Error('Invalid relay endpoint')
+        if (!validRelayEndpoint(options.endpoint)) throw new Error('Invalid relay endpoint')
         this.options = { socketFactory: browserSocket, messageId: () => crypto.randomUUID(), timeoutMs: 5000,
             setTimer: (callback, ms) => setTimeout(callback, ms), clearTimer: (timer) => clearTimeout(timer),
             maxWireBytes: MAX_MESSAGE_BYTES, autoConnect: true, ...options,

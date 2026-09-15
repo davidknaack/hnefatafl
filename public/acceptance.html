@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Online play acceptance</title></head>
+<body>
+    <h1>Online play browser acceptance</h1>
+    <p>Development-only tests use the actual UI and isolated in-memory storage. Start a local relay first.</p>
+    <label for="relay">Local relay URL</label>
+    <input id="relay" size="42" value="ws://127.0.0.1:8787/relay">
+    <button id="run">Run acceptance checks</button>
+    <p id="summary" role="status">Not run</p>
+    <ol id="results"></ol>
+    <div id="fixtures"></div>
+    <script type="module" src="./acceptance.js"></script>
+</body>
+</html>

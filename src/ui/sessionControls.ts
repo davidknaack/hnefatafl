@@ -1,23 +1,27 @@
 import { GameSession, SessionView } from '../session/GameSession'
 import { LocalGameSession } from '../session/LocalGameSession'
-import { OnlineGameSession, OnlineStart } from '../session/OnlineGameSession'
+import { OnlineGameSession, OnlineStart, OnlineSessionOptions } from '../session/OnlineGameSession'
 import { bindCommands } from './commands'
 import { UIElements } from './elements'
 import { RecoveryEnvelope, RecoveryStore } from '../online/recovery'
 import { CLIENT_VERSION } from '../online/clientVersion'
 import { versionWarning } from '../../shared/relayProtocol'
 import { compareRecords } from '../online/record'
+import { validRelayEndpoint } from '../online/endpoint'
+
+export interface SessionControlDependencies {
+    recoveryStore?: RecoveryStore
+    createOnline?: (options: OnlineSessionOptions) => OnlineGameSession
+}
 
 /** Owns session replacement; board/selection commands only see GameSession. */
-export function bindSessionControls(ui: UIElements, configuredEndpoint?: string): () => void {
+export function bindSessionControls(ui: UIElements, configuredEndpoint?: string, dependencies: SessionControlDependencies = {}): () => void {
     let endpoint = configuredEndpoint?.trim() ?? ''
     let configurationError = ''
     if (endpoint) {
-        try {
-            const url = new URL(endpoint)
-            if (!['ws:', 'wss:'].includes(url.protocol) || url.username || url.password || url.hash ||
-                (location.protocol === 'https:' && url.protocol !== 'wss:')) throw new Error()
-        } catch { endpoint = ''; configurationError = 'Online play is unavailable: invalid or insecure relay address.' }
+        if (!validRelayEndpoint(endpoint, location.protocol)) {
+            endpoint = ''; configurationError = 'Online play is unavailable: invalid or insecure relay address.'
+        }
     }
     let session: GameSession = new LocalGameSession()
     let active = true
@@ -25,7 +29,8 @@ export function bindSessionControls(ui: UIElements, configuredEndpoint?: string)
     let confirmation: (() => void) | undefined
     let unbind = () => {}
     let unsubscribe = () => {}
-    const recoveryStore = new RecoveryStore()
+    const recoveryStore = dependencies.recoveryStore ?? new RecoveryStore()
+    const createOnline = dependencies.createOnline ?? (options => new OnlineGameSession(options))
     const loaded = recoveryStore.load()
     let saved: RecoveryEnvelope | null = loaded.kind === 'saved' ? loaded.value : null
     let storageStatus = loaded.kind === 'invalid' ? `Saved recovery could not be opened: ${loaded.error}. It has been preserved; download a private backup before replacing it.`
@@ -126,7 +131,7 @@ export function bindSessionControls(ui: UIElements, configuredEndpoint?: string)
         if (!endpoint || session.getView().mode !== 'local') return
         ask('Start a new online game? This replaces the current board and the browser’s saved recovery slot when the room is assigned. Copy Game or download a private recovery backup first if needed.',
             () => {
-                const next = new OnlineGameSession({ endpoint, start })
+                const next = createOnline({ endpoint, start })
                 recoveryStore.permitReplacement(); savingEnabled = true; lastSavedSignature = ''; savedWarning = null
                 replace(next)
             }, session.getView().state.moveHistory.length > 0 || recoveryStore.hasSaved())
@@ -176,7 +181,7 @@ export function bindSessionControls(ui: UIElements, configuredEndpoint?: string)
         if (!saved) return
         ask('Review the saved online record? This replaces the current local board without reconnecting.', () => {
             if (!saved) return
-            const next = new OnlineGameSession({ endpoint: saved.endpoint, start: { type: 'resume', credentials: saved.credentials, record: saved.record }, autoConnect: false })
+            const next = createOnline({ endpoint: saved.endpoint, start: { type: 'resume', credentials: saved.credentials, record: saved.record }, autoConnect: false })
             savingEnabled = false; replace(next)
         }, session.getView().state.moveHistory.length > 0)
     }
@@ -197,7 +202,7 @@ export function bindSessionControls(ui: UIElements, configuredEndpoint?: string)
         const permitted = !!endpoint && new URL(endpoint).href === new URL(saved.endpoint).href
         try {
             session.dispose()
-            session = new OnlineGameSession({ endpoint: saved.endpoint,
+            session = createOnline({ endpoint: saved.endpoint,
                 start: { type: 'resume', credentials: saved.credentials, record: saved.record }, autoConnect: permitted })
             savingEnabled = permitted
             storageStatus = permitted ? 'Saved game recovered in this browser. See the connection status above before playing.'
