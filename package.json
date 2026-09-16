@@ -18,6 +18,7 @@
     "format": "prettier --write package.json package-lock.json \"tsconfig*.json\" vite.config.ts .prettierrc \".github/workflows/*.yml\"",
     "format:check": "prettier --check package.json package-lock.json \"tsconfig*.json\" vite.config.ts .prettierrc \".github/workflows/*.yml\"",
     "dev": "vite",
+    "dev:online": "node scripts/dev-online.mjs",
     "build": "vite build",
     "preview": "vite preview"
   },

@@ -12,9 +12,12 @@ Use Node 24.x. From the repository root:
 
 ```sh
 npm ci
-npm run build:server
-npm run start:server
+npm run dev:online
 ```
+
+This builds and watches the relay, restarts it after server changes, and starts
+the Vite client in the same terminal. Press Ctrl+C to stop both. To run only the
+relay, use `npm run build:server` followed by `npm run start:server`.
 
 The default endpoints are `ws://127.0.0.1:8787/relay` and
 `http://127.0.0.1:8787/health`. GET health returns `{"status":"ok"}` without
@@ -31,7 +34,8 @@ artifact to Pages. No server hosting is configured.
 
 ## Debug UI setup
 
-Copy `.env.example` to `.env.local`, or set `VITE_RELAY_URL` before running Vite:
+Copy `.env.example` to `.env.local`, or set `VITE_RELAY_URL` before running Vite.
+The file belongs in the repository root beside `package.json`:
 
 ```powershell
 $env:VITE_RELAY_URL = 'ws://127.0.0.1:8787/relay'

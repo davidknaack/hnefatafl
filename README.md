@@ -34,6 +34,7 @@ Vite opens the browser and normally serves the app at
 | `npm run typecheck` | Check source/tests, Vite/Vitest configuration, and server |
 | `npm run build:server` | Compile the Node relay into ignored `dist-server/` |
 | `npm run start:server` | Start the compiled relay on loopback port 8787 |
+| `npm run dev:online` | Build/watch the relay and start it with the Vite client |
 | `npm run test:server` | Run room and real WebSocket tests |
 | `npm run format` | Format tooling/configuration files with pinned Prettier |
 | `npm run format:check` | Check tooling/configuration formatting without writing |
