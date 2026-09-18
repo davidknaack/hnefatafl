@@ -26,12 +26,12 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@types/node": "24.2.0",
+    "@types/node": "24.13.5",
     "@types/ws": "8.18.1",
-    "prettier": "3.9.6",
-    "typescript": "^5.8.3",
-    "vite": "^7.0.6",
-    "vitest": "^3.2.4"
+    "prettier": "3.9.7",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
   },
   "dependencies": {
     "ws": "8.21.3"
