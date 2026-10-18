@@ -2,8 +2,9 @@
 
 The debug UI saves the most recent online game in `localStorage` under
 `hnefatafl.online.recent.v1`. There is one slot per browser origin, not a game
-library. Local games and moves made after Continue Locally are not autosaved;
-use Copy Game to retain those moves.
+library. In this debug harness, local games and moves made after Continue Locally
+are not autosaved; use Copy Game to retain those moves. The production local
+client has its own [separate autosave slot](production-client.md#local-autosave).
 
 The version-1 envelope contains the relay endpoint, room/game IDs, seat and private
 reconnect token, client version, save time, complete canonical record, automatic

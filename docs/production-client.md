@@ -15,7 +15,8 @@ integrated into the production client.
 - A responsive 11×11 board, fixed orientation, file/rank labels, dark attackers,
   ivory defenders and a crowned king. Select a current-side piece, then a legal
   destination to commit. Reselect, select the same piece again, use Clear
-  selection or press Escape to cancel. Last-move squares remain marked.
+  selection or press Escape to cancel. Recent moves briefly show an origin ghost
+  and directional arrow.
 - Legal destinations come from `GameSession`; repeated positions are advisory
   and remain playable. Allowed repeats show `↻`; a repetition loss shows `↻!`.
   Labels describe captures and repetition consequences without relying on color.
@@ -25,6 +26,10 @@ integrated into the production client.
 - Turn, objectives, remaining pieces, captured counts, paired move history and
   readable outcome reasons. Live feedback announces selection, played moves,
   captures and results. A terminal result stops board play and retains export.
+- Ordered comments for the selected move, with author names/Anonymous, colored
+  mentions, truncation badges and a compact scrollable list above the entry field.
+  Square and move-reference buttons preview an independent board overlay on
+  hover/focus/tap, without changing the game. Text and JSON saves retain comments.
 - Native modal dialogs for rules help, import, export and replacement. Help
   opens at its heading. Replacement defaults to keeping the current game, and
   native Escape cancels without changing it.
@@ -39,12 +44,12 @@ integrated into the production client.
   use, and failures leave custom loading available with retry on reopening.
 - Save / copy shows canonical portable notation. Copy uses the clipboard and
   offers a selectable-text fallback on failure; Download creates
-  `hnefatafl-game.txt`. Empty games cannot be exported. Local games and imported
-  games are **not autosaved**; this is stated beside the game record and in help.
+  `hnefatafl-game.txt`. Empty games cannot be exported. Current local and imported
+  games, including variants and the review position, are saved automatically.
 
 No engine rules, protocol or recovery-storage schema changed. Local review and
 variant analysis are now implemented; see [game review and the JSON format](game-review.md).
-Resignation controls, AI, rematches and local autosave remain deferred. Existing
+Resignation controls, AI and rematches remain deferred. Existing
 imported resignation records still replay and display their results.
 
 ## Ownership and developer entries
@@ -53,7 +58,9 @@ imported resignation records still replay and display their results.
 | --- | --- |
 | `src/client/main.ts` | Production bootstrap and hot-reload cleanup |
 | `src/client/client.ts` | Local client binding, dialogs and validated replacement |
+| `src/client/localGameStorage.ts` | Guarded local autosave and replay-validated restoration |
 | `src/client/board.ts` | Persistent square rendering, accessible labels, roving focus and keyboard input |
+| `src/moveComments.ts`, `src/client/comments.ts`, `src/client/boardReferences.ts` | Comment syntax, display/entry and noninteractive board-reference overlays |
 | `src/client/presentation.ts` | Outcome wording and canonical display history |
 | `src/client/review.ts`, `src/session/LocalReview.ts` | Move navigation, variants, descriptions and replay-validated JSON studies |
 | `src/client/gameLibrary.ts`, `src/client/data/` | On-demand, indexed Copenhagen test corpus and provenance |
@@ -73,6 +80,38 @@ Vite builds only the default entry. The harness and both browser runners are
 development-only HTML entries and must remain absent from `dist/`. No framework,
 browser-test package, font service or other dependency was added.
 
+## Local autosave
+
+The production client writes one `localStorage` slot per browser origin:
+`hnefatafl.local-game.v1`. It contains the existing version-1 JSON study format,
+even for an ordinary game or an empty opening. This retains the complete main
+line, all variant suffixes/descriptions, tags and selected `{ line, ply }` view.
+Ordinary Save / copy exports continue using portable notation.
+
+Committed moves, variant creation/description edits, review navigation and
+confirmed replacements save synchronously through the active session's
+subscription. Selection and unconfirmed dialog drafts do not change the copy.
+New game saves the empty opening so the previous record cannot reappear on
+refresh. No unload event or prompt is needed. Replacement unsubscribes the old
+session before disposal, preventing stale writes.
+
+Startup replay-validates every line with the existing 2 MiB study bounds before
+binding the restored session. An unreadable or invalid slot leaves a fresh board
+and an explanatory status; an invalid copy remains untouched until the player
+changes or replaces the game. Failed writes preserve the previous storage value
+and show Save / copy guidance; a later successful write clears that status.
+The online recovery slot is never read or replaced.
+
+Initial and imported positions snap into place without move slides, captures,
+ghosts, arrows or win messages. The local session exposes the generation of its
+latest load/reset so even an import extending the current record by one move
+is distinguished from playing that move. Ordinary review/play still animates,
+including returning to a winning move after navigating away.
+
+Storage is local to this browser/profile and origin, including the port. It is
+one current game, not a permanent library: starting/loading another game replaces
+it, and clearing site data removes it. Save / copy keeps an independent backup.
+
 ## Acceptance gate
 
 Run the normal repository test, type-check, tooling-format, browser build and
@@ -80,7 +119,7 @@ relay build commands. With `npm run dev` running, open:
 
 `http://localhost:5173/hnefatafl/client-acceptance.html`
 
-Choose **Run client checks**. Expected: **33 passed; 0 failed**. The runner uses
+Choose **Run client checks**. Expected: **43 passed; 0 failed**. The runner uses
 actual production markup, the real client binding and disposable local sessions.
 It covers opening state, side gating, selection/cancellation, keyboard navigation,
 focus retention, moves/capture/export, atomic invalid import, cancelled/confirmed
@@ -97,6 +136,15 @@ late responses, disposal, fetch failures and retry without blocking custom impor
 Review checks cover complete-history navigation, move-list jumps, sibling
 variants, described continuation choices, JSON restoration, file/drop loading,
 oversized inputs and file-read races.
+Autosave checks use injected in-memory storage and remount the actual client,
+covering full game/variant retention, selected branch/ply, replacement/cancellation,
+storage failures, corrupt snapshots and static loaded/restored winning positions.
+Iframe layout checks and theme previews disable persistence so they cannot read
+or replace a player's actual saved game.
+Comment checks cover ordered authors/anonymous text, mentions and contrast,
+500-character Unicode entry, truncation persistence, safe text rendering,
+square/arrow previews and cleanup, branch ownership and JSON/autosave round trips.
+Responsive checks include long names and unbroken comments at every width.
 Board feedback checks cover side/destination-only hover eligibility, contrasting
 piece-sized rings and muted red selection, translucent origin pieces, 420 ms slides,
 growing arrows with fixed heads, cancellation during rapid navigation/selection,
@@ -127,6 +175,37 @@ Resignation has no winning movement, so its message uses the board center.
 Reduced motion shows a static message. Browser checks cover both winners,
 intermediate growth/centering, cancellation and both escape corners at 320, 390,
 768 and 1200 CSS pixels.
+The permanent result explanation sits beneath Game finished on the right of the
+60-pixel turn bar. It can use two compact lines on narrow layouts, with the full
+reason also retained in live feedback. The bar height and board position stay
+unchanged between play and game end; responsive win checks verify both directions
+across the final move.
+
+### October 18, 2026 move-comment check
+
+Using Node `v24.19.0` and installed dependencies, **595 Vitest tests across 27
+files** passed, including 14 notation/engine/review comment checks. Source/tests,
+Vite configuration and relay TypeScript checks, tooling formatting and browser/
+relay builds passed. The production browser runner passed **43 checks; 0 failed**.
+All five comment checks passed, along with extended long-comment responsive
+checks and light/dark mention contrast. Both theme previews were visually checked
+with authored comments, mentions and references. The built app restored the
+existing local game at its original ply with the new comment panel and no move/
+win animation or observed browser errors. No engine rules or online message/
+recovery schemas changed; no dependency install, hosted CI or deployment occurred.
+
+### October 18, 2026 local autosave check
+
+Node `v24.19.0` with the installed dependencies passed **581 Vitest tests across
+26 files**, source/tests, Vite configuration and relay TypeScript checks, tooling
+formatting and browser/relay builds. The production browser runner passed
+**38 checks; 0 failed**, including all five autosave/static-load checks. No
+dependency installation, hosted CI or public deployment was performed.
+The built preview retained ply 2 of a three-move record through a real browser
+reload, with matching current-move selection, complete export and no transient
+board effects. Returning to the original ply 3 and opening a new page restored
+that position too. The preview's original record/view was retained, with no
+observed browser warning/error logs.
 
 ### October 18, 2026 board refinement check
 

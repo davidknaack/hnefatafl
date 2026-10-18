@@ -31,7 +31,9 @@ The default entry is the production client's **local two-player game**. Select a
 piece and a highlighted destination to move. It supports keyboard navigation,
 responsive layouts, turn/result explanations, history, captures, rules help and
 validated import. **Save / copy** opens canonical notation with clipboard and
-text-file download options. Local games are not autosaved; save before refreshing.
+text-file download options. The current game, variants and review position are
+saved automatically in this browser and restored on return. Save / copy keeps a
+separate record before starting or loading another game.
 **Load game** also offers the 1,752-game test corpus by index. Selecting an entry
 fills the editable notation for review; only **Load game** applies it.
 Replacing a nonempty game requires confirmation. Local review controls step
@@ -42,7 +44,10 @@ move, while cancelling leaves the game unchanged. The **Variants** tab lists ava
 at forks. Studies with variants save as JSON; ordinary games retain portable text.
 The load dialog also accepts file selection and drag-and-drop. See
 [game review and variant format](docs/game-review.md). Resignation controls,
-AI, local autosave and production online controls remain deferred.
+AI and production online controls remain deferred.
+Per-move comments appear below the move list. Authors use `{[Alice]:text}`;
+anonymous comments use `{text}`. Mentions such as `[Bob]` are colored, and
+references such as `<D3>` and `<D1-D4>` preview on the board without playing.
 
 The existing local/online development harness is preserved at
 `http://localhost:5173/hnefatafl/debug.html`. Browser checks are available at
@@ -284,7 +289,9 @@ The portable grammar is:
 game        = { tag }, move-list ;
 tag         = "[", tag-name, ":", tag-value, "]" ;
 move-list   = move, { whitespace, move }, [ whitespace, resignation ] ;
-move        = square, "-", square, [ captures ], [ terminal ] ;
+move        = square, "-", square, [ captures ], [ terminal ], { comment } ;
+comment     = "{", [ author-prefix ], text, "}" ;
+author-prefix = "[", name, "]:" ;
 captures    = "x", square, { "/", square } ;
 terminal    = "++" | "--" ;
 resignation = "---" ;
@@ -333,6 +340,27 @@ is a separate final ` ---`, without marking the preceding move as a win or loss.
 There is no trailing whitespace or newline. Loading and saving canonical text is
 stable, and replay restores the same engine state. Empty games cannot be exported;
 Copy Game is disabled until the first move.
+
+A move may have multiple ordered comments, for example:
+
+```text
+d11-d8 {[Alice]:A standard opening} {[Bob]:Consider <D11-D9>, [Alice]!} f8-e8 {should have played D1:D4}
+```
+
+Only a leading `[name]:` identifies an author; a plain `Alice:` or a colon inside
+prose remains anonymous. Names are trimmed and limited to 80 characters, excluding
+brackets, braces, backslashes and line breaks. Use `\{`, `\}` and `\\` for literal
+braces/backslashes. An anonymous comment whose text starts with `[name]:` is saved
+with an escaped initial bracket (`{\[Alice]:literal text}`) to retain anonymity.
+Comments attach to board moves, not to the separate resignation entry.
+
+Comment bodies are limited to 500 Unicode characters, excluding the author.
+Long imported comments are shortened without rejecting an otherwise valid game.
+The reserved suffix `… (comment truncated)` fits within that limit and preserves
+the UI's **Truncated** badge through export/reload. The UI colors bracketed names
+as mentions and previews valid square/orthogonal move references on hover, focus
+or tap; unrecognized references stay ordinary text. These annotations do not
+change engine history, repetition, legal moves or results.
 
 `parseGame` in [src/gameFormat.ts](src/gameFormat.ts) consumes syntax and checks
 square bounds; use `engine.loadGame` for full semantic validation. `serializeGame`

@@ -1,6 +1,7 @@
 import { HnefataflEngine } from '../HnefataflEngine'
-import { GameTag, parseGame, serializeGame } from '../gameFormat'
-import { parseMove } from '../parser'
+import { GameTag, parseGame, parseStudyMove, serializeGame, serializeRecordedMove } from '../gameFormat'
+import { serializeMove } from '../parser'
+import { MoveComment, normalizeComment, serializeComments } from '../moveComments'
 import { GameStatus } from '../types'
 
 export const MAX_STUDY_BYTES = 2 * 1024 * 1024
@@ -17,9 +18,16 @@ export interface LocalReviewView {
     status: GameStatus
     lines: ReviewLine[]
     next: ReviewChoice[]
+    comments: MoveComment[]
 }
 
 function label(id: string): string { return id === 'main' ? 'Main game' : `Variant ${id.slice(1)}` }
+function plainCommand(command: string): string {
+    if (command === '---') return command
+    const move = parseStudyMove(command)
+    if (!move) throw new Error('Invalid study move command')
+    return serializeMove(move)
+}
 function description(value: unknown): string {
     if (typeof value !== 'string' || value.length > 120 || /[\r\n]/.test(value)) throw new Error('Variant descriptions must be at most 120 characters on one line')
     return value.trim()
@@ -31,7 +39,7 @@ function replay(commands: readonly string[], tags: GameTag[]): HnefataflEngine {
     if (!commands.length) return engine
     const resigned = commands[commands.length - 1] === '---'
     const moves = (resigned ? commands.slice(0, -1) : commands).map(command => {
-        const move = parseMove(command)
+        const move = parseStudyMove(command)
         if (!move) throw new Error('Invalid study move command')
         return move
     })
@@ -69,7 +77,11 @@ export class LocalReview {
         this.cursor = state?.moveHistory.length ?? 0
         if (this.cursor && engine) {
             const parsed = parseGame(engine.saveGame())
-            if (parsed.success) this.tags = readTags(parsed.game.tags)
+            if (parsed.success) {
+                this.tags = readTags(parsed.game.tags)
+                const main = this.lines.get('main')!
+                parsed.game.moves.forEach((move, i) => { main.moves[i] += serializeComments(move.comments) })
+            }
         }
     }
 
@@ -83,17 +95,18 @@ export class LocalReview {
     get hasContent(): boolean { return this.lines.size > 1 || this.lines.get('main')!.moves.length > 0 }
 
     view(): LocalReviewView {
-        const active = this.lines.get(this.active)!, moves = this.path(this.active)
+        const active = this.lines.get(this.active)!, annotated = this.path(this.active)
+        const moves = annotated.map(plainCommand)
         let trunk = active
         while (trunk.parent && this.cursor <= trunk.at) trunk = this.lines.get(trunk.parent)!
-        const next: ReviewChoice[] = [], trunkMoves = this.path(trunk.id)
+        const next: ReviewChoice[] = [], trunkMoves = this.path(trunk.id).map(plainCommand)
         if (this.cursor < trunkMoves.length) {
             const target = active.at > this.cursor && moves[this.cursor] === trunkMoves[this.cursor] ? active.id : trunk.id
             next.push({ line: target, ply: this.cursor + 1, label: label(trunk.id), description: trunk.description, move: trunkMoves[this.cursor] })
         }
         for (const line of this.lines.values()) {
             if (line.parent === trunk.id && line.at === this.cursor && line.moves.length) {
-                next.push({ line: line.id, ply: this.cursor + 1, label: label(line.id), description: line.description, move: line.moves[0] })
+                next.push({ line: line.id, ply: this.cursor + 1, label: label(line.id), description: line.description, move: plainCommand(line.moves[0]) })
             }
         }
         if (next.length > 1 && next[0].label === label(trunk.id)) next[0].line = trunk.id
@@ -101,9 +114,12 @@ export class LocalReview {
             let depth = 0, parent = line.parent
             while (parent) { depth++; parent = this.lines.get(parent)!.parent }
             return { id: line.id, label: label(line.id), parent: line.parent, at: line.at, description: line.description,
-                firstMove: line.parent ? line.moves[0] ?? null : null, length: this.path(line.id).length, depth }
+                firstMove: line.parent && line.moves.length ? plainCommand(line.moves[0]) : null, length: this.path(line.id).length, depth }
         })
-        return { line: this.active, label: label(this.active), cursor: this.cursor, moves, status: active.status, lines, next }
+        const current = annotated[this.cursor - 1]
+        const comments = current && current !== '---' ? parseStudyMove(current)?.comments ?? [] : []
+        return { line: this.active, label: label(this.active), cursor: this.cursor, moves, status: active.status, lines, next,
+            comments: comments.map(comment => ({ ...comment })) }
     }
 
     seek(id: string, ply: number): HnefataflEngine {
@@ -167,8 +183,25 @@ export class LocalReview {
         line.description = description(text)
     }
 
+    addComment(text: string, author?: string): void {
+        if (!text.trim()) throw new Error('Enter a comment first')
+        let line = this.lines.get(this.active)!
+        while (line.parent && this.cursor <= line.at) line = this.lines.get(line.parent)!
+        const index = this.cursor - line.at - 1, command = line.moves[index]
+        if (!command || command === '---') throw new Error('Select a played move to comment on')
+        const before = command
+        line.moves[index] += serializeComments([normalizeComment(text, author)])
+        // Keep the update atomic if annotations push the study over its existing bound.
+        try { this.saveStudy() } catch (error) { line.moves[index] = before; throw error }
+    }
+
     save(): string {
         if (this.lines.size === 1) return replay(this.path('main'), this.tags).saveGame()
+        return this.saveStudy()
+    }
+
+    /** Autosave also needs the cursor for a single line, including the empty opening. */
+    saveStudy(): string {
         const text = JSON.stringify({ format: 'hnefatafl-study', version: 1, tags: this.tags,
             main: this.lines.get('main')!.moves,
             variants: [...this.lines.values()].filter(line => line.parent).map(({ id, parent, at, description, moves }) => ({ id, parent, at, description, moves })),
@@ -185,8 +218,13 @@ export class LocalReview {
         const study = new LocalReview()
         study.tags = readTags(raw.tags)
         const commands = (value: unknown): string[] => {
-            if (!Array.isArray(value) || value.length > MAX_MOVES || value.some(item => typeof item !== 'string' || item.length > 1024)) throw new Error('Invalid or oversized study move list')
-            return [...value] as string[]
+            if (!Array.isArray(value) || value.length > MAX_MOVES || value.some(item => typeof item !== 'string')) throw new Error('Invalid or oversized study move list')
+            return value.map(command => {
+                if (command === '---') return command
+                const move = parseStudyMove(command)
+                if (!move) throw new Error('Invalid study move command')
+                return move.terminal ? serializeRecordedMove(move) : serializeMove(move) + serializeComments(move.comments)
+            })
         }
         const main = study.lines.get('main')!
         main.moves = commands(raw.main)
@@ -216,7 +254,9 @@ export class LocalReview {
             try {
                 const state = replay(paths.get(line.id)!, study.tags).getState()
                 line.status = state.status
-                line.moves = state.moveHistory.slice(line.at)
+                // Preserve each line's annotations while adopting canonical replayed moves.
+                line.moves = state.moveHistory.slice(line.at).map((command, i) =>
+                    command + (command === '---' ? '' : serializeComments(parseStudyMove(line.moves[i])?.comments)))
             } catch (error) { throw new Error(`${label(line.id)}: ${error instanceof Error ? error.message : 'Invalid game'}`) }
         }
         const view = object(raw.view)

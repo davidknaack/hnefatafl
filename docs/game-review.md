@@ -37,8 +37,11 @@ Once a variant exists, Save / copy automatically exports a JSON study containing
 the main game, all variants, their descriptions and the selected review position.
 Copy and Download use that same content; the filename is `hnefatafl-study.json`.
 An unplayed variant is retained too, so its description and intended fork survive.
-Games and studies are not autosaved; explicit export is required before closing
-or refreshing.
+The production client automatically saves the current game/study and selected
+branch/ply in this browser, including future moves while reviewing the opening.
+Refreshing or returning to the app restores that view without board animations.
+Starting or loading another game replaces the automatic copy; explicit export
+keeps separate records. See [local autosave](production-client.md#local-autosave).
 
 Load game accepts either format through pasted text, **Choose file**, or a file
 dropped into the dialog. Test-library selection remains available. A chosen or
@@ -54,6 +57,48 @@ whole study is adopted. Invalid JSON, unsupported versions, illegal moves,
 unknown parents, cycles, invalid forks and invalid review cursors leave the
 existing study unchanged. Files are read in the browser; no upload service is
 involved.
+
+## Move comments
+
+The compact comment box below the record displays the selected ply's ordered
+comments, with a 150-pixel scroll limit and an entry field below. Adding a comment
+does not move the cursor or discard future moves. Local entries are Anonymous;
+the consumer can supply a `commentAuthor` provider when named users are available.
+No local naming controls or mention notifications are implemented.
+
+Portable notation accepts multiple `{text}` comments after a move. Authorship is
+explicit: `{[Alice]:An opening for [Bob]}`. Ordinary `Alice:` and `D1:D4` inside
+anonymous prose are not authors. Body text may span lines and may escape literal
+braces/backslashes with `\{`, `\}` and `\\`. Anonymous text beginning `[name]:`
+is saved with `\[` so it cannot become an author on reload.
+
+The limit is 500 Unicode characters per comment body. Overlong imports are
+truncated, reserving room for `… (comment truncated)` within the limit. That
+reserved suffix survives text/JSON saves; viewers show it as a Truncated badge.
+Names are at most 80 characters. Existing whole-study input/replay bounds remain.
+
+`[Bob]` in body text is a colored mention. `<D3>` previews a square; `<D1-D4>`
+previews an orthogonal arrow between distinct valid squares. Unknown or invalid
+tokens remain ordinary text. Hover/focus shows a preview until leave/blur; tap or
+keyboard activation shows it for 1.8 seconds. Escape and navigation clear it.
+When the board is offscreen, activation brings it into view, respecting reduced motion.
+The independent SVG layer never sends a move or changes selection or state.
+
+Comments on inherited trunk moves belong to that ancestor and are shared by its
+variants. Comments on an alternative continuation belong only to that branch,
+even when it plays the same move as another line. JSON keeps comments inline in
+each move string, for example:
+
+```json
+"main": [
+  "D11-D10 {[Alice]:An opening} {[Bob]:Consider <D11-D9>, [Alice]!}",
+  "F8-E8 {should have played D1:D4}"
+]
+```
+
+Autosave, portable export, JSON studies and file loading retain the comment
+chains and truncation status. Replays use unannotated engine commands; comment
+edits publish a new generation without replaying board animations.
 
 ## JSON format, version 1
 
@@ -78,8 +123,9 @@ involved.
 
 `main` contains complete engine move commands from the standard opening, including
 resolved captures. Commands use the engine notation (for example `F10-F8(E8)`);
-`---` is a final resignation entry. These are not the lowercase portable display
-tokens. No rules identifier or unchecked board snapshot is accepted.
+`---` is a final resignation entry. Inline comments follow the command. The
+importer also accepts portable move tokens; saving canonicalizes commands while
+preserving comments. No rules identifier or unchecked board snapshot is accepted.
 
 Each variant has a unique `v`-prefixed positive numeric ID. `parent` identifies
 `main` or another variant. `at` is the number of parent-line history entries
@@ -110,7 +156,8 @@ uses it for new/imported games. The debug harness retains its default linear
 change their protocol/recovery format.
 
 `SessionView.review` is detached and includes the selected line/cursor, complete
-line commands/status, variant summaries and available next choices. The ordinary
+line commands/status, variant summaries, available next choices and the current
+move's comments. The ordinary
 `state` describes the **reviewed position**, with repetition history, captures,
 side to move and outcome rebuilt by engine replay. Navigation/branch/description
 commands carry the observed generation and invalidate queued/stale moves. Legal

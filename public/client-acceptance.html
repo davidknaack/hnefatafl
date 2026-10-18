@@ -3,7 +3,7 @@
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Local client acceptance</title></head>
 <body>
     <h1>Local production client acceptance</h1>
-    <p>Development-only browser checks mount the actual client with disposable local sessions. No recovery storage or relay is used.</p>
+    <p>Development-only browser checks mount the actual client with disposable local sessions. Storage checks use disposable in-memory copies; real saved games and online recovery are untouched.</p>
     <button id="run-client">Run client checks</button>
     <p id="client-summary" role="status">Not run</p>
     <ol id="client-results"></ol>
@@ -11,8 +11,8 @@
         <summary>Compare light and dark previews</summary>
         <p>These isolated local games use the iframe's browser color preference; your browser setting and saved records are unchanged.</p>
         <div style="display:flex;flex-wrap:wrap;gap:16px">
-            <iframe id="light-preview" title="Light preference preview" src="./index.html" loading="lazy" style="color-scheme:light;width:540px;height:1500px;border:0"></iframe>
-            <iframe id="dark-preview" title="Dark preference preview" src="./index.html" loading="lazy" style="color-scheme:dark;width:540px;height:1500px;border:0"></iframe>
+            <iframe id="light-preview" title="Light preference preview" loading="lazy" style="color-scheme:light;width:540px;height:1500px;border:0"></iframe>
+            <iframe id="dark-preview" title="Dark preference preview" loading="lazy" style="color-scheme:dark;width:540px;height:1500px;border:0"></iframe>
         </div>
     </details>
     <div id="client-fixtures"></div>

@@ -1,6 +1,8 @@
 import { ClientDependencies, mountLocalClient } from '../client/client'
 import { clientElements } from '../client/elements'
 import { LocalGameSession } from '../session/LocalGameSession'
+import { LOCAL_GAME_KEY, SAVED_GAME_NOTE } from '../client/localGameStorage'
+import { MAX_COMMENT_LENGTH, TRUNCATED_COMMENT_MARKER } from '../moveComments'
 import '../client/styles.css'
 
 const run = document.querySelector<HTMLButtonElement>('#run-client')!
@@ -8,6 +10,28 @@ const summary = document.querySelector<HTMLElement>('#client-summary')!
 const results = document.querySelector<HTMLElement>('#client-results')!
 const fixtures = document.querySelector<HTMLElement>('#client-fixtures')!
 const cornerWinGame = 'd11-d10 d6-d9 h11-h10 e6-d6 h10-i10 d6-d8 g11-g10 f6-c6 g10-h10 c6-c11 i10-i9 c11-a11'
+async function clientMarkup() {
+    const response = await fetch('./index.html')
+    assert(response.ok, 'Could not load production markup')
+    const source = new DOMParser().parseFromString(await response.text(), 'text/html')
+    source.querySelectorAll('script').forEach(script => script.remove())
+    return source
+}
+function isolatedFrameSource(source: Document): string {
+    // Real iframe realms and styles; never touch a player's persisted game.
+    return source.documentElement.outerHTML.replace('</body>', `<script type="module">
+        import { mountLocalClient } from ${JSON.stringify(new URL('../client/client.ts', import.meta.url).href)};
+        import ${JSON.stringify(new URL('../client/styles.css', import.meta.url).href)};
+        mountLocalClient(document, undefined, { storage: null });
+    </script></body>`)
+}
+document.querySelector('details')!.addEventListener('toggle', async event => {
+    if (!(event.target as HTMLDetailsElement).open) return
+    const markup = isolatedFrameSource(await clientMarkup())
+    for (const frame of document.querySelectorAll<HTMLIFrameElement>('#light-preview, #dark-preview')) {
+        if (!frame.srcdoc) frame.srcdoc = markup
+    }
+})
 function assert(value: unknown, message: string): asserts value { if (!value) throw new Error(message) }
 function motionPreference(matches: boolean): () => void {
     const original = window.matchMedia
@@ -30,19 +54,19 @@ run.onclick = async () => {
     run.disabled = true; results.replaceChildren(); summary.textContent = 'Running…'
     let passed = 0, failed = 0, cleanup = () => {}
     try {
-        const response = await fetch('./index.html')
-        assert(response.ok, 'Could not load production markup')
-        const source = new DOMParser().parseFromString(await response.text(), 'text/html')
-        source.querySelectorAll('script').forEach(script => script.remove())
+        const source = await clientMarkup(), isolatedFrame = isolatedFrameSource(source)
         function mount(dependencies: ClientDependencies = {}) {
             const root = document.createElement('div'); root.innerHTML = source.body.innerHTML
             fixtures.append(root)
-            const session = new LocalGameSession({ review: true }), dispose = mountLocalClient(root, session, dependencies)
+            const session = new LocalGameSession({ review: true })
+            const options = { storage: null, ...dependencies }
+            let dispose = mountLocalClient(root, session, options)
             cleanup = () => { dispose(); root.remove() }
             const ui = clientElements(root)
             const square = (name: string) => root.querySelector<HTMLButtonElement>(`[data-square="${name}"]`)!
             const load = (text: string) => { ui.importButton.click(); ui.importText.value = text; ui.load.click() }
-            return { root, ui, session, square, load }
+            const restart = () => { dispose(); dispose = mountLocalClient(root, undefined, options) }
+            return { root, ui, session, square, load, restart }
         }
         async function check(name: string, action: () => void | Promise<void>) {
             const row = document.createElement('li'); row.textContent = `${name}: running`; results.append(row)
@@ -50,6 +74,177 @@ run.onclick = async () => {
             catch (error) { failed++; row.textContent = `FAIL — ${name}: ${error instanceof Error ? error.message : String(error)}` }
             finally { cleanup(); cleanup = () => {} }
         }
+        function memoryStorage() {
+            const values = new Map<string, string>()
+            return { values, getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value) } }
+        }
+        await check('Comment notation displays authors, mentions, literal text and a persistent truncation badge', () => {
+            const storage = memoryStorage(), f = mount({ storage })
+            f.load(`d11-d8 {[Alice]:An opening for [Bob]. Try <D8> or <D11-D9>; <L3> stays text.} {should have played D1:D4} {[Bob]:${'Long comment '.repeat(60)}} f8-e8 {Response} f10-f8xe8`)
+            f.ui.history.querySelector<HTMLButtonElement>('[data-ply="1"]')!.click()
+            const comments = f.ui.commentList.querySelectorAll('.move-comment')
+            assert(comments.length === 3, 'Comment chain was not associated with its move')
+            assert(comments[0].querySelector('strong')?.textContent === 'Alice' && comments[1].querySelector('strong')?.textContent === 'Anonymous', 'Author prefix/anonymous colon was misidentified')
+            assert(comments[0].querySelector('.comment-mention')?.textContent === '[Bob]' && comments[0].querySelectorAll('button').length === 2, 'Mentions or valid references did not render')
+            assert(comments[0].textContent?.includes('<L3>') && comments[1].textContent?.includes('D1:D4'), 'Unknown reference or ordinary colon was lost')
+            assert(getComputedStyle(comments[0].querySelector('.comment-mention')!).color !== getComputedStyle(comments[0].querySelector('p')!).color, 'Mention color did not differ from text')
+            assert(comments[2].querySelector('.comment-truncated') && f.ui.commentList.scrollHeight > f.ui.commentList.clientHeight && f.ui.commentList.clientHeight <= 150, 'Long comments did not show bounded scrolling/truncation')
+            f.ui.exportButton.click()
+            assert(f.ui.exportText.value.includes(TRUNCATED_COMMENT_MARKER) && !f.ui.exportText.value.includes('Long comment '.repeat(60)), 'Truncation did not survive portable saving')
+            f.ui.closeExport.click(); f.restart()
+            assert(f.ui.commentList.querySelector('.comment-truncated') && f.ui.commentList.querySelectorAll('.move-comment').length === 3, 'Autosave/reload lost comment chain or truncation status')
+            f.ui.history.querySelector<HTMLButtonElement>('[data-ply="2"]')!.click()
+            assert(f.ui.commentList.querySelectorAll('.move-comment').length === 1 && f.ui.commentList.textContent?.includes('Response'), 'Navigating did not select the move’s comments')
+        })
+        await check('Comment entry enforces 500 characters, uses the supplied identity and never changes the position', () => {
+            let author: string | undefined
+            const storage = memoryStorage(), f = mount({ storage, commentAuthor: () => author })
+            assert(f.ui.commentText.disabled && f.ui.commentAdd.disabled, 'Opening accepted an unattached comment')
+            f.load('d11-d10 f8-e8'); f.ui.reviewBack.click()
+            const before = JSON.stringify(f.root.querySelector('#game-history')!.textContent), board = JSON.stringify(f.session.getView().state)
+            function enter(text: string) { f.ui.commentText.value = text; f.ui.commentText.dispatchEvent(new Event('input')); f.ui.commentAdd.click() }
+            enter('[Alice]:this is anonymous, with literal <img src=x onerror=alert(1)> and {braces}')
+            assert(f.ui.commentList.querySelector('strong')?.textContent === 'Anonymous' && !f.ui.commentList.querySelector('img'), 'Anonymous author-looking text or HTML was misinterpreted')
+            author = 'Alice'; enter('A reply to [Bob]')
+            assert(f.ui.commentList.querySelectorAll('strong')[1].textContent === 'Alice' && f.ui.commentText.value === '', 'Provided identity was not applied or draft not cleared')
+            assert(JSON.stringify(f.session.getView().state) === board && JSON.stringify(f.ui.history.textContent) === before, 'Comment changed game state/history')
+            f.ui.commentText.value = 'x'.repeat(MAX_COMMENT_LENGTH + 1); f.ui.commentText.dispatchEvent(new Event('input'))
+            assert(f.ui.commentAdd.disabled && f.ui.commentText.getAttribute('aria-invalid') === 'true', 'Entry accepted more than 500 characters')
+            enter('👑'.repeat(MAX_COMMENT_LENGTH))
+            assert(f.ui.commentList.querySelectorAll('.move-comment').length === 3, 'A 500-character Unicode comment was rejected')
+            f.restart()
+            assert(f.ui.commentList.querySelectorAll('.move-comment').length === 3 && f.ui.commentList.querySelector('strong')?.textContent === 'Anonymous', 'Reload changed anonymity or lost new comments')
+        })
+        await check('Comment references preview squares/arrows on hover, keyboard focus and tap without playing', async () => {
+            const f = mount(); f.load('d11-d8 {Look <D3> and <D1-D4> or <Z99>.} f8-e8')
+            f.ui.reviewBack.click()
+            const before = JSON.stringify(f.session.getView()), square = f.ui.commentList.querySelector<HTMLButtonElement>('[aria-label="Highlight square D3"]')!
+            const arrow = f.ui.commentList.querySelector<HTMLButtonElement>('[aria-label="Show arrow D1 to D4"]')!
+            square.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }))
+            const rectangle = f.ui.board.querySelector('.comment-square-reference')!
+            assert(rectangle && rectangle.getAttribute('x') === '308' && rectangle.getAttribute('y') === '808', 'Hover highlighted the wrong square')
+            assert(getComputedStyle(f.ui.board.querySelector('.comment-board-reference')!).pointerEvents === 'none', 'Reference overlay blocked the board')
+            square.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }))
+            assert(!f.ui.board.querySelector('.comment-board-reference'), 'Pointer exit retained the reference')
+            arrow.focus(); assert(f.ui.board.querySelector('.comment-move-reference'), 'Keyboard focus did not draw the arrow')
+            arrow.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+            assert(!f.ui.board.querySelector('.comment-board-reference'), 'Escape did not clear the reference')
+            arrow.click(); assert(f.ui.board.querySelector('.comment-move-reference'), 'Tap did not draw a temporary arrow')
+            assert(JSON.stringify(f.session.getView()) === before, 'Reference preview changed selection/cursor or game state')
+            await until(() => !f.ui.board.querySelector('.comment-board-reference'), 'Tap preview did not expire')
+            square.click(); f.ui.reviewNext.click()
+            assert(!f.ui.board.querySelector('.comment-board-reference'), 'Navigation retained a stale reference')
+        })
+        await check('Commented studies retain branch-specific comments and complete records through JSON and autosave', async () => {
+            const storage = memoryStorage(), f = mount({ storage }), s = f.session
+            s.loadGame('d11-d10 {Trunk} f8-e8 {Main reply} d10-c10', s.getView().generation)
+            s.reviewMove('main', 1, s.getView().generation)
+            await s.submitVariant('F8-I8', 'Alternative', s.getView().generation)
+            s.addComment('A different reply with [Bob] and <I8>', 'Alice', s.getView().generation)
+            const study = s.saveGame(), raw = JSON.parse(study)
+            assert(raw.main[0] === 'D11-D10 {Trunk}' && raw.variants[0].moves[0].includes('{[Alice]:A different reply'), 'JSON did not keep comments inline with their moves')
+            f.restart()
+            assert(f.ui.reviewPosition.textContent?.startsWith('Variant 1') && f.ui.commentList.textContent?.includes('A different reply'), 'Reload lost selected branch comments')
+            f.ui.exportButton.click(); assert(f.ui.exportText.value === study, 'JSON reload changed the study'); f.ui.closeExport.click()
+            f.ui.reviewBack.click(); assert(f.ui.commentList.textContent?.includes('Trunk'), 'Inherited comments did not follow the trunk')
+            f.ui.reviewNext.click()
+            assert(f.ui.nextDialog.open && f.ui.nextChoices.querySelectorAll('button').length === 2, 'Comment text broke fork choices')
+            f.ui.nextChoices.querySelector<HTMLButtonElement>('button')!.click()
+            assert(f.ui.commentList.textContent?.includes('Main reply') && !f.ui.commentList.textContent.includes('A different reply'), 'Variant comments leaked into the main line')
+        })
+        await check('Comment drafts and reference overlays are cleared on navigation/replacement/disposal', () => {
+            const f = mount(); f.load('d11-d10 {See <D10>} f8-e8'); f.ui.reviewBack.click()
+            f.ui.commentText.value = 'Unsent draft'; f.ui.commentText.dispatchEvent(new Event('input'))
+            f.ui.commentList.querySelector<HTMLButtonElement>('button')!.click()
+            f.ui.reviewNext.click()
+            assert(f.ui.commentText.value === '' && !f.ui.board.querySelector('.comment-board-reference'), 'New position kept stale draft/reference')
+            f.ui.commentText.value = 'Another draft'; f.ui.commentText.dispatchEvent(new Event('input'))
+            f.ui.newGame.click(); f.ui.replace.click()
+            assert(f.ui.commentText.disabled && f.ui.commentText.value === '' && !f.ui.commentList.querySelector('.move-comment'), 'Replacement kept comments/draft from the old game')
+            const text = f.ui.commentList.textContent; cleanup(); f.ui.commentForm.dispatchEvent(new Event('submit', { cancelable: true }))
+            assert(!f.ui.board.querySelector('.comment-board-reference') && f.ui.commentList.textContent !== text, 'Disposal left comment bindings or reference effects')
+        })
+        await check('Autosave restores a single-line review position and all future moves', async () => {
+            const storage = memoryStorage(), f = mount({ storage })
+            f.square('D11').click(); f.square('D8').click()
+            await until(() => f.ui.title.textContent === 'Defenders to move', 'Opening did not play')
+            assert(JSON.parse(storage.getItem(LOCAL_GAME_KEY)!).main[0] === 'D11-D8', 'Move was not saved immediately')
+            f.load('[Event:Autosave] d11-d8 f8-e8 f10-f8'); f.ui.replace.click()
+            f.ui.history.querySelector<HTMLButtonElement>('[data-ply="1"]')!.click()
+            f.restart()
+            assert(String(f.ui.reviewPosition.textContent) === 'Main game · 1 / 3' && f.square('D8').dataset.piece === 'attacker', 'Reload lost reviewed ply/board')
+            assert(f.ui.history.querySelector('[aria-current="step"]')?.getAttribute('data-ply') === '1' && f.ui.defenders.textContent === '13', 'Reload lost current record selection/captures')
+            f.ui.exportButton.click()
+            assert(f.ui.exportText.value === '[Event:Autosave]\nd11-d8 f8-e8 f10-f8xe8', 'Reload truncated future or changed ordinary export')
+            f.ui.closeExport.click(); f.ui.reviewStart.click(); f.restart()
+            assert(String(f.ui.reviewPosition.textContent) === 'Main game · 0 / 3' && f.ui.history.querySelectorAll('[data-ply]').length === 3, 'Reload at opening lost future history')
+            assert(f.ui.saveNote.textContent === SAVED_GAME_NOTE, 'Successful save did not update the storage note')
+        })
+        await check('Autosave restores nested variants, descriptions and the selected line', async () => {
+            const storage = memoryStorage(), f = mount({ storage }), s = f.session
+            s.loadGame('d11-d10 f8-e8 d10-c10', s.getView().generation)
+            s.reviewMove('main', 1, s.getView().generation)
+            await s.submitVariant('F8-I8', 'Defense', s.getView().generation)
+            await s.submitMove('D10-D9', s.getView().generation)
+            s.reviewMove('v1', 2, s.getView().generation)
+            await s.submitVariant('D10-C10', 'Nested continuation', s.getView().generation)
+            s.describeVariant('v2', 'Revised nested continuation', s.getView().generation)
+            const saved = storage.getItem(LOCAL_GAME_KEY)!
+            f.restart()
+            assert(String(f.ui.reviewPosition.textContent) === 'Variant 2 · 3 / 3' && f.square('C10').dataset.piece === 'attacker', 'Reload lost nested variant/cursor')
+            f.ui.variantsTab.click()
+            assert(f.ui.variantList.textContent?.includes('Revised nested continuation'), 'Reload lost variant description')
+            f.ui.exportButton.click(); assert(f.ui.exportText.value === saved, 'Restored study changed variants or view')
+            f.ui.closeExport.click(); f.ui.reviewBack.click(); f.restart()
+            assert(String(f.ui.reviewPosition.textContent) === 'Variant 1 · 2 / 3', 'Reload did not preserve the ancestor selected by backward navigation')
+        })
+        await check('New games replace autosave while cancelled replacements and invalid imports preserve it', async () => {
+            const storage = memoryStorage(), f = mount({ storage })
+            f.load('d11-d10 f8-e8')
+            const before = storage.getItem(LOCAL_GAME_KEY)
+            f.ui.newGame.click(); f.ui.cancelReplace.click()
+            assert(storage.getItem(LOCAL_GAME_KEY) === before, 'Cancelling new game overwrote storage')
+            f.load('invalid'); assert(storage.getItem(LOCAL_GAME_KEY) === before, 'Invalid import overwrote storage')
+            f.ui.cancelImport.click()
+            f.ui.newGame.click(); f.ui.replace.click(); f.restart()
+            assert(String(f.ui.reviewPosition.textContent) === 'Main game · 0 / 0' && f.ui.exportButton.disabled, 'New game restored the old record')
+            f.load('d11-d8'); f.restart()
+            assert(String(f.ui.reviewPosition.textContent) === 'Main game · 1 / 1', 'Confirmed import did not replace automatic save')
+        })
+        await check('Loaded and restored positions suppress all transient board effects, including wins', async () => {
+            const restore = motionPreference(false)
+            try {
+                const storage = memoryStorage(), f = mount({ storage })
+                const quiet = () => assert(!f.root.querySelector('.move-indicator, .board-win, .capture-piece, .piece-in-motion') && !f.ui.board.getAnimations({ subtree: true }).some(animation => animation.playState === 'running'), 'Loading played a board animation')
+                f.session.loadGame('d11-d10', f.session.getView().generation); quiet()
+                f.session.loadGame(cornerWinGame, f.session.getView().generation); quiet()
+                f.restart(); quiet()
+                assert(f.ui.title.textContent === 'Defenders win' && f.square('A11').dataset.piece === 'king', 'Restore lost the winning board/result')
+                f.ui.reviewBack.click(); f.ui.reviewNext.click()
+                const slide = f.square('A11').querySelector('.piece')!.getAnimations()[0]
+                assert(slide, 'Review stopped animating after restore')
+                slide.finish(); await until(() => !!f.root.querySelector('.board-win'), 'Review did not replay the winning result')
+                f.restart(); quiet()
+                // Replacing a live in-flight move also cancels its queued arrival callback.
+                f.ui.reviewBack.click(); f.ui.reviewNext.click(); f.restart(); quiet()
+                await new Promise(resolve => setTimeout(resolve, 500)); quiet()
+            } finally { restore() }
+        })
+        await check('Storage failures are visible and corrupt saves survive startup until replacement', async () => {
+            const storage = memoryStorage(); storage.setItem(LOCAL_GAME_KEY, '{broken')
+            const root = document.createElement('div'); root.innerHTML = source.body.innerHTML; fixtures.append(root)
+            let dispose = mountLocalClient(root, undefined, { storage })
+            cleanup = () => { dispose(); root.remove() }
+            const ui = clientElements(root)
+            assert(ui.saveNote.textContent?.includes('could not be restored') && storage.getItem(LOCAL_GAME_KEY) === '{broken', 'Startup silently discarded corrupt storage')
+            ui.importButton.click(); ui.importText.value = 'd11-d10'; ui.load.click()
+            assert(JSON.parse(storage.getItem(LOCAL_GAME_KEY)!).main[0] === 'D11-D10', 'Explicit load failed to replace corrupt storage')
+            dispose()
+            dispose = mountLocalClient(root, undefined, { storage: { getItem() { throw new Error('Denied') }, setItem() { throw new Error('Quota') } } })
+            root.querySelector<HTMLButtonElement>('[data-square="D11"]')!.click(); root.querySelector<HTMLButtonElement>('[data-square="D10"]')!.click()
+            await until(() => ui.title.textContent === 'Defenders to move', 'Storage denial blocked play')
+            assert(ui.saveNote.textContent?.includes('could not be saved') && ui.saveNote.textContent.includes('Save / copy'), 'Storage failure claimed automatic saving succeeded')
+        })
         await check('Opening board, one keyboard stop, initial side and counts', () => {
             const f = mount()
             assert(f.root.querySelectorAll('.square').length === 121, 'Board has wrong square count')
@@ -247,6 +442,10 @@ run.onclick = async () => {
             try {
                 const f = mount(), cycle = 'd11-d10 f8-e8 d10-d11 e8-f8'
                 f.session.loadGame(`${cycle} ${cycle}`, f.session.getView().generation)
+                assert(!f.root.querySelector('.board-win'), 'Loading a winning position played a result animation')
+                f.ui.reviewBack.click(); f.ui.reviewNext.click()
+                f.square('F8').querySelector('.piece')!.getAnimations()[0].finish()
+                await until(() => !!f.root.querySelector('.board-win.attacker'), 'Winning arrival did not announce')
                 const initial = f.root.querySelector<HTMLElement>('.board-win.attacker')!
                 assert(initial && f.square('F8').dataset.piece === 'defender', 'Repetition message confused the last mover with the winner')
                 initial.getAnimations()[0].finish(); await until(() => !initial.isConnected, 'Initial final-position message did not expire')
@@ -268,7 +467,7 @@ run.onclick = async () => {
             const frame = document.createElement('iframe'); frame.title = 'Responsive win message test'
             frame.style.height = '900px'; frame.style.border = '0'
             const loaded = new Promise<void>(resolve => { frame.onload = () => resolve() })
-            frame.src = './index.html'; fixtures.append(frame); cleanup = () => frame.remove(); await loaded
+            frame.srcdoc = isolatedFrame; fixtures.append(frame); cleanup = () => frame.remove(); await loaded
             const doc = frame.contentDocument!, win = frame.contentWindow!
             const mirrored = cornerWinGame.replace(/[a-k](?=\d)/g, file => String.fromCharCode('k'.charCodeAt(0) - (file.charCodeAt(0) - 'a'.charCodeAt(0))))
             for (const width of [320, 390, 768, 1200]) {
@@ -279,6 +478,18 @@ run.onclick = async () => {
                     doc.querySelector<HTMLTextAreaElement>('#import-text')!.value = game
                     doc.querySelector<HTMLButtonElement>('#load-game')!.click()
                     if (doc.querySelector<HTMLDialogElement>('#confirm-dialog')!.open) doc.querySelector<HTMLButtonElement>('#confirm-replace')!.click()
+                    const banner = doc.querySelector<HTMLElement>('.turn-banner')!, board = doc.querySelector<HTMLElement>('#game-board')!
+                    const finishedHeight = banner.getBoundingClientRect().height, finishedBoardTop = board.getBoundingClientRect().top
+                    const number = doc.querySelector<HTMLElement>('#move-number')!.getBoundingClientRect(), detail = doc.querySelector<HTMLElement>('#turn-detail')!.getBoundingClientRect()
+                    assert(detail.top >= number.bottom && Math.abs(detail.right - number.right) < 1, `Result explanation was not beneath Game finished at ${width}px`)
+                    doc.querySelector<HTMLButtonElement>('#review-back')!.click()
+                    assert(Math.abs(banner.getBoundingClientRect().height - finishedHeight) < .5 && Math.abs(board.getBoundingClientRect().top - finishedBoardTop) < .5,
+                        `Leaving a winning position changed the banner height or board position at ${width}px`)
+                    doc.querySelector<HTMLButtonElement>('#review-next')!.click()
+                    assert(Math.abs(banner.getBoundingClientRect().height - finishedHeight) < .5 && Math.abs(board.getBoundingClientRect().top - finishedBoardTop) < .5,
+                        `Winning move shifted the board at ${width}px`)
+                    doc.querySelector(`[data-square="${corner}"] .piece`)!.getAnimations().forEach(animation => animation.finish())
+                    await until(() => !!doc.querySelector('.board-win'), 'Winning move did not arrive')
                     const message = doc.querySelector<HTMLElement>('.board-win')!
                     assert(message, `Winning record did not announce at ${width}px`)
                     const animation = message.getAnimations()[0]; animation.pause(); animation.currentTime = 1700
@@ -293,6 +504,8 @@ run.onclick = async () => {
             const restore = motionPreference(true)
             try {
                 const f = mount(); f.session.loadGame('d11-d10 ---', f.session.getView().generation)
+                assert(!f.root.querySelector('.board-win'), 'Loading a resignation played a result animation')
+                f.ui.reviewBack.click(); f.ui.reviewNext.click()
                 const message = f.root.querySelector<HTMLElement>('.board-win')!, animation = message.getAnimations()[0]
                 const frames = (animation.effect as KeyframeEffect).getKeyframes()
                 assert(message.style.left === '50%' && message.style.top === '50%', 'Resignation invented a winning destination')
@@ -333,7 +546,7 @@ run.onclick = async () => {
                 f.square(from).click(); f.square(to).click()
                 await until(() => f.session.getView().state.moveHistory.length === length, 'Move failed')
             }
-            assert(f.ui.defenders.textContent === '12' && f.ui.captures.textContent?.includes('1 defender'), 'Capture counts incorrect')
+            assert(f.ui.defenders.textContent === '12' && f.ui.attackerCaptured.textContent === '0 captured' && f.ui.defenderCaptured.textContent === '1 captured', 'Capture counts incorrect')
             assert(f.ui.history.textContent?.includes('f10-f8xe8'), 'Capture missing from history')
             assert(!f.root.querySelector('.legal-destination'), 'Stale highlights remained')
             f.ui.exportButton.click()
@@ -443,9 +656,13 @@ run.onclick = async () => {
             const frame = document.createElement('iframe')
             frame.title = 'Responsive local game test'; frame.style.height = '900px'; frame.style.border = '0'
             const loaded = new Promise<void>(resolve => { frame.onload = () => resolve() })
-            frame.src = './index.html'; fixtures.append(frame)
+            frame.srcdoc = isolatedFrame; fixtures.append(frame)
             cleanup = () => frame.remove()
             await loaded
+            const frameDoc = frame.contentDocument!
+            frameDoc.querySelector<HTMLButtonElement>('#import-button')!.click()
+            frameDoc.querySelector<HTMLTextAreaElement>('#import-text')!.value = `d11-d10 {[${'A'.repeat(80)}]:${'word'.repeat(140)} <D10> [Bob]} {Another comment}`
+            frameDoc.querySelector<HTMLButtonElement>('#load-game')!.click()
             for (const width of [320, 390, 768, 1200]) {
                 frame.style.width = `${width}px`
                 await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
@@ -456,6 +673,8 @@ run.onclick = async () => {
                 const columns = win.getComputedStyle(doc.querySelector('.game-layout')!).gridTemplateColumns.split(' ')
                 assert(columns.length === (width <= 760 ? 1 : 2), `Incorrect layout at ${width}px`)
                 assert(doc.querySelectorAll('.square').length === 121, `Client did not mount at ${width}px`)
+                const comments = doc.querySelector<HTMLElement>('#comment-list')!
+                assert(comments.clientHeight <= 150 && comments.scrollWidth <= comments.clientWidth, `Long comment overflowed its panel at ${width}px`)
             }
         })
         await check('Always-available navigation and move-list jumps preserve the complete game', () => {
@@ -481,7 +700,7 @@ run.onclick = async () => {
             const before = f.ui.history.textContent, variants = f.ui.variantList.textContent
             f.square('F8').click(); f.square('I8').click()
             assert(f.ui.variantDialog.open && f.ui.variantHelp.textContent?.includes('Branch from Main game by playing f8-i8 at ply 2'), 'Dialog did not identify the selected move and ply')
-            assert(f.ui.history.textContent === before && f.ui.variantList.textContent === variants && f.ui.reviewPosition.textContent === 'Main game · 1 / 3', 'Proposing a variant changed the game')
+            assert(f.ui.history.textContent === before && f.ui.variantList.textContent === variants && String(f.ui.reviewPosition.textContent) === 'Main game · 1 / 3', 'Proposing a variant changed the game')
             f.ui.cancelVariant.click()
             await until(() => f.ui.board.getAttribute('aria-busy') === 'false', 'Cancelling did not release board input')
             assert(!f.root.querySelector('.selected') && f.ui.history.textContent === before && f.ui.variantList.textContent === variants, 'Cancel retained the move or an empty variant')
@@ -490,10 +709,10 @@ run.onclick = async () => {
             await until(() => f.ui.board.getAttribute('aria-busy') === 'false', 'Escape did not release board input')
             assert(f.ui.history.textContent === before && f.ui.variantList.textContent === variants, 'Escape committed a variant')
             f.square('F8').click(); f.square('I8').click(); f.ui.saveVariant.click()
-            await until(() => f.ui.reviewPosition.textContent === 'Variant 1 · 2 / 2', 'Confirmed move did not create and play the variant')
+            await until(() => String(f.ui.reviewPosition.textContent) === 'Variant 1 · 2 / 2', 'Confirmed move did not create and play the variant')
             assert(f.ui.history.textContent?.includes('f8-i8') && f.ui.variantList.children.length === 2, 'Confirmed variant omitted its first move')
             f.square('D10').click(); f.square('D9').click()
-            await until(() => f.ui.reviewPosition.textContent === 'Variant 1 · 3 / 3', 'Tip move did not continue the variant')
+            await until(() => String(f.ui.reviewPosition.textContent) === 'Variant 1 · 3 / 3', 'Tip move did not continue the variant')
             assert(!f.ui.variantDialog.open && f.ui.variantList.children.length === 2, 'Tip move unnecessarily created another variant')
         })
         await check('A stale variant dialog cannot play into a newer review position', async () => {
@@ -601,12 +820,15 @@ run.onclick = async () => {
             const frame = document.createElement('iframe')
             frame.title = 'System color preference test'; frame.style.width = '900px'; frame.style.height = '850px'
             const loaded = new Promise<void>(resolve => { frame.onload = () => resolve() })
-            frame.src = './index.html'; fixtures.append(frame); cleanup = () => frame.remove()
+            frame.srcdoc = isolatedFrame; fixtures.append(frame); cleanup = () => frame.remove()
             await loaded
             const doc = frame.contentDocument!, win = frame.contentWindow!
             const square = (name: string) => doc.querySelector<HTMLButtonElement>(`[data-square="${name}"]`)!
             square('D11').click(); square('D10').click()
             await until(() => doc.querySelector('#turn-title')?.textContent === 'Defenders to move', 'Theme fixture did not play its opening move')
+            const comment = doc.querySelector<HTMLTextAreaElement>('#comment-text')!
+            comment.value = 'For [Bob], consider <D10>.'; comment.dispatchEvent(new Event('input'))
+            doc.querySelector<HTMLButtonElement>('#add-comment')!.click()
             square('F8').focus(); square('F8').click()
             const history = doc.querySelector('#game-history')!.textContent, focused = doc.activeElement
             const luminance = (color: string) => {
@@ -637,6 +859,9 @@ run.onclick = async () => {
                     const a = luminance(style.color), b = luminance(style.backgroundColor)
                     assert((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) >= 4.5, `${selector} lacks text contrast in ${scheme} mode`)
                 }
+                const mention = win.getComputedStyle(doc.querySelector('.comment-mention')!), commentSurface = win.getComputedStyle(doc.querySelector('.move-comment')!)
+                const mentionLight = luminance(mention.color), surfaceLight = luminance(commentSurface.backgroundColor)
+                assert((Math.max(mentionLight, surfaceLight) + .05) / (Math.min(mentionLight, surfaceLight) + .05) >= 4.5, `Comment mentions lack contrast in ${scheme} mode`)
                 assert(doc.activeElement === focused && square('F8').classList.contains('selected'), 'Preference change lost keyboard focus or selection')
                 assert(doc.querySelector('#game-history')!.textContent === history && doc.querySelector('#turn-title')!.textContent === 'Defenders to move', 'Preference change reset the game')
             }

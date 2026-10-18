@@ -4,6 +4,7 @@ import { coordToString } from '../coordinates'
 import { parseMove } from '../parser'
 import { CapturedPiece, createBoardMotion } from './boardMotion'
 import { createBoardWin } from './boardWin'
+import { createBoardReferences } from './boardReferences'
 
 const indexOf = (coord: Coordinate) => coord.y * 11 + coord.x
 
@@ -12,6 +13,7 @@ export function createBoard(board: HTMLElement, activate: (coord: Coordinate) =>
     const buttons: HTMLButtonElement[] = []
     let focusIndex = 3
     let history: string[] | undefined
+    let loadGeneration: number | undefined
     let position: SessionView['state']['position'] | undefined
     board.replaceChildren()
     for (let y = 0; y < 11; y++) {
@@ -31,6 +33,7 @@ export function createBoard(board: HTMLElement, activate: (coord: Coordinate) =>
     }
     const motion = createBoardMotion(board, coord => buttons[indexOf(coord)])
     const victory = createBoardWin(board)
+    const references = createBoardReferences(board)
     const focus = (index: number, move = true) => {
         buttons[focusIndex].tabIndex = -1
         focusIndex = index; buttons[index].tabIndex = 0
@@ -72,27 +75,30 @@ export function createBoard(board: HTMLElement, activate: (coord: Coordinate) =>
     board.addEventListener('keydown', keydown)
     return {
         finishMotion: motion.snap,
+        reference: references.show,
         render(view: SessionView, selected: Coordinate | null, moves: PossibleMove[], pending: boolean) {
             const commands = view.state.moveHistory
-            const changed = !history || commands.length !== history.length || commands.some((command, i) => command !== history![i])
+            const loaded = !history || view.loadGeneration !== loadGeneration
+            const changed = loaded || commands.length !== history!.length || commands.some((command, i) => command !== history![i])
             let from: Coordinate | undefined, to: Coordinate | undefined, slide = false
             const captured: CapturedPiece[] = []
             const last = commands[commands.length - 1]
             const lastMove = last && last !== '---' ? parseMove(last) : null
             if (changed) {
-                motion.clear(); victory.clear()
-                if (history && commands.length === history.length + 1 && history.every((command, i) => command === commands[i]) && lastMove) {
+                motion.clear(); victory.clear(); references.clear()
+                if (!loaded && history && commands.length === history.length + 1 && history.every((command, i) => command === commands[i]) && lastMove) {
                     from = lastMove.from; to = lastMove.to; slide = true
                     position?.forEach((row, y) => row.forEach((square, x) => {
                         if (square.occupant && !view.state.position[y][x].occupant && (x !== lastMove.from.x || y !== lastMove.from.y)) {
                             captured.push({ at: { x, y }, type: square.occupant.type })
                         }
                     }))
-                } else if (history && history.length === commands.length + 1 && commands.every((command, i) => command === history![i])) {
+                } else if (!loaded && history && history.length === commands.length + 1 && commands.every((command, i) => command === history![i])) {
                     const undone = parseMove(history[history.length - 1])
                     if (undone) { from = undone.to; to = undone.from; slide = true }
-                } else if (lastMove) { from = lastMove.from; to = lastMove.to }
+                } else if (!loaded && lastMove) { from = lastMove.from; to = lastMove.to }
                 history = [...commands]
+                loadGeneration = view.loadGeneration
             }
             buttons.forEach((button, index) => {
                 const x = index % 11, y = Math.floor(index / 11)
@@ -131,14 +137,16 @@ export function createBoard(board: HTMLElement, activate: (coord: Coordinate) =>
             board.setAttribute('aria-busy', String(pending))
             position = view.state.position
             board.dataset.selectedPiece = selected ? view.state.position[selected.y][selected.x].occupant?.type ?? '' : ''
+            // Imports/restoration also snap CSS feedback left by the previous position.
+            if (loaded) board.getAnimations({ subtree: true }).forEach(animation => animation.finish())
             const outcome = view.state.outcome
             const announce = outcome ? () => victory.show(lastMove?.to ?? { x: 5, y: 5 }, outcome.winner) : undefined
             if (view.connection === 'closed') { motion.clear(); victory.clear() }
             else if (changed && from && to) motion.show(from, to, view.state.position[to.y][to.x].occupant?.type, slide, captured, announce)
-            else if (changed) announce?.()
+            else if (changed && !loaded) announce?.()
         },
         dispose() {
-            motion.dispose(); victory.dispose()
+            motion.dispose(); victory.dispose(); references.dispose()
             board.removeEventListener('click', clicked); board.removeEventListener('focusin', focused)
             board.removeEventListener('keydown', keydown); board.removeEventListener('focus', boardFocus)
         },

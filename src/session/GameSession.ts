@@ -13,6 +13,8 @@ export interface SessionView {
     state: GameState
     /** Monotonic within this session, including imports/reset/lifecycle changes. */
     generation: number
+    /** Generation of the latest import/reset. These positions are presented without animation. */
+    loadGeneration?: number
     mode: 'local' | 'online'
     connection: 'waiting' | 'connecting' | 'syncing' | 'ready' | 'disconnected' | 'error' | 'closed'
     /** null means local control of both sides. */
@@ -49,5 +51,6 @@ export interface GameSession {
     createVariant?(description: string, generation: number): SessionResult
     submitVariant?(command: string, description: string, generation: number): Promise<SessionResult>
     describeVariant?(line: string, description: string, generation: number): SessionResult
+    addComment?(text: string, author: string | undefined, generation: number): SessionResult
     dispose(): void
 }

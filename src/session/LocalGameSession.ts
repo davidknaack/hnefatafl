@@ -7,6 +7,7 @@ import { LocalReview } from './LocalReview'
 export class LocalGameSession implements GameSession {
     private engine = new HnefataflEngine()
     private generation = 0
+    private loadGeneration = 0
     private disposed = false
     private standardStart = true
     private listeners = new Set<SessionListener>()
@@ -20,7 +21,7 @@ export class LocalGameSession implements GameSession {
         const state = this.engine.getState()
         const active = !this.disposed
         return {
-            state, generation: this.generation, mode: 'local',
+            state, generation: this.generation, loadGeneration: this.loadGeneration, mode: 'local',
             connection: active ? 'ready' : 'closed', localSide: null,
             capabilities: {
                 move: active && state.status === GameStatus.InProgress,
@@ -107,6 +108,7 @@ export class LocalGameSession implements GameSession {
                 this.engine = candidate; this.review = review
             }
             this.standardStart = true
+            this.loadGeneration = this.generation + 1
             return this.committed({ success: true, newState: this.engine.getState() })
         } catch (error) { return this.reject(error instanceof Error ? error.message : 'Could not load game') }
     }
@@ -116,6 +118,12 @@ export class LocalGameSession implements GameSession {
         return this.review ? this.review.save() : this.engine.saveGame()
     }
 
+    /** Complete local review snapshot; independent of the user-facing export format. */
+    saveLocalState(): string {
+        if (this.disposed || !this.standardStart || !this.review) throw new Error('Local autosave is not available')
+        return this.review.saveStudy()
+    }
+
     reset(generation: number, layout?: string[]): SessionResult {
         const error = this.unavailable(generation, 'reset')
         if (error) return this.reject(error)
@@ -123,6 +131,7 @@ export class LocalGameSession implements GameSession {
         catch (error) { return this.reject(error instanceof Error ? error.message : String(error)) }
         this.standardStart = (layout ?? STANDARD_BOARD).every((row, index) => row === STANDARD_BOARD[index])
         this.review = this.options.review && this.standardStart ? new LocalReview() : undefined
+        this.loadGeneration = this.generation + 1
         return this.committed({ success: true, newState: this.engine.getState() })
     }
 
@@ -164,6 +173,15 @@ export class LocalGameSession implements GameSession {
             this.review.describe(line, description)
             return this.committed({ success: true, newState: this.engine.getState() })
         } catch (error) { return this.reject(error instanceof Error ? error.message : 'Could not describe variant') }
+    }
+
+    addComment(text: string, author: string | undefined, generation: number): SessionResult {
+        const error = this.unavailable(generation, 'validate')
+        if (error || !this.review) return this.reject(error ?? 'Move comments are not available')
+        try {
+            this.review.addComment(text, author)
+            return this.committed({ success: true, newState: this.engine.getState() })
+        } catch (error) { return this.reject(error instanceof Error ? error.message : 'Could not add comment') }
     }
 
     dispose(): void {

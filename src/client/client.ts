@@ -11,8 +11,10 @@ import { gameDetail, gameHeading } from './presentation'
 import { bindReview } from './review'
 import { MAX_STUDY_BYTES } from '../session/LocalReview'
 import { loadGameLibrary } from './gameLibrary'
+import { createLocalGameStorage, LocalGameStorage } from './localGameStorage'
+import { bindComments } from './comments'
 
-function bindGame(ui: ClientElements, session: GameSession): () => void {
+function bindGame(ui: ClientElements, session: GameSession, author: () => string | undefined): () => void {
     let view = session.getView(), selected: Coordinate | null = null, moves: PossibleMove[] = []
     let active = true, pending = false
     const board = createBoard(ui.board, activate, clear)
@@ -55,13 +57,17 @@ function bindGame(ui: ClientElements, session: GameSession): () => void {
         }
     }
     const review = bindReview(ui, session, board.finishMotion)
+    const unbindComments = bindComments(ui, session, board.reference, author)
     function render(next: SessionView) {
         if (!active) return
         const oldLength = view.state.moveHistory.length
         const oldLine = view.review?.line
         if (next.generation !== view.generation) { selected = null; moves = [] }
         view = next
-        ui.title.textContent = gameHeading(next.state); ui.detail.textContent = gameDetail(next.state)
+        ui.title.textContent = gameHeading(next.state)
+        ui.detail.hidden = !next.state.outcome
+        ui.detail.textContent = next.state.outcome ? gameDetail(next.state) : ''
+        ui.detail.title = ui.detail.textContent
         ui.marker.className = `turn-marker ${next.state.outcome ? 'finished' : next.state.currentPlayer}`
         const playing = !next.state.outcome
         ui.attackerCard.classList.toggle('active-side', playing && next.state.currentPlayer === Player.Attacker)
@@ -73,8 +79,8 @@ function bindGame(ui: ClientElements, session: GameSession): () => void {
         }))
         ui.attackers.textContent = String(attackers); ui.defenders.textContent = String(defenders)
         const captured = next.state.captured
-        ui.captures.textContent = captured.attacker || captured.defender
-            ? `Captured: ${captured.attacker} ${captured.attacker === 1 ? 'attacker' : 'attackers'} · ${captured.defender} ${captured.defender === 1 ? 'defender' : 'defenders'}.` : 'No pieces captured yet.'
+        ui.attackerCaptured.textContent = `${captured.attacker} captured`
+        ui.defenderCaptured.textContent = `${captured.defender} captured`
         const boardMoves = next.state.moveHistory.filter(move => move !== '---').length
         ui.moveNumber.textContent = playing ? `Move ${Math.floor(boardMoves / 2) + 1}` : 'Game finished'
         ui.exportButton.disabled = !next.capabilities.export
@@ -95,18 +101,27 @@ function bindGame(ui: ClientElements, session: GameSession): () => void {
     ui.feedback.textContent = view.state.outcome ? `${gameHeading(view.state)}. ${gameDetail(view.state)}`
         : view.state.moveHistory.length ? 'Game loaded. Select a piece to continue.' : 'Select an attacker to begin.'
     const unsubscribe = session.subscribe(render)
-    return () => { active = false; unsubscribe(); review.dispose(); board.dispose(); ui.clear.onclick = null }
+    return () => { active = false; unsubscribe(); unbindComments(); review.dispose(); board.dispose(); ui.clear.onclick = null }
 }
 
 export interface ClientDependencies {
     loadLibrary?: () => Promise<readonly string[]>
+    storage?: LocalGameStorage | null
+    commentAuthor?: () => string | undefined
 }
 
-/** Local production consumer. No sockets or recovery-slot access in this milestone. */
-export function mountLocalClient(root: ParentNode, initial: GameSession = new LocalGameSession({ review: true }), dependencies: ClientDependencies = {}): () => void {
+/** Local production consumer with its own autosave slot; no online recovery-slot access. */
+export function mountLocalClient(root: ParentNode, initial?: GameSession, dependencies: ClientDependencies = {}): () => void {
     const ui = clientElements(root)
     let active = true
-    const owner = new SessionOwner(initial, session => bindGame(ui, session))
+    const storage = dependencies.storage === null ? undefined : createLocalGameStorage(
+        () => dependencies.storage ?? window.localStorage, message => { ui.saveNote.textContent = message })
+    const session = initial ?? storage?.restore() ?? new LocalGameSession({ review: true })
+    const owner = new SessionOwner(session, next => {
+        const unbind = bindGame(ui, next, dependencies.commentAuthor ?? (() => undefined))
+        const stopSaving = next instanceof LocalGameSession ? storage?.bind(next) : undefined
+        return () => { stopSaving?.(); unbind() }
+    })
     let replacement: { commit: () => void; cancel: () => void } | undefined
     const dialogs = [ui.help, ui.importDialog, ui.exportDialog, ui.confirm]
     let games: readonly string[] | undefined, loadingLibrary = false

@@ -9,6 +9,7 @@ import { statusForOutcome } from './rules'
 import { parseMove, parseMoveSequence, serializeMove } from './parser'
 import { generateMoveCandidates } from './moveGenerator'
 import { GameTag, parseGame, RecordedMove, serializeGame, terminalFor } from './gameFormat'
+import { MoveComment } from './moveComments'
 import {
     ApplyMoveResult,
     GameState,
@@ -25,6 +26,7 @@ export class HnefataflEngine {
     private gameState!: GameState
     private edgeSquares!: Set<Coordinate>
     private tags: GameTag[] = []
+    private comments: MoveComment[][] = []
     private standardStart = true
 
     constructor() {
@@ -34,6 +36,7 @@ export class HnefataflEngine {
     reset(boardLayout: string[] = STANDARD_BOARD): void {
         const gameSetup = initializeGame(boardLayout)
         this.tags = []
+        this.comments = []
         this.standardStart = boardLayout.every((row, index) => row === STANDARD_BOARD[index])
         this.edgeSquares = gameSetup.edgeSquares
         this.gameState = {
@@ -160,6 +163,7 @@ export class HnefataflEngine {
         this.gameState = replay.gameState
         this.edgeSquares = replay.edgeSquares
         this.tags = parsed.game.tags.map((tag) => ({ ...tag }))
+        this.comments = parsed.game.moves.map(move => (move.comments ?? []).map(comment => ({ ...comment })))
         this.standardStart = true
         return { success: true, newState: this.getState() }
     }
@@ -186,10 +190,10 @@ export class HnefataflEngine {
         if (!this.standardStart) throw new Error('Only games starting from the standard board can be saved')
         const resigned = this.gameState.moveHistory[this.gameState.moveHistory.length - 1] === '---'
         const history = resigned ? this.gameState.moveHistory.slice(0, -1) : this.gameState.moveHistory
-        const moves: RecordedMove[] = history.map((text) => {
+        const moves: RecordedMove[] = history.map((text, index) => {
             const move = parseMove(text)
             if (!move) throw new Error('Invalid internal move history')
-            return move
+            return { ...move, ...(this.comments[index]?.length ? { comments: this.comments[index] } : {}) }
         })
         if (moves.length && !resigned) {
             const mover = moves.length % 2 === 1 ? Player.Attacker : Player.Defender
