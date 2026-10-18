@@ -22,7 +22,7 @@ the relay. The expected result is **9 passed; 0 failed**. Failed rows describe t
 condition that timed out or violated the contract. A wrong origin/port causes
 assignment failures and is not evidence of a game-rule defect.
 
-The checked-in runner uses the actual `public/index.html` markup, board commands,
+The checked-in runner uses the actual `public/debug.html` markup, board commands,
 session controls, browser timers, native WebSockets and live relay. UI instances
 are mounted with scoped element lookup and independent memory-backed storage ports.
 It never reads/replaces the user's localStorage, copies credentials or downloads
@@ -57,7 +57,8 @@ confirm it contains the app only, with no acceptance page or test entry.
 
 Before an actual release, use two clean profiles/origins with independent storage:
 
-1. Create/join in the actual app. Apply moves on each side and one capture. Confirm
+1. Create/join in the debug harness (`debug.html`; production online wiring is a
+   later client milestone). Apply moves on each side and one capture. Confirm
    equal history, turn gating, capture display and successful recovery saves.
 2. Refresh one player, then both. Confirm the same room/side/history is recovered
    and moves remain disabled until synchronization. Duplicate a live seat and
@@ -91,7 +92,9 @@ a transactional cross-tab lock. Client software may differ; replay is the rules
 compatibility gate, not an old-engine registry. Public abuse prevention, accounts,
 matchmaking, clocks and server adjudication remain future requirements.
 
-The next development work can be the production UI against the session contracts.
-Keep the debug harness and acceptance runner as reference consumers. See
+The first local production client now lives at the default entry; see
+[local client development](production-client.md). Online controls remain in
+`debug.html` until integrated into the production client. Keep the debug harness
+and acceptance runner as reference consumers. See
 [deployment handoff](relay-deployment.md), [session API](online-session.md) and
 [browser recovery](browser-recovery.md).

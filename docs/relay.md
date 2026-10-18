@@ -16,7 +16,9 @@ npm run dev:online
 ```
 
 This builds and watches the relay, restarts it after server changes, and starts
-the Vite client in the same terminal. Press Ctrl+C to stop both. To run only the
+the Vite client in the same terminal, opening the online harness at
+`/hnefatafl/debug.html`. The default app entry now serves the local production
+client. Press Ctrl+C to stop both. To run only the
 relay, use `npm run build:server` followed by `npm run start:server`.
 
 The default endpoints are `ws://127.0.0.1:8787/relay` and
@@ -48,7 +50,7 @@ an invalid URL) disables Create/Join while leaving local play available. HTTPS
 pages require a `wss://` endpoint. If Vite uses another port, include its exact
 origin in `RELAY_ORIGINS` before starting the relay.
 
-Open the UI in two tabs. Choose a side and Create Room in one, then enter the
+Open `http://localhost:5173/hnefatafl/debug.html` in two tabs. Choose a side and Create Room in one, then enter the
 six-character code and Join Room in the other. Each browser controls its assigned
 side only after synchronization. Status distinguishes waiting, synchronization,
 turn, disconnection and room errors; board outcome remains separate. Load is
@@ -64,7 +66,8 @@ Replacement/continuation/leave actions ask for confirmation when appropriate.
 P7 saves online recovery data in one localStorage slot per origin and replays it
 before refresh/resume. Check the displayed save status; failures preserve the
 in-memory game but require Copy Game for unsaved moves. See [browser recovery](browser-recovery.md).
-Public hosting and the production UI redesign remain later work.
+Public hosting and online integration into the new production client remain
+later work. See [the local client milestone](production-client.md).
 
 ## Configuration
 

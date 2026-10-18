@@ -8,6 +8,7 @@ import { CLIENT_VERSION } from '../online/clientVersion'
 import { versionWarning } from '../../shared/relayProtocol'
 import { compareRecords } from '../online/record'
 import { validRelayEndpoint } from '../online/endpoint'
+import { SessionOwner } from '../session/SessionOwner'
 
 export interface SessionControlDependencies {
     recoveryStore?: RecoveryStore
@@ -27,8 +28,7 @@ export function bindSessionControls(ui: UIElements, configuredEndpoint?: string,
     let active = true
     let notice = ''
     let confirmation: (() => void) | undefined
-    let unbind = () => {}
-    let unsubscribe = () => {}
+    let owner: SessionOwner
     const recoveryStore = dependencies.recoveryStore ?? new RecoveryStore()
     const createOnline = dependencies.createOnline ?? (options => new OnlineGameSession(options))
     const loaded = recoveryStore.load()
@@ -99,19 +99,20 @@ export function bindSessionControls(ui: UIElements, configuredEndpoint?: string,
         ui.recoveryBackupHelp.hidden = !recoveryStore.hasSaved()
         ui.reviewRecovery.hidden = online || !saved
     }
-    function bind(): void {
-        unbind = bindCommands(ui, session)
-        unsubscribe = session.subscribe(view => {
+    function bind(): () => void {
+        const unbind = bindCommands(ui, session)
+        const unsubscribe = session.subscribe(view => {
             if (savingEnabled) persist(view.connection !== 'closed')
             render(view)
         })
+        return () => { unbind(); unsubscribe() }
     }
     function cancel(): void {
         confirmation = undefined; ui.confirmation.hidden = true
     }
     function replace(next: GameSession): void {
-        unbind(); unsubscribe(); session.dispose()
-        session = next; notice = ''; cancel(); ui.log.textContent = ''; bind()
+        notice = ''; cancel(); ui.log.textContent = ''
+        owner.replace(next)
     }
     function guarded(action: () => void): void {
         if (!active) return
@@ -214,10 +215,10 @@ export function bindSessionControls(ui: UIElements, configuredEndpoint?: string,
     } else if (saved) storageStatus = saved.conflict
         ? 'Saved histories diverged. Both records are retained in the private backup; automatic reconnect is disabled.'
         : 'A saved online record is available for review. It will not reconnect automatically.'
-    bind()
+    owner = new SessionOwner(session, next => { session = next; return bind() })
     return () => {
         if (!active) return
-        active = false; cancel(); unbind(); unsubscribe(); session.dispose()
+        active = false; cancel(); owner.dispose()
         for (const button of [ui.createRoom, ui.joinRoom, ui.newLocal, ui.continueLocal, ui.reconnect,
             ui.leaveRoom, ui.copyRoom, ui.confirmSession, ui.cancelSession, ui.reviewRecovery, ui.backupRecovery]) button.onclick = null
     }

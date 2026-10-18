@@ -34,7 +34,7 @@ run.onclick = async () => {
         const endpoint = document.querySelector<HTMLInputElement>('#relay')!.value.trim()
         const url = new URL(endpoint)
         assert(['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname), 'Use a local test relay; do not run against production')
-        const response = await fetch('./index.html')
+        const response = await fetch('./debug.html')
         assert(response.ok, 'Could not load the actual app markup')
         const source = new DOMParser().parseFromString(await response.text(), 'text/html')
         source.querySelectorAll('script').forEach(script => script.remove())

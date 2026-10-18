@@ -27,6 +27,22 @@ npm run dev
 Vite opens the browser and normally serves the app at
 `http://localhost:5173/hnefatafl/`. It may select another port if that one is busy.
 
+The default entry is the production client's **local two-player game**. Select a
+piece and a highlighted destination to move. It supports keyboard navigation,
+responsive layouts, turn/result explanations, history, captures, rules help and
+validated import. **Save / copy** opens canonical notation with clipboard and
+text-file download options. Local games are not autosaved; save before refreshing.
+**Load game** also offers the 1,752-game test corpus by index. Selecting an entry
+fills the editable notation for review; only **Load game** applies it.
+Replacing a nonempty game requires confirmation. Resignation controls, undo,
+analysis, AI and online controls are outside this first client milestone.
+
+The existing local/online development harness is preserved at
+`http://localhost:5173/hnefatafl/debug.html`. Browser checks are available at
+`client-acceptance.html` (local production client) and `acceptance.html` (online
+harness, requires a relay). All three developer entries are excluded from the
+production build. See [local client development and acceptance](docs/production-client.md).
+
 | Command | Purpose |
 | --- | --- |
 | `npm test` | Run the Vitest suite once |
@@ -34,7 +50,7 @@ Vite opens the browser and normally serves the app at
 | `npm run typecheck` | Check source/tests, Vite/Vitest configuration, and server |
 | `npm run build:server` | Compile the Node relay into ignored `dist-server/` |
 | `npm run start:server` | Start the compiled relay on loopback port 8787 |
-| `npm run dev:online` | Build/watch the relay and start it with the Vite client |
+| `npm run dev:online` | Build/watch the relay and open the Vite online debug harness |
 | `npm run test:server` | Run room and real WebSocket tests |
 | `npm run format` | Format tooling/configuration files with pinned Prettier |
 | `npm run format:check` | Check tooling/configuration formatting without writing |
@@ -50,7 +66,7 @@ scope to keep W2 focused; expand that scope in separately reviewed work. No
 lint command is declared. See the [maintenance instructions](.github/copilot-instructions.md)
 for validation details and the dated baseline.
 
-P6 adds online controls to the debug UI. Set `VITE_RELAY_URL` in `.env.local`
+P6 adds online controls to the debug UI at `debug.html`. Set `VITE_RELAY_URL` in `.env.local`
 (see `.env.example`), start the relay, and restart Vite. With no relay URL, the UI
 continues to support local play. See [relay setup and configuration](docs/relay.md)
 for endpoints, resource limits, reconnect behavior and restart limitations.
@@ -111,10 +127,11 @@ establish full Copenhagen conformance for every other rule.
 ## Engine API
 
 Import the class from [src/HnefataflEngine.ts](src/HnefataflEngine.ts) in a
-TypeScript/bundler consumer. [public/index.html](public/index.html) loads a minimal
-[bootstrap](public/main.js) for Vite's public root. The checked UI lives in
-[src/ui](src/ui/main.ts): board and history rendering, selection/highlighting,
-command handling, DOM bindings, and the extracted stylesheet.
+TypeScript/bundler consumer. [public/index.html](public/index.html) loads the local
+production client in [src/client](src/client/main.ts) through a minimal
+[bootstrap](public/main.js). The development harness at
+[public/debug.html](public/debug.html) uses [src/ui](src/ui/main.ts): board and
+history rendering, selection/highlighting, command handling and online controls.
 
 ```ts
 import { HnefataflEngine } from './src/HnefataflEngine'

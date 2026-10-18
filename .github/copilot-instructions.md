@@ -1,7 +1,8 @@
 # Hnefatafl maintenance instructions
 
-This repository is a browser application with a synchronous TypeScript engine
-and a plain HTML/TypeScript debug UI, bundled with Vite. Read the
+This repository is a browser application with a synchronous TypeScript engine,
+a local production client in `src/client`, and a preserved local/online debug
+harness in `src/ui`, bundled with Vite. Read the
 [README](../README.md) for current rules, API, notation, and layout semantics.
 Use source and configuration to verify these notes when making changes.
 
@@ -60,7 +61,8 @@ inherits its strict compiler options and checks `vite.config.ts` without emittin
 files. `tsconfig.server.json` checks/emits NodeNext server and shared modules;
 tests are excluded from its output. `npm run typecheck` runs all three checks.
 The extracted browser code under `src/ui` is included in the source check.
-`public/main.js` only imports that checked entry for Vite's public root.
+`public/main.js` imports the checked production entry in `src/client/main.ts`.
+The debug harness uses `public/debug.html` and `public/debug.js`.
 Vite's build is not a type check.
 
 ## Validation baseline and expectations
@@ -125,12 +127,14 @@ mask it.
 | `src/utils.ts` | Compatibility exports for coordinates, encirclement, debug rendering, and forts |
 | `src/types.ts` | Exported state, piece, move, and result types |
 | `src/ui/` | Checked DOM bindings, board/history rendering, selection/highlighting, commands, modal wiring, and CSS |
+| `src/client/` | Production local-game consumer, persistent keyboard board, history/outcomes, import/export dialogs, responsive CSS |
 | `src/session/` | Local/online engine ownership, subscriptions, capabilities, generation guards, record synchronization, disposal |
 | `src/online/` | Client record replay, peer messages, version metadata and native socket adapter |
 | `shared/` | Engine-independent JSON and relay envelope contracts |
 | `server/` | Ephemeral room metadata, opaque WebSocket relay, configuration and lifecycle |
-| `public/index.html` | HTML entry and modal content |
-| `public/main.js` | Minimal Vite bootstrap importing `src/ui/main.ts` |
+| `public/index.html` | Local production HTML entry and native dialogs |
+| `public/main.js` | Minimal Vite bootstrap importing `src/client/main.ts` |
+| `public/debug.html`, `public/debug.js` | Development-only original harness and bootstrap |
 
 The facade methods are `reset`, `getState`, `validateMove`, `applyMove`,
 `applyMoveSequence`, `loadGame`, `saveGame`, `resign`, and `getPossibleMoves(from)`. The lower-level
@@ -139,6 +143,11 @@ The facade methods are `reset`, `getState`, `validateMove`, `applyMove`,
 not `board`; squares use `isRestricted`, not `isCorner`.
 
 P3's debug UI uses `GameSession` rather than directly owning the engine.
+The local production client also uses `GameSession`; `SessionOwner` handles
+unbind-before-dispose replacement for both consumers. Production local play must
+not read or overwrite the online recovery slot. See `docs/production-client.md`
+for the local client/browser acceptance gate. `client-acceptance.html` exercises
+the production consumer; `acceptance.html` fetches `debug.html` for online checks.
 `bindCommands` returns UI cleanup and does not reset the bound game. The caller
 owns session disposal. Session commands carry the observed generation; subscribers
 drive rendering. See README and `docs/online-play-progress.md` for the contract.
