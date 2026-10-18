@@ -34,8 +34,15 @@ validated import. **Save / copy** opens canonical notation with clipboard and
 text-file download options. Local games are not autosaved; save before refreshing.
 **Load game** also offers the 1,752-game test corpus by index. Selecting an entry
 fills the editable notation for review; only **Load game** applies it.
-Replacing a nonempty game requires confirmation. Resignation controls, undo,
-analysis, AI and online controls are outside this first client milestone.
+Replacing a nonempty game requires confirmation. Local review controls step
+through the game without discarding later moves; selecting a move in the record
+jumps to its position. Playing a move from an earlier position opens **Create a
+variant** for an optional description; confirming creates the line and plays the
+move, while cancelling leaves the game unchanged. The **Variants** tab lists available lines, and Next offers a choice
+at forks. Studies with variants save as JSON; ordinary games retain portable text.
+The load dialog also accepts file selection and drag-and-drop. See
+[game review and variant format](docs/game-review.md). Resignation controls,
+AI, local autosave and production online controls remain deferred.
 
 The existing local/online development harness is preserved at
 `http://localhost:5173/hnefatafl/debug.html`. Browser checks are available at

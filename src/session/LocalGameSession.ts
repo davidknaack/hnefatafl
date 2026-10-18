@@ -2,13 +2,19 @@ import { HnefataflEngine } from '../HnefataflEngine'
 import { STANDARD_BOARD } from '../board'
 import { ApplyMoveResult, Coordinate, GameStatus, MoveValidationResult, PossibleMove } from '../types'
 import { GameSession, SessionCapabilities, SessionListener, SessionResult, SessionView } from './GameSession'
+import { LocalReview } from './LocalReview'
 
 export class LocalGameSession implements GameSession {
-    private readonly engine = new HnefataflEngine()
+    private engine = new HnefataflEngine()
     private generation = 0
     private disposed = false
     private standardStart = true
     private listeners = new Set<SessionListener>()
+    private review?: LocalReview
+
+    constructor(private options: { review?: boolean } = {}) {
+        if (options.review) this.review = new LocalReview()
+    }
 
     getView(): SessionView {
         const state = this.engine.getState()
@@ -19,8 +25,9 @@ export class LocalGameSession implements GameSession {
             capabilities: {
                 move: active && state.status === GameStatus.InProgress,
                 validate: active, import: active, reset: active,
-                export: active && this.standardStart && state.moveHistory.length > 0,
+                export: active && this.standardStart && (this.review ? this.review.hasContent : state.moveHistory.length > 0),
             },
+            ...(this.review ? { review: this.review.view() } : {}),
         }
     }
 
@@ -77,20 +84,36 @@ export class LocalGameSession implements GameSession {
         // Recheck at commit time: import/reset/disposal can invalidate a queued action.
         await Promise.resolve()
         const error = this.unavailable(generation, 'move')
-        return error ? this.reject(error) : this.committed(this.engine.applyMove(command))
+        if (error) return this.reject(error)
+        if (this.review && !this.review.atTip) return this.reject('Create a variant to play from this position')
+        if (this.review && !this.review.canAppend()) return this.reject('The study move limit has been reached')
+        const result = this.engine.applyMove(command)
+        if (result.success) this.review?.append(result.newState.moveHistory[result.newState.moveHistory.length - 1], result.newState.status)
+        return this.committed(result)
     }
 
     loadGame(input: string, generation: number): SessionResult {
         const error = this.unavailable(generation, 'import')
         if (error) return this.reject(error)
-        const result = this.engine.loadGame(input)
-        if (result.success) this.standardStart = true
-        return this.committed(result)
+        try {
+            if (this.options.review && input.trimStart().startsWith('{')) {
+                const loaded = LocalReview.load(input)
+                this.engine = loaded.engine; this.review = loaded.study
+            } else {
+                const candidate = new HnefataflEngine()
+                const result = candidate.loadGame(input)
+                if (!result.success) return this.reject(result.error)
+                const review = this.options.review ? new LocalReview(candidate) : undefined
+                this.engine = candidate; this.review = review
+            }
+            this.standardStart = true
+            return this.committed({ success: true, newState: this.engine.getState() })
+        } catch (error) { return this.reject(error instanceof Error ? error.message : 'Could not load game') }
     }
 
     saveGame(): string {
         if (!this.getView().capabilities.export) throw new Error('Game export is not available')
-        return this.engine.saveGame()
+        return this.review ? this.review.save() : this.engine.saveGame()
     }
 
     reset(generation: number, layout?: string[]): SessionResult {
@@ -99,7 +122,48 @@ export class LocalGameSession implements GameSession {
         try { this.engine.reset(layout) }
         catch (error) { return this.reject(error instanceof Error ? error.message : String(error)) }
         this.standardStart = (layout ?? STANDARD_BOARD).every((row, index) => row === STANDARD_BOARD[index])
+        this.review = this.options.review && this.standardStart ? new LocalReview() : undefined
         return this.committed({ success: true, newState: this.engine.getState() })
+    }
+
+    reviewMove(line: string, ply: number, generation: number): SessionResult {
+        const error = this.unavailable(generation, 'validate')
+        if (error || !this.review) return this.reject(error ?? 'Local review is not available')
+        try {
+            const engine = this.review.seek(line, ply)
+            this.engine = engine
+            return this.committed({ success: true, newState: engine.getState() })
+        } catch (error) { return this.reject(error instanceof Error ? error.message : 'Could not review move') }
+    }
+
+    createVariant(description: string, generation: number): SessionResult {
+        const error = this.unavailable(generation, 'validate')
+        if (error || !this.review) return this.reject(error ?? 'Local review is not available')
+        if (this.engine.getState().status !== GameStatus.InProgress) return this.reject('Step back from the completed position before branching')
+        try {
+            this.review.branch(description)
+            return this.committed({ success: true, newState: this.engine.getState() })
+        } catch (error) { return this.reject(error instanceof Error ? error.message : 'Could not create variant') }
+    }
+
+    async submitVariant(command: string, description: string, generation: number): Promise<SessionResult> {
+        await Promise.resolve()
+        const error = this.unavailable(generation, 'move')
+        if (error || !this.review) return this.reject(error ?? 'Local review is not available')
+        try {
+            const engine = this.review.branchWithMove(command, description)
+            this.engine = engine
+            return this.committed({ success: true, newState: engine.getState() })
+        } catch (error) { return this.reject(error instanceof Error ? error.message : 'Could not play variant') }
+    }
+
+    describeVariant(line: string, description: string, generation: number): SessionResult {
+        const error = this.unavailable(generation, 'validate')
+        if (error || !this.review) return this.reject(error ?? 'Local review is not available')
+        try {
+            this.review.describe(line, description)
+            return this.committed({ success: true, newState: this.engine.getState() })
+        } catch (error) { return this.reject(error instanceof Error ? error.message : 'Could not describe variant') }
     }
 
     dispose(): void {

@@ -42,9 +42,10 @@ integrated into the production client.
   `hnefatafl-game.txt`. Empty games cannot be exported. Local games and imported
   games are **not autosaved**; this is stated beside the game record and in help.
 
-No engine rules, protocol or recovery-storage schema changed. Resignation controls,
-undo, analysis, AI, rematches and local autosave remain outside this milestone.
-Existing imported resignation records still replay and display their results.
+No engine rules, protocol or recovery-storage schema changed. Local review and
+variant analysis are now implemented; see [game review and the JSON format](game-review.md).
+Resignation controls, AI, rematches and local autosave remain deferred. Existing
+imported resignation records still replay and display their results.
 
 ## Ownership and developer entries
 
@@ -54,6 +55,7 @@ Existing imported resignation records still replay and display their results.
 | `src/client/client.ts` | Local client binding, dialogs and validated replacement |
 | `src/client/board.ts` | Persistent square rendering, accessible labels, roving focus and keyboard input |
 | `src/client/presentation.ts` | Outcome wording and canonical display history |
+| `src/client/review.ts`, `src/session/LocalReview.ts` | Move navigation, variants, descriptions and replay-validated JSON studies |
 | `src/client/gameLibrary.ts`, `src/client/data/` | On-demand, indexed Copenhagen test corpus and provenance |
 | `src/session/SessionOwner.ts` | Shared unbind-before-dispose session replacement |
 | `public/index.html`, `public/main.js` | Production entry and markup |
@@ -78,7 +80,7 @@ relay build commands. With `npm run dev` running, open:
 
 `http://localhost:5173/hnefatafl/client-acceptance.html`
 
-Choose **Run client checks**. Expected: **15 passed; 0 failed**. The runner uses
+Choose **Run client checks**. Expected: **22 passed; 0 failed**. The runner uses
 actual production markup, the real client binding and disposable local sessions.
 It covers opening state, side gating, selection/cancellation, keyboard navigation,
 focus retention, moves/capture/export, atomic invalid import, cancelled/confirmed
@@ -92,6 +94,9 @@ on primary surfaces and preservation of history, selection and keyboard focus.
 The runner page also offers isolated light/dark previews for visual inspection.
 Library checks cover real corpus indexing/validation, switching/editing drafts,
 late responses, disposal, fetch failures and retry without blocking custom import.
+Review checks cover complete-history navigation, move-list jumps, sibling
+variants, described continuation choices, JSON restoration, file/drop loading,
+oversized inputs and file-read races.
 
 Also run the [existing online acceptance runner](online-acceptance.md) against a
 local relay after lifecycle-owner changes. Expected: **9 passed; 0 failed**.

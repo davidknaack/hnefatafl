@@ -148,6 +148,11 @@ unbind-before-dispose replacement for both consumers. Production local play must
 not read or overwrite the online recovery slot. See `docs/production-client.md`
 for the local client/browser acceptance gate. `client-acceptance.html` exercises
 the production consumer; `acceptance.html` fetches `debug.html` for online checks.
+Production local sessions enable `{ review: true }`; the harness retains linear
+sessions. `LocalReview` owns main/variant records and replay-based navigation,
+separate from board rendering. Preserve complete future lines while reviewing,
+generation guards, JSON version/bounds, replay validation of every branch, and
+the standard-text export when no variants exist. See `docs/game-review.md`.
 `bindCommands` returns UI cleanup and does not reset the bound game. The caller
 owns session disposal. Session commands carry the observed generation; subscribers
 drive rendering. See README and `docs/online-play-progress.md` for the contract.

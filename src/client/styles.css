@@ -37,10 +37,10 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; }
-button, textarea, select { font: inherit; }
+button, textarea, select, input { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: default; opacity: .45; }
-button:focus-visible, a:focus-visible, textarea:focus-visible, select:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
+button:focus-visible, a:focus-visible, textarea:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 [hidden] { display: none !important; }
 .client { max-width: 1216px; padding: 0 48px; margin: 0 auto; }
@@ -125,12 +125,12 @@ nav { display: flex; gap: 20px; align-items: center; }
 .panel-heading h2 { margin: 0; font-family: Georgia, serif; font-weight: normal; font-size: 21px; }
 .history-columns, .game-history li { display: grid; grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr); gap: 7px; padding: 9px 16px; }
 .history-columns { border-block: 1px solid var(--line); font-size: 10px; color: var(--muted); background: var(--inset-surface); }
-.history-scroll { height: 215px; overflow: auto; }
+.history-scroll { height: 215px; overflow: auto; position: relative; }
 .game-history { list-style: none; padding: 0; margin: 0; }
 .game-history li { border-bottom: 1px solid var(--row-line); font-family: 'Cascadia Mono', Consolas, monospace; font-size: 11px; line-height: 1.6; }
 .game-history li > span { overflow-wrap: anywhere; }
 .history-number { color: var(--history-number); }
-.game-history li:last-child { background: var(--active-surface); }
+.game-history li:last-child { background: transparent; }
 .empty-history { color: var(--empty-history); text-align: center; padding: 65px 16px; font-family: Georgia, serif; font-style: italic; font-size: 18px; line-height: 1.6; }
 .record-actions { display: flex; gap: 9px; padding: 14px; border-top: 1px solid var(--line); }
 .record-actions button { flex: 1; padding: 9px 6px; font-size: 11px; }
@@ -151,6 +151,37 @@ dialog textarea { display: block; width: 100%; resize: vertical; min-height: 120
 .form-error { color: var(--error); margin: 10px 0 0; }
 dialog select { display: block; width: 100%; min-height: 44px; padding: 10px; border: 1px solid var(--field-border); border-radius: 6px; background: var(--field); color: var(--text); }
 .library-status { margin: 8px 0 0; color: var(--muted); font-size: 11px; }
+.review-controls { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding-top: 12px; }
+.review-step-buttons { display: flex; gap: 4px; }
+.review-step-buttons button { position: relative; display: grid; place-items: center; width: 44px; height: 44px; padding: 8px; }
+.review-step-buttons svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.review-choice-indicator { display: none; position: absolute; right: 3px; bottom: 0; font-size: 12px; line-height: 12px; }
+.has-choices .review-choice-indicator { display: block; }
+.review-position { font-size: 11px; text-align: center; line-height: 1.6; }
+.record-tabs { display: flex; border-bottom: 1px solid var(--line); }
+.record-tabs button { flex: 1; background: transparent; color: var(--muted); min-height: 40px; border: 0; border-bottom: 2px solid transparent; font-size: 12px; }
+.record-tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.record-tabs button:focus-visible { outline-offset: -4px; }
+.game-history button { min-width: 0; border: 0; background: transparent; color: var(--text); padding: 5px 4px; margin: -3px 0; font: inherit; text-align: left; overflow-wrap: anywhere; border-radius: 3px; }
+.game-history button:hover { background: var(--hover-surface); }
+.game-history button.current-move { background: var(--active-surface); box-shadow: inset 2px 0 var(--active-stripe); }
+.game-history button:focus-visible { outline-offset: -2px; }
+.variants-panel { min-height: 246px; }
+.variant-actions { padding: 12px 14px 0; }
+.variant-actions p { font-size: 11px; line-height: 1.6; color: var(--muted); margin-bottom: 0; }
+.variant-actions .text-button { font-size: 11px; }
+.variant-list { padding: 0 12px 12px; display: grid; gap: 8px; max-height: 260px; overflow: auto; }
+.variant-option, .continuation-option { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; border: 1px solid var(--line); border-radius: 6px; padding: 12px; background: var(--surface); color: var(--text); text-align: left; overflow-wrap: anywhere; }
+.variant-option strong, .continuation-option strong { font-size: 12px; }
+.variant-option > span, .continuation-option > span { color: var(--muted); font-size: 11px; line-height: 1.5; }
+.variant-option .variant-note { color: var(--text); }
+.variant-option:hover, .continuation-option:hover { background: var(--hover-surface); }
+.variant-option[aria-pressed="true"] { border-color: var(--active-border); box-shadow: inset 3px 0 var(--active-stripe); }
+.next-choices { display: grid; gap: 10px; }
+dialog input[type="text"] { display: block; width: 100%; min-height: 44px; padding: 10px; border: 1px solid var(--field-border); border-radius: 6px; background: var(--field); color: var(--text); font-size: 14px; }
+.import-drop-zone { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 12px; margin-top: 18px; border: 1px dashed var(--field-border); border-radius: 6px; font-size: 12px; color: var(--muted); }
+.import-drop-zone.dragging { background: var(--hover-surface); border-color: var(--accent); }
+.import-drop-zone .secondary-button { min-height: 36px; padding: 7px 12px; font-size: 11px; }
 @media (max-width: 980px) { .client { padding-inline: 26px; } .game-layout { grid-template-columns: minmax(0, 1fr) 270px; gap: 24px; } .side-card { padding: 15px 11px; gap: 10px; } }
 @media (max-width: 760px) { .client { max-width: 650px; padding-inline: 18px; } .site-header { padding-block: 22px; gap: 10px; } .brand-mark { width: 41px; height: 41px; font-size: 31px; } h1 { font-size: 28px; } .brand { gap: 10px; } .eyebrow { font-size: 8px; } nav { gap: 16px; } nav button { font-size: 11px !important; padding-inline: 12px !important; } nav .text-button { padding-inline: 0 !important; } .primary-button span { margin-left: 6px; } .game-layout { grid-template-columns: minmax(0, 1fr); padding-top: 22px; gap: 26px; } .game-sidebar { padding-top: 0; } .players-panel { display: grid; grid-template-columns: 1fr 1fr; column-gap: 12px; margin-bottom: 20px; } .side-card { gap: 10px; margin: 0; padding: 14px 12px; flex-wrap: wrap; } .side-card p { line-height: 1.5; } .piece-count { width: 100%; flex-direction: row; align-items: baseline; gap: 8px; margin-left: 40px; } .capture-summary { grid-column: 1 / -1; } .history-scroll { height: 190px; } .objective-note { display: none; } .site-footer { margin-top: 8px; } .piece.king { font-size: clamp(18px, 5vw, 34px); } }
 @media (max-width: 390px) { .client { padding-inline: 12px; } .brand-mark { display: none; } nav { gap: 12px; } .board-frame { padding-right: 10px; padding-left: 3px; } .turn-banner { padding: 14px 12px; gap: 10px; } .turn-banner h2 { font-size: 21px; } .turn-banner p { font-size: 10px; } .move-number { font-size: 9px; } .game-intro { font-size: 10px; } .board-guide { gap: 11px; } .board-guide button { font-size: 10px; } }

@@ -7,7 +7,9 @@ import { SessionOwner } from '../session/SessionOwner'
 import { parseMove } from '../parser'
 import { clientElements, ClientElements } from './elements'
 import { createBoard } from './board'
-import { displayHistory, gameDetail, gameHeading, sideName } from './presentation'
+import { gameDetail, gameHeading } from './presentation'
+import { bindReview } from './review'
+import { MAX_STUDY_BYTES } from '../session/LocalReview'
 import { loadGameLibrary } from './gameLibrary'
 
 function bindGame(ui: ClientElements, session: GameSession): () => void {
@@ -39,7 +41,10 @@ function bindGame(ui: ClientElements, session: GameSession): () => void {
         const generation = view.generation, from = selected!
         pending = true; renderBoard()
         try {
-            const result = await session.submitMove(`${coordToString(from)}-${coordToString(to)}`, generation)
+            const command = `${coordToString(from)}-${coordToString(to)}`
+            const result = view.review && view.review.cursor < view.review.moves.length
+                ? await review.requestVariant(command) : await session.submitMove(command, generation)
+            if (!result) { if (current(generation)) clear(); return }
             if (!current(result.generation)) return
             if (!result.success && current(generation)) ui.feedback.textContent = result.error
         } catch (error) {
@@ -48,10 +53,11 @@ function bindGame(ui: ClientElements, session: GameSession): () => void {
             if (active) { pending = false; renderBoard() }
         }
     }
-    let historySignature = ''
+    const review = bindReview(ui, session)
     function render(next: SessionView) {
         if (!active) return
         const oldLength = view.state.moveHistory.length
+        const oldLine = view.review?.line
         if (next.generation !== view.generation) { selected = null; moves = [] }
         view = next
         ui.title.textContent = gameHeading(next.state); ui.detail.textContent = gameDetail(next.state)
@@ -70,36 +76,14 @@ function bindGame(ui: ClientElements, session: GameSession): () => void {
             ? `Captured: ${captured.attacker} ${captured.attacker === 1 ? 'attacker' : 'attackers'} · ${captured.defender} ${captured.defender === 1 ? 'defender' : 'defenders'}.` : 'No pieces captured yet.'
         const boardMoves = next.state.moveHistory.filter(move => move !== '---').length
         ui.moveNumber.textContent = playing ? `Move ${Math.floor(boardMoves / 2) + 1}` : 'Game finished'
-        ui.recordCount.textContent = `${boardMoves} ${boardMoves === 1 ? 'move' : 'moves'}`
         ui.exportButton.disabled = !next.capabilities.export
         ui.importButton.disabled = !next.capabilities.import
-        const signature = next.state.moveHistory.join(' ') + next.state.status
-        if (signature !== historySignature) {
-            const atBottom = ui.historyScroll.scrollHeight - ui.historyScroll.scrollTop - ui.historyScroll.clientHeight < 32
-            historySignature = signature
-            ui.history.replaceChildren()
-            const history = displayHistory(next.state)
-            for (let index = 0; index < history.length; index += 2) {
-                const row = document.createElement('li')
-                const number = document.createElement('span')
-                number.className = 'history-number'; number.textContent = String(index / 2 + 1); number.setAttribute('aria-hidden', 'true')
-                row.append(number)
-                for (let offset = 0; offset < 2; offset++) {
-                    const command = document.createElement('span'), text = history[index + offset]
-                    if (text) {
-                        const label = document.createElement('span')
-                        label.className = 'sr-only'
-                        label.textContent = `${sideName(offset === 0 ? Player.Attacker : Player.Defender)}, move ${index / 2 + 1}: `
-                        command.append(label, document.createTextNode(text))
-                    } else { command.textContent = '—'; command.setAttribute('aria-hidden', 'true') }
-                    row.append(command)
-                }
-                ui.history.append(row)
-            }
-            ui.empty.hidden = history.length > 0
-            if (atBottom) ui.historyScroll.scrollTop = ui.historyScroll.scrollHeight
-        }
         if (next.state.outcome) ui.feedback.textContent = `${gameHeading(next.state)}. ${gameDetail(next.state)}`
+        else if (next.review && next.review.cursor < next.review.moves.length) {
+            ui.feedback.textContent = `Viewing ${next.review.label}, move ${next.review.cursor} of ${next.review.moves.length}. Use the next arrow to continue, or play a move to create a variant.`
+        } else if (next.review && oldLine !== next.review.line) {
+            ui.feedback.textContent = `${next.review.label}. Select a piece to continue this line.`
+        }
         else if (next.state.moveHistory.length > oldLength) {
             const move = parseMove(next.state.moveHistory[next.state.moveHistory.length - 1])
             ui.feedback.textContent = move ? `${coordToString(move.from)} to ${coordToString(move.to)}.${move.captures.length ? ` Captured ${move.captures.map(coordToString).join(', ')}.` : ''} ${gameHeading(next.state)}.` : gameHeading(next.state)
@@ -110,7 +94,7 @@ function bindGame(ui: ClientElements, session: GameSession): () => void {
     ui.feedback.textContent = view.state.outcome ? `${gameHeading(view.state)}. ${gameDetail(view.state)}`
         : view.state.moveHistory.length ? 'Game loaded. Select a piece to continue.' : 'Select an attacker to begin.'
     const unsubscribe = session.subscribe(render)
-    return () => { active = false; unsubscribe(); board.dispose(); ui.clear.onclick = null }
+    return () => { active = false; unsubscribe(); review.dispose(); board.dispose(); ui.clear.onclick = null }
 }
 
 export interface ClientDependencies {
@@ -118,13 +102,15 @@ export interface ClientDependencies {
 }
 
 /** Local production consumer. No sockets or recovery-slot access in this milestone. */
-export function mountLocalClient(root: ParentNode, initial: GameSession = new LocalGameSession(), dependencies: ClientDependencies = {}): () => void {
+export function mountLocalClient(root: ParentNode, initial: GameSession = new LocalGameSession({ review: true }), dependencies: ClientDependencies = {}): () => void {
     const ui = clientElements(root)
     let active = true
     const owner = new SessionOwner(initial, session => bindGame(ui, session))
     let replacement: { commit: () => void; cancel: () => void } | undefined
     const dialogs = [ui.help, ui.importDialog, ui.exportDialog, ui.confirm]
     let games: readonly string[] | undefined, loadingLibrary = false
+    let fileOperation = 0
+    function cancelFileRead() { fileOperation++; ui.load.disabled = false; ui.fileStatus.textContent = '' }
     async function populateLibrary() {
         if (games || loadingLibrary) return
         loadingLibrary = true; ui.library.disabled = true
@@ -150,9 +136,41 @@ export function mountLocalClient(root: ParentNode, initial: GameSession = new Lo
     ui.library.onchange = () => {
         if (ui.library.value === '' || !games) return
         const game = games[Number(ui.library.value)]
-        if (game !== undefined) { ui.importText.value = game; clearImportError() }
+        if (game !== undefined) { cancelFileRead(); ui.importText.value = game; clearImportError() }
     }
-    ui.importText.oninput = () => { ui.library.value = ''; clearImportError() }
+    ui.importText.oninput = () => { cancelFileRead(); ui.library.value = ''; clearImportError() }
+    async function readFile(file: File) {
+        cancelFileRead(); clearImportError()
+        if (file.size > MAX_STUDY_BYTES) { ui.importError.textContent = 'Choose a text game or study file no larger than 2 MiB.'; return }
+        const operation = fileOperation
+        ui.load.disabled = true; ui.fileStatus.textContent = `Reading ${file.name}…`
+        try {
+            const text = await file.text()
+            if (!active || operation !== fileOperation || !ui.importDialog.open) return
+            ui.importText.value = text; ui.library.value = ''
+            ui.fileStatus.textContent = `${file.name} is ready to review. Choose Load game to apply it.`
+        } catch {
+            if (active && operation === fileOperation) ui.importError.textContent = 'The file could not be read. Try another file or paste the notation.'
+        } finally { if (active && operation === fileOperation) ui.load.disabled = false }
+    }
+    ui.chooseFile.onclick = () => ui.file.click()
+    ui.file.onchange = () => { const file = ui.file.files?.[0]; ui.file.value = ''; if (file) void readFile(file) }
+    ui.importDialog.ondragover = event => {
+        if (!event.dataTransfer?.types.includes('Files')) return
+        event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; ui.dropZone.classList.add('dragging')
+    }
+    ui.importDialog.ondragleave = event => {
+        if (!ui.importDialog.contains(event.relatedTarget as Node | null)) ui.dropZone.classList.remove('dragging')
+    }
+    ui.importDialog.ondrop = event => {
+        if (!event.dataTransfer?.files.length) return
+        event.preventDefault(); ui.dropZone.classList.remove('dragging')
+        if (event.dataTransfer.files.length !== 1) { ui.importError.textContent = 'Choose one game file at a time.'; return }
+        void readFile(event.dataTransfer.files[0])
+    }
+    const importClosed = () => { if (!ui.importDialog.open) { cancelFileRead(); ui.dropZone.classList.remove('dragging') } }
+    ui.importDialog.addEventListener('close', importClosed)
+    ui.importDialog.addEventListener('cancel', cancelFileRead)
     function cancelReplacement() { replacement?.cancel(); replacement = undefined }
     function replace(candidate: LocalGameSession, description: string) {
         const source = owner.session, generation = source.getView().generation
@@ -163,13 +181,13 @@ export function mountLocalClient(root: ParentNode, initial: GameSession = new Lo
             ui.importDialog.close()
             owner.replace(candidate)
         }
-        if (!source.getView().state.moveHistory.length) { commit(); return }
+        if (!source.getView().capabilities.export) { commit(); return }
         cancelReplacement()
         replacement = { commit, cancel: () => candidate.dispose() }
         ui.confirmDescription.textContent = description
         ui.confirm.showModal(); ui.cancelReplace.focus()
     }
-    ui.newGame.onclick = () => replace(new LocalGameSession(), 'Start a new game? Save or copy the current record first if you want to keep it.')
+    ui.newGame.onclick = () => replace(new LocalGameSession({ review: true }), 'Start a new game? Save or copy the current record first if you want to keep it.')
     ui.helpButton.onclick = () => {
         ui.help.showModal()
         const heading = ui.help.querySelector<HTMLElement>('h2')!
@@ -177,13 +195,14 @@ export function mountLocalClient(root: ParentNode, initial: GameSession = new Lo
     }
     ui.closeHelp.onclick = () => ui.help.close()
     ui.importButton.onclick = () => {
+        cancelFileRead()
         clearImportError()
         ui.importDialog.showModal(); ui.importText.focus()
         void populateLibrary()
     }
-    ui.cancelImport.onclick = () => ui.importDialog.close()
+    ui.cancelImport.onclick = () => { cancelFileRead(); ui.importDialog.close() }
     ui.load.onclick = () => {
-        const candidate = new LocalGameSession()
+        const candidate = new LocalGameSession({ review: true })
         const result = candidate.loadGame(ui.importText.value, candidate.getView().generation)
         if (!result.success) {
             candidate.dispose(); ui.importError.textContent = result.error
@@ -202,6 +221,9 @@ export function mountLocalClient(root: ParentNode, initial: GameSession = new Lo
     ui.exportButton.onclick = () => {
         try {
             ui.exportText.value = owner.session.saveGame(); ui.exportStatus.textContent = ''
+            ui.exportHelp.textContent = ui.exportText.value.trimStart().startsWith('{')
+                ? 'This JSON study includes the main game, every variant and description, and the current review position.'
+                : 'This record contains the complete game, including moves beyond the position you are viewing.'
             ui.exportDialog.showModal()
         } catch (error) { ui.feedback.textContent = error instanceof Error ? error.message : 'The game could not be saved.' }
     }
@@ -219,19 +241,23 @@ export function mountLocalClient(root: ParentNode, initial: GameSession = new Lo
         }
     }
     ui.download.onclick = () => {
-        const url = URL.createObjectURL(new Blob([ui.exportText.value], { type: 'text/plain;charset=utf-8' }))
+        const study = ui.exportText.value.trimStart().startsWith('{')
+        const url = URL.createObjectURL(new Blob([ui.exportText.value], { type: study ? 'application/json;charset=utf-8' : 'text/plain;charset=utf-8' }))
         const link = document.createElement('a')
-        link.href = url; link.download = 'hnefatafl-game.txt'; link.click()
+        link.href = url; link.download = study ? 'hnefatafl-study.json' : 'hnefatafl-game.txt'; link.click()
         setTimeout(() => URL.revokeObjectURL(url), 0)
         ui.exportStatus.textContent = 'Game record prepared for download.'
     }
     return () => {
         if (!active) return
         active = false; cancelReplacement()
+        cancelFileRead(); ui.importDialog.removeEventListener('close', importClosed)
+        ui.importDialog.removeEventListener('cancel', cancelFileRead)
+        ui.importDialog.ondragover = null; ui.importDialog.ondragleave = null; ui.importDialog.ondrop = null; ui.file.onchange = null
         ui.confirm.removeEventListener('cancel', cancelReplacement); ui.confirm.removeEventListener('close', cancelReplacement)
         dialogs.forEach(dialog => dialog.close()); owner.dispose()
         ui.library.onchange = null; ui.importText.oninput = null
-        for (const button of [ui.newGame, ui.helpButton, ui.closeHelp, ui.importButton, ui.cancelImport,
+        for (const button of [ui.newGame, ui.helpButton, ui.closeHelp, ui.importButton, ui.cancelImport, ui.chooseFile,
             ui.load, ui.replace, ui.cancelReplace, ui.exportButton, ui.closeExport, ui.copy, ui.download]) button.onclick = null
     }
 }

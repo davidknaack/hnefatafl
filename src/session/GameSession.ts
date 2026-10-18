@@ -1,4 +1,5 @@
 import { ApplyMoveResult, Coordinate, GameState, MoveValidationResult, Player, PossibleMove } from '../types'
+import { LocalReviewView } from './LocalReview'
 
 export interface SessionCapabilities {
     move: boolean
@@ -17,6 +18,8 @@ export interface SessionView {
     /** null means local control of both sides. */
     localSide: Player | null
     capabilities: SessionCapabilities
+    /** Local review only; state is the position at cursor, moves includes the complete selected line. */
+    review?: LocalReviewView
     /** Online status contains no reconnect credentials. */
     online?: {
         roomCode: string | null
@@ -42,5 +45,9 @@ export interface GameSession {
     loadGame(input: string, generation: number): SessionResult
     saveGame(): string
     reset(generation: number, layout?: string[]): SessionResult
+    reviewMove?(line: string, ply: number, generation: number): SessionResult
+    createVariant?(description: string, generation: number): SessionResult
+    submitVariant?(command: string, description: string, generation: number): Promise<SessionResult>
+    describeVariant?(line: string, description: string, generation: number): SessionResult
     dispose(): void
 }
