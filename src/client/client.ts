@@ -27,6 +27,7 @@ function bindGame(ui: ClientElements, session: GameSession): () => void {
     }
     function activate(coord: Coordinate) {
         if (pending || !view.capabilities.move) return
+        board.finishMotion()
         const piece = view.state.position[coord.y][coord.x].occupant
         if (selected && isSameCoord(selected, coord)) { clear(); return }
         if (piece?.owner === view.state.currentPlayer) {
@@ -53,7 +54,7 @@ function bindGame(ui: ClientElements, session: GameSession): () => void {
             if (active) { pending = false; renderBoard() }
         }
     }
-    const review = bindReview(ui, session)
+    const review = bindReview(ui, session, board.finishMotion)
     function render(next: SessionView) {
         if (!active) return
         const oldLength = view.state.moveHistory.length

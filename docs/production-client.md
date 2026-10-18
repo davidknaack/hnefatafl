@@ -80,7 +80,7 @@ relay build commands. With `npm run dev` running, open:
 
 `http://localhost:5173/hnefatafl/client-acceptance.html`
 
-Choose **Run client checks**. Expected: **22 passed; 0 failed**. The runner uses
+Choose **Run client checks**. Expected: **33 passed; 0 failed**. The runner uses
 actual production markup, the real client binding and disposable local sessions.
 It covers opening state, side gating, selection/cancellation, keyboard navigation,
 focus retention, moves/capture/export, atomic invalid import, cancelled/confirmed
@@ -97,6 +97,44 @@ late responses, disposal, fetch failures and retry without blocking custom impor
 Review checks cover complete-history navigation, move-list jumps, sibling
 variants, described continuation choices, JSON restoration, file/drop loading,
 oversized inputs and file-read races.
+Board feedback checks cover side/destination-only hover eligibility, contrasting
+piece-sized rings and muted red selection, translucent origin pieces, 420 ms slides,
+growing arrows with fixed heads, cancellation during rapid navigation/selection,
+the shared 180 ms ease-out on arrival, indicator cleanup, and reduced motion.
+Reduced motion skips piece slides, arrow growth and feedback transitions. It shows
+a static ghost/arrow briefly (420 ms). Normal motion checks verify natural
+animation-clock progress, including the piece's actual intermediate position.
+Legal dots enter in an outward sequence: the adjacent square has no delay, then
+10 ms per additional square (at most 90 ms on this board), followed by the existing
+110 ms ease. Removal has no added delay, legal moves are immediately playable,
+and reduced motion shows all dots immediately.
+Both themes use #7c8488 escape squares without a decorative border or glyph.
+Captured pieces stay visible as noninteractive visual copies until the moving
+piece's slide finishes, then fade out together with the origin ghost and arrow
+over 180 ms with shared ease-out timing and no additional hold. The engine
+position, capture counts and accessible square labels commit immediately. All
+victims, including kings and simultaneous captures, follow the same timing.
+New actions, review navigation, reset, disposal or resize cancel pending capture
+effects and snap to the committed position. Reduced motion removes victims instantly.
+Browser checks verify shared start times, duration, intermediate fade opacity and
+simultaneous cleanup of the captures, origin ghost and arrow.
+Winning positions show a two-line Attacker/Defender WIN message over the last
+move's destination after the piece arrives. The message grows around that fixed
+center, eases in/out over 1.8 seconds, and leaves the permanent result heading in
+place. It uses the actual winner (including defender repetition losses), replays
+when reviewing the terminal move, and clears on navigation/replacement/disposal.
+Resignation has no winning movement, so its message uses the board center.
+Reduced motion shows a static message. Browser checks cover both winners,
+intermediate growth/centering, cancellation and both escape corners at 320, 390,
+768 and 1200 CSS pixels.
+
+### October 18, 2026 board refinement check
+
+Review/variant work was committed first as `ef45971`. Board refinements remain a
+separate change. Node `v24.19.0` passed all 572 Vitest tests in 25 files, all three
+TypeScript checks, tooling formatting and browser/relay builds. The production
+browser runner passed all 33 checks. Pointer/keyboard review and the escape-square
+appearance were also checked in the built preview and both theme previews.
 
 Also run the [existing online acceptance runner](online-acceptance.md) against a
 local relay after lifecycle-owner changes. Expected: **9 passed; 0 failed**.

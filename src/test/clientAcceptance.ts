@@ -7,7 +7,17 @@ const run = document.querySelector<HTMLButtonElement>('#run-client')!
 const summary = document.querySelector<HTMLElement>('#client-summary')!
 const results = document.querySelector<HTMLElement>('#client-results')!
 const fixtures = document.querySelector<HTMLElement>('#client-fixtures')!
+const cornerWinGame = 'd11-d10 d6-d9 h11-h10 e6-d6 h10-i10 d6-d8 g11-g10 f6-c6 g10-h10 c6-c11 i10-i9 c11-a11'
 function assert(value: unknown, message: string): asserts value { if (!value) throw new Error(message) }
+function motionPreference(matches: boolean): () => void {
+    const original = window.matchMedia
+    window.matchMedia = query => {
+        const result = original.call(window, query)
+        if (query === '(prefers-reduced-motion: reduce)') Object.defineProperty(result, 'matches', { value: matches })
+        return result
+    }
+    return () => { window.matchMedia = original }
+}
 async function until(check: () => boolean, message: string) {
     const deadline = Date.now() + 2000
     while (!check()) {
@@ -48,6 +58,249 @@ run.onclick = async () => {
             assert(f.ui.exportButton.disabled && f.ui.clear.disabled, 'Empty game controls incorrect')
             f.square('F8').click()
             assert(!f.root.querySelector('.selected'), 'Wrong side could select a piece')
+        })
+        await check('Hover feedback is limited to the moving side, then to legal destinations', async () => {
+            const f = mount()
+            assert(f.root.querySelectorAll('.square.actionable').length === 24, 'Opening hover actions include empty squares or defenders')
+            assert(!f.square('F8').classList.contains('actionable') && !f.square('B11').classList.contains('actionable'), 'Inactive piece/empty square advertises an action')
+            f.square('D11').click(); f.square('D10').click()
+            await until(() => f.ui.title.textContent === 'Defenders to move', 'Hover fixture did not play')
+            assert(f.root.querySelectorAll('.square.actionable').length === 13 && f.square('F6').classList.contains('actionable') && !f.square('D10').classList.contains('actionable'), 'Hover actions did not follow the side to move/king')
+            f.square('F8').click()
+            const legal = f.root.querySelectorAll('.legal-destination')
+            assert(legal.length > 0 && f.root.querySelectorAll('.actionable').length === legal.length && [...legal].every(el => el.classList.contains('actionable')), 'Selection left hover feedback on non-destinations')
+            const selectedRing = getComputedStyle(f.square('F8'), '::after')
+            assert(selectedRing.borderRadius === '50%' && parseFloat(selectedRing.width) < f.square('F8').getBoundingClientRect().width * .75, 'Feedback ring did not follow the piece diameter')
+            await until(() => getComputedStyle(f.square('F8'), '::after').boxShadow.includes('217, 151, 135'), 'Selection ring did not turn muted red')
+            assert(getComputedStyle(f.square('F8')).backgroundColor === getComputedStyle(f.square('H8')).backgroundColor, 'Selecting a piece still highlighted the square background')
+            f.ui.clear.click()
+            assert(f.root.querySelectorAll('.square.actionable').length === 13, 'Clearing did not restore selectable-piece feedback')
+        })
+        await check('Legal dots stagger outward by distance without delaying removal or move input', async () => {
+            const f = mount(), reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+            const hint = (name: string) => f.square(name).querySelector<HTMLElement>('.destination-hint')!
+            f.square('D11').click()
+            const delays = ['D10', 'D9', 'D8', 'D7'].map(name => parseFloat(getComputedStyle(hint(name)).transitionDelay) * 1000)
+            assert(delays.every((value, index) => Math.abs(value - (reduced ? 0 : index * 10)) < .1), 'Dot appearance did not use a short outward sequence (or ignored reduced motion)')
+            f.square('F10').click()
+            assert(!f.square('D7').classList.contains('legal-destination') && parseFloat(getComputedStyle(hint('D7')).transitionDelay) === 0, 'Reselection delayed hiding a stale destination')
+            f.ui.clear.click()
+            assert(!f.root.querySelector('.legal-destination') && parseFloat(getComputedStyle(hint('D9')).transitionDelay) === 0, 'Clearing retained a delayed dot')
+            f.square('D11').click(); f.square('D7').click()
+            await until(() => f.session.getView().state.moveHistory[0] === 'D11-D7', 'Dot animation prevented an immediate legal move')
+        })
+        await check('Sliding moves, growing arrows, rapid navigation and timed indicator cleanup', async () => {
+            const restore = motionPreference(false)
+            try {
+                const f = mount(); f.load('d11-d8 f8-e8 d8-c8'); f.ui.reviewStart.click()
+                f.ui.reviewNext.click()
+                const piece = f.square('D8').querySelector<HTMLElement>('.piece')!, animation = piece.getAnimations()[0]
+                const svg = f.ui.board.querySelector<SVGSVGElement>('.move-indicator')!, head = svg.querySelector('.move-arrow-head')!
+                assert(f.ui.title.textContent === 'Defenders to move' && animation && animation.effect!.getTiming().duration === 420, 'Move did not commit before its visible slide')
+                assert(svg.querySelectorAll('.move-ghost.attacker').length === 1 && !svg.querySelector('rect.move-origin') && svg.dataset.from === '3,0' && svg.dataset.to === '3,3', 'Indicator did not replace the origin highlight with the moving piece ghost')
+                assert(getComputedStyle(svg.querySelector('.move-ghost')!).opacity === '0.25', 'Origin piece is not translucent')
+                await until(() => (animation.effect!.getComputedTiming().progress ?? 0) > .03, 'Slide clock did not advance naturally')
+                const progress = animation.effect!.getComputedTiming().progress!, rect = piece.getBoundingClientRect()
+                const centerY = rect.top + rect.height / 2, source = f.square('D11').getBoundingClientRect(), target = f.square('D8').getBoundingClientRect()
+                assert(progress > 0 && progress < 1 && centerY > source.top + source.height / 2 && centerY < target.top + target.height / 2,
+                    `Animation did not advance between squares: progress=${progress}, center=${centerY}, source=${source.top + source.height / 2}, target=${target.top + target.height / 2}`)
+                const shape = head.getAttribute('d'), stem = svg.querySelector('.move-arrow rect')!
+                animation.pause(); animation.currentTime = 50
+                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+                const early = Number(stem.getAttribute('width'))
+                animation.currentTime = 320
+                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+                assert(Number(stem.getAttribute('width')) > early && head.getAttribute('d') === shape, 'Arrow stem did not grow independently of its fixed head')
+                f.ui.reviewNext.click()
+                assert(animation.playState === 'idle' && getComputedStyle(piece).transform === 'none', 'A second step did not snap the prior piece to its committed square')
+                assert(f.ui.board.querySelectorAll('.move-indicator').length === 1 && f.ui.board.querySelector<SVGSVGElement>('.move-indicator')!.dataset.from === '5,3' && f.ui.board.querySelector('.move-ghost.defender'), 'A second step retained a stale arrow/ghost')
+                f.ui.reviewNext.click()
+                const latest = f.square('C8').querySelector<HTMLElement>('.piece')!.getAnimations()[0]
+                f.square('E8').click()
+                assert(latest.playState === 'idle' && !f.root.querySelector('.piece-in-motion'), 'Selecting the next piece did not cancel the slide')
+                const indicator = f.ui.board.querySelector('.move-indicator')!, fade = indicator.getAnimations()[0]
+                assert(fade.effect!.getTiming().duration === 180 && fade.effect!.getTiming().easing === 'ease-out', 'Snapping the move did not start the short shared fade')
+                f.ui.clear.click()
+                await until(() => !f.ui.board.querySelector('.move-indicator'), 'Expired arrow/origin highlight was not removed')
+                f.ui.reviewBack.click()
+                assert(f.ui.board.querySelector<SVGSVGElement>('.move-indicator')!.dataset.from === '2,3' && f.square('D8').querySelector('.piece')!.getAnimations().length === 1, 'Backward step did not slide the restored piece back')
+                f.ui.reviewStart.click()
+                assert(!f.root.querySelector('.piece-in-motion') && !f.ui.board.querySelector('.move-indicator'), 'Jump to opening retained an animation')
+            } finally { restore() }
+        })
+        await check('Reduced motion skips piece slides and shows a static, temporary move indicator', () => {
+            const restore = motionPreference(true)
+            try {
+                const f = mount(); f.load('d11-d8 f8-e8'); f.ui.reviewStart.click(); f.ui.reviewNext.click()
+                assert(!f.root.querySelector('.piece-in-motion') && f.square('D8').querySelector('.piece')!.getAnimations().length === 0, 'Reduced motion still slid a piece')
+                const svg = f.ui.board.querySelector('.move-indicator')!
+                assert(svg && svg.getAnimations()[0].effect!.getTiming().duration === 420 && Number(svg.querySelector('.move-arrow rect')!.getAttribute('width')) > 0, 'Reduced motion omitted the brief static arrow or retained growth')
+            } finally { restore() }
+        })
+        await check('Captured pieces, origin ghost and arrow share one ease-out after arrival', async () => {
+            const restore = motionPreference(false)
+            try {
+                const f = mount(); f.load('d11-d8 f8-e8 f10-f8'); f.ui.history.querySelector<HTMLButtonElement>('[data-ply="2"]')!.click()
+                f.ui.reviewNext.click()
+                const moving = f.square('F8').querySelector('.piece')!.getAnimations()[0], victim = f.square('E8').querySelector<HTMLElement>('.capture-piece')!
+                const indicator = f.ui.board.querySelector('.move-indicator')!
+                assert(victim?.classList.contains('defender') && victim.getAttribute('aria-hidden') === 'true', 'Capture victim disappeared before the slide or became interactive')
+                moving.pause(); moving.currentTime = 210
+                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+                assert(getComputedStyle(victim).opacity === '1' && victim.getAnimations().length === 0, 'Capture victim began fading before the moving piece arrived')
+                assert(f.square('E8').getAttribute('aria-label')?.includes('empty') && f.ui.defenders.textContent === '12', 'Capture presentation delayed the committed game state')
+                moving.finish()
+                await until(() => victim.getAnimations().length === 1, 'Capture did not start fading on slide completion')
+                const removal = victim.getAnimations()[0]
+                const indicatorFade = indicator.getAnimations()[0]
+                assert(removal.effect!.getTiming().duration === 180 && removal.effect!.getTiming().easing === 'ease-out', 'Capture removal did not ease out')
+                assert(indicatorFade.effect!.getTiming().duration === 180 && indicatorFade.effect!.getTiming().easing === 'ease-out' && indicatorFade.startTime === removal.startTime, 'Ghost/arrow and capture fades did not share timing and start time')
+                removal.pause(); removal.currentTime = 90
+                indicatorFade.pause(); indicatorFade.currentTime = 90
+                const opacity = Number(getComputedStyle(victim).opacity)
+                assert(opacity > 0 && opacity < 1, 'Capture removal vanished instead of fading')
+                assert(Math.abs(opacity - Number(getComputedStyle(indicator).opacity)) < .001, 'Capture and previous-position indicator eased out at different rates')
+                removal.finish(); indicatorFade.finish()
+                await until(() => !victim.isConnected && !indicator.isConnected, 'Shared fade did not remove capture, ghost and arrow together')
+                assert(!f.root.querySelector('.capture-piece'), 'Captured visual survived its fade')
+            } finally { restore() }
+        })
+        await check('Multiple captures and a captured king fade together and clear on reset', async () => {
+            const restore = motionPreference(false)
+            try {
+                const f = mount()
+                const multiple = Array.from({ length: 11 }, () => Array<string>(11).fill('.'))
+                for (const [x, y] of [[0, 0], [10, 0], [0, 10], [10, 10]]) multiple[y][x] = 'R'
+                for (const [x, y, piece] of [[3, 0, 'A'], [4, 1, 'D'], [5, 1, 'A'], [3, 2, 'D'], [3, 3, 'A'], [5, 5, 'K']] as const) multiple[y][x] = piece
+                const king = ['R.........R', '...........', '...........', '...........', '.....A.....',
+                    '...A.KA....', '.....A.....', '...........', '...........', '...........', 'RD........R']
+                for (const fixture of [{ layout: multiple.map(row => row.join('')), command: 'D11-D10', target: 'D10', count: 2, king: false },
+                    { layout: king, command: 'D6-E6', target: 'E6', count: 1, king: true }]) {
+                    assert(f.session.reset(f.session.getView().generation, fixture.layout).success, 'Capture fixture did not reset')
+                    assert((await f.session.submitMove(fixture.command, f.session.getView().generation)).success, 'Capture fixture did not play')
+                    const victims = [...f.root.querySelectorAll<HTMLElement>('.capture-piece')]
+                    assert(victims.length === fixture.count && victims.every(piece => piece.getAnimations().length === 0), 'Capture did not retain every victim during the move')
+                    if (fixture.king) assert(victims[0].classList.contains('king') && victims[0].textContent === '♔', 'Captured king lost its appearance')
+                    f.square(fixture.target).querySelector('.piece')!.getAnimations()[0].finish()
+                    await until(() => victims.every(piece => piece.getAnimations().length === 1), 'Capture victims did not start fading together')
+                    const fades = victims.map(piece => piece.getAnimations()[0])
+                    f.session.reset(f.session.getView().generation)
+                    assert(victims.every(piece => !piece.isConnected) && fades.every(animation => animation.playState === 'idle'), 'Reset left capture effects running')
+                }
+            } finally { restore() }
+        })
+        await check('Rapid review, disposal and reduced motion never retain stale capture pieces', async () => {
+            const restore = motionPreference(false)
+            try {
+                const f = mount(); f.load('d11-d8 f8-e8 f10-f8'); f.ui.history.querySelector<HTMLButtonElement>('[data-ply="2"]')!.click(); f.ui.reviewNext.click()
+                const victim = f.square('E8').querySelector('.capture-piece')!, slide = f.square('F8').querySelector('.piece')!.getAnimations()[0]
+                f.ui.reviewBack.click()
+                assert(!victim.isConnected && slide.playState === 'idle' && f.square('E8').querySelector('.piece.defender'), 'Stepping back retained a capture copy over the restored piece')
+                f.ui.reviewNext.click()
+                const pending = f.square('F8').querySelector('.piece')!.getAnimations()[0]
+                cleanup()
+                assert(pending.playState === 'idle', 'Disposal left capture movement running')
+            } finally { restore() }
+            const restoreReduced = motionPreference(true)
+            try {
+                const f = mount(); f.load('d11-d8 f8-e8 f10-f8'); f.ui.history.querySelector<HTMLButtonElement>('[data-ply="2"]')!.click(); f.ui.reviewNext.click()
+                assert(!f.root.querySelector('.capture-piece') && !f.root.querySelector('.piece-in-motion') && f.ui.defenders.textContent === '12', 'Reduced motion retained animated capture pieces')
+            } finally { restoreReduced() }
+        })
+        await check('Attacker and defender wins grow in place over the winning piece after arrival', async () => {
+            const restore = motionPreference(false)
+            try {
+                const f = mount()
+                const king = ['R.........R', '...........', '...........', '...........', '.....A.....',
+                    '...A.KA....', '.....A.....', '...........', '...........', '...........', 'RD........R']
+                assert(f.session.reset(f.session.getView().generation, king).success, 'Winning capture fixture did not reset')
+                assert((await f.session.submitMove('D6-E6', f.session.getView().generation)).success, 'Winning capture did not play')
+                const slide = f.square('E6').querySelector('.piece')!.getAnimations()[0]
+                slide.pause(); slide.currentTime = 210
+                assert(!f.root.querySelector('.board-win'), 'Win message appeared before the winning piece arrived')
+                slide.finish()
+                await until(() => !!f.root.querySelector('.board-win'), 'Winning arrival did not show its message')
+                const message = f.root.querySelector<HTMLElement>('.board-win')!, animation = message.getAnimations()[0]
+                assert(message.querySelector('.board-win-side')?.textContent === 'Attacker' && message.querySelector('.board-win-word')?.textContent === 'WIN', 'Attacker win message is not two lines')
+                assert(Number.parseFloat(getComputedStyle(message.querySelector('.board-win-word')!).fontSize) > Number.parseFloat(getComputedStyle(message.querySelector('.board-win-side')!).fontSize), 'WIN is not the larger line')
+                assert(message.getAttribute('aria-hidden') === 'true' && getComputedStyle(message).pointerEvents === 'none', 'Visual result interferes with input or repeats the live announcement')
+                animation.pause(); animation.currentTime = 350
+                const early = message.getBoundingClientRect(), target = f.square('E6').getBoundingClientRect()
+                animation.currentTime = 1200
+                const late = message.getBoundingClientRect()
+                assert(late.width > early.width && Math.abs(late.left + late.width / 2 - target.left - target.width / 2) < 2 && Math.abs(late.top + late.height / 2 - target.top - target.height / 2) < 2, 'Win message drifted from the winning square while growing')
+                animation.finish(); await until(() => !message.isConnected, 'Win message did not clean up')
+                assert(f.ui.title.textContent === 'Attackers win', 'Transient result removal lost the permanent result')
+                const escape = Array.from({ length: 11 }, () => Array<string>(11).fill('.'))
+                for (const [x, y] of [[0, 0], [10, 0], [0, 10], [10, 10]]) escape[y][x] = 'R'
+                escape[0][2] = 'K'; escape[1][5] = 'A'
+                f.session.reset(f.session.getView().generation, escape.map(row => row.join('')))
+                assert((await f.session.submitMove('F10-F9', f.session.getView().generation)).success && (await f.session.submitMove('C11-A11', f.session.getView().generation)).success, 'Winning corner escape did not play')
+                f.square('A11').querySelector('.piece')!.getAnimations()[0].finish()
+                await until(() => !!f.root.querySelector('.board-win.defender'), 'Defender escape did not show the defender result')
+                const defender = f.root.querySelector<HTMLElement>('.board-win')!
+                assert(defender.querySelector('.board-win-side')?.textContent === 'Defender' && parseFloat(defender.style.left) < 5 && parseFloat(defender.style.top) < 5, 'Escape result was not anchored over the corner king')
+            } finally { restore() }
+        })
+        await check('Win messages use the actual winner, replay on terminal review and cancel on navigation', async () => {
+            const restore = motionPreference(false)
+            try {
+                const f = mount(), cycle = 'd11-d10 f8-e8 d10-d11 e8-f8'
+                f.session.loadGame(`${cycle} ${cycle}`, f.session.getView().generation)
+                const initial = f.root.querySelector<HTMLElement>('.board-win.attacker')!
+                assert(initial && f.square('F8').dataset.piece === 'defender', 'Repetition message confused the last mover with the winner')
+                initial.getAnimations()[0].finish(); await until(() => !initial.isConnected, 'Initial final-position message did not expire')
+                f.session.reviewMove('main', 8, f.session.getView().generation)
+                assert(!f.root.querySelector('.board-win'), 'Same-position updates restarted the celebration')
+                f.ui.reviewBack.click(); f.ui.reviewNext.click()
+                const slide = f.square('F8').querySelector('.piece')!.getAnimations()[0]
+                f.ui.reviewBack.click(); slide.finish()
+                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+                assert(!f.root.querySelector('.board-win'), 'Cancelled winning movement announced a stale result')
+                f.ui.reviewNext.click(); f.square('F8').querySelector('.piece')!.getAnimations()[0].finish()
+                await until(() => !!f.root.querySelector('.board-win.attacker'), 'Returning to the terminal move did not replay the result')
+                const replayed = f.root.querySelector('.board-win')!, effect = replayed.getAnimations()[0]
+                f.ui.reviewBack.click()
+                assert(!replayed.isConnected && effect.playState === 'idle', 'Review retained a stale result animation')
+            } finally { restore() }
+        })
+        await check('Win messages remain centered and fit both escape corners at responsive widths', async () => {
+            const frame = document.createElement('iframe'); frame.title = 'Responsive win message test'
+            frame.style.height = '900px'; frame.style.border = '0'
+            const loaded = new Promise<void>(resolve => { frame.onload = () => resolve() })
+            frame.src = './index.html'; fixtures.append(frame); cleanup = () => frame.remove(); await loaded
+            const doc = frame.contentDocument!, win = frame.contentWindow!
+            const mirrored = cornerWinGame.replace(/[a-k](?=\d)/g, file => String.fromCharCode('k'.charCodeAt(0) - (file.charCodeAt(0) - 'a'.charCodeAt(0))))
+            for (const width of [320, 390, 768, 1200]) {
+                frame.style.width = `${width}px`
+                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+                for (const [game, corner] of [[cornerWinGame, 'A11'], [mirrored, 'K11']]) {
+                    doc.querySelector<HTMLButtonElement>('#import-button')!.click()
+                    doc.querySelector<HTMLTextAreaElement>('#import-text')!.value = game
+                    doc.querySelector<HTMLButtonElement>('#load-game')!.click()
+                    if (doc.querySelector<HTMLDialogElement>('#confirm-dialog')!.open) doc.querySelector<HTMLButtonElement>('#confirm-replace')!.click()
+                    const message = doc.querySelector<HTMLElement>('.board-win')!
+                    assert(message, `Winning record did not announce at ${width}px`)
+                    const animation = message.getAnimations()[0]; animation.pause(); animation.currentTime = 1700
+                    const rect = message.getBoundingClientRect(), target = doc.querySelector(`[data-square="${corner}"]`)!.getBoundingClientRect()
+                    assert(Math.abs(rect.left + rect.width / 2 - target.left - target.width / 2) < 2 && Math.abs(rect.top + rect.height / 2 - target.top - target.height / 2) < 2, `Growing message drifted from ${corner} at ${width}px`)
+                    assert(rect.left >= 0 && rect.right <= win.innerWidth && doc.documentElement.scrollWidth <= doc.documentElement.clientWidth,
+                        `Win message overflowed at ${corner}, ${width}px: bounds=${rect.left}..${rect.right}, viewport=${win.innerWidth}, scroll=${doc.documentElement.scrollWidth}`)
+                }
+            }
+        })
+        await check('Reduced-motion wins stay static, use center for resignation and dispose cleanly', () => {
+            const restore = motionPreference(true)
+            try {
+                const f = mount(); f.session.loadGame('d11-d10 ---', f.session.getView().generation)
+                const message = f.root.querySelector<HTMLElement>('.board-win')!, animation = message.getAnimations()[0]
+                const frames = (animation.effect as KeyframeEffect).getKeyframes()
+                assert(message.style.left === '50%' && message.style.top === '50%', 'Resignation invented a winning destination')
+                assert(frames.every(frame => !('transform' in frame) && frame.opacity === '1'), 'Reduced-motion result still scaled or faded')
+                assert(animation.effect!.getTiming().duration === 1800 && !f.root.querySelector('.piece-in-motion'), 'Reduced-motion result did not use the static display')
+                cleanup()
+                assert(animation.playState === 'idle' && !message.isConnected, 'Disposed board retained its result')
+            } finally { restore() }
         })
         await check('Selection, reselection, same-square and Escape cancellation', () => {
             const f = mount()
@@ -370,9 +623,15 @@ run.onclick = async () => {
                 await until(() => win.matchMedia(`(prefers-color-scheme: ${scheme})`).matches, `Browser did not apply ${scheme} preference`)
                 await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
                 const page = win.getComputedStyle(doc.documentElement)
+                const swatch = doc.createElement('span'); swatch.style.backgroundColor = 'var(--square-alternate)'; doc.body.append(swatch)
+                const expectedBoard = win.getComputedStyle(swatch).backgroundColor; swatch.remove()
+                await until(() => win.getComputedStyle(square('B11')).backgroundColor === expectedBoard, `Board color transition did not finish in ${scheme} mode`)
                 assert(scheme === 'dark' ? luminance(page.backgroundColor) < 0.1 : luminance(page.backgroundColor) > 0.7, `Page ignored ${scheme} preference`)
                 if (scheme === 'light') { lightPage = page.backgroundColor; lightBoard = win.getComputedStyle(square('B11')).backgroundColor }
                 else assert(page.backgroundColor !== lightPage && win.getComputedStyle(square('B11')).backgroundColor !== lightBoard, 'Board or page retained the light palette')
+                const escape = win.getComputedStyle(square('A11')), border = win.getComputedStyle(square('A11'), '::before')
+                assert(escape.backgroundColor === 'rgb(124, 132, 136)', `Escape square ignored the requested #7c8488 in ${scheme} mode`)
+                assert(border.content === 'none' && border.borderTopWidth === '0px', `Escape square still has a decorative border in ${scheme} mode`)
                 for (const selector of ['html', '.side-card', '.history-panel', 'dialog', 'dialog textarea', '.primary-button']) {
                     const style = win.getComputedStyle(doc.querySelector(selector)!)
                     const a = luminance(style.color), b = luminance(style.backgroundColor)

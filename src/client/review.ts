@@ -13,7 +13,7 @@ function moveText(command: string): string {
 }
 
 /** Record navigation is a local session consumer, separate from board input. */
-export function bindReview(ui: ClientElements, session: GameSession) {
+export function bindReview(ui: ClientElements, session: GameSession, beforeNavigate: () => void = () => {}) {
     let view = session.getView(), active = true, historySignature = ''
     let variantAction: { generation: number; line: string; command?: string; complete?: (result?: SessionResult) => void } | undefined
     let saving = false
@@ -27,9 +27,11 @@ export function bindReview(ui: ClientElements, session: GameSession) {
         if (result && !result.success) ui.feedback.textContent = result.error
     }
     function seek(line: string, ply: number, generation = view.generation) {
+        beforeNavigate()
         if (active) result(session.reviewMove?.(line, ply, generation))
     }
     function chooseNext() {
+        beforeNavigate()
         const review = view.review
         if (!review || !active) return
         if (review.next.length === 1) { const next = review.next[0]; seek(next.line, next.ply); return }
