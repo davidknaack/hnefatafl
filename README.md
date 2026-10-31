@@ -10,7 +10,8 @@ an exit fort. Attackers win by capturing the king or encircling the defenders.
 This is an experimental project built largely with AI coding assistance. The
 current target is a browser application bundled by Vite for static hosting.
 Reusing the engine for reinforcement learning is a possible future direction,
-not a supported distribution today. There are no production package dependencies.
+not a supported distribution today. The standalone online relay uses `ws`;
+the browser engine has no production package dependencies.
 
 ## Run locally
 
@@ -26,24 +27,69 @@ npm run dev
 Vite opens the browser and normally serves the app at
 `http://localhost:5173/hnefatafl/`. It may select another port if that one is busy.
 
+The default entry is the production client's **local two-player game**. Select a
+piece and a highlighted destination to move. It supports keyboard navigation,
+responsive layouts, turn/result explanations, history, captures, rules help and
+validated import. **Save / copy** opens canonical notation with clipboard and
+text-file download options. The current game, variants and review position are
+saved automatically in this browser and restored on return. Save / copy keeps a
+separate record before starting or loading another game.
+**Load game** also offers the 1,752-game test corpus by index. Selecting an entry
+fills the editable notation for review; only **Load game** applies it.
+Replacing a nonempty game requires confirmation. Local review controls step
+through the game without discarding later moves; selecting a move in the record
+jumps to its position. Playing a move from an earlier position opens **Create a
+variant** for an optional description; confirming creates the line and plays the
+move, while cancelling leaves the game unchanged. The **Variants** tab lists available lines, and Next offers a choice
+at forks. Studies with variants save as JSON; ordinary games retain portable text.
+The load dialog also accepts file selection and drag-and-drop. See
+[game review and variant format](docs/game-review.md). Resignation controls and
+AI remain deferred. [Production online play](docs/production-online-client.md)
+adds create/join rooms, optional nonunique screen names, independent live review,
+shared move comments and refresh recovery.
+Per-move comments appear below the move list. Authors use `{[Alice]:text}`;
+anonymous comments use `{text}`. Mentions such as `[Bob]` are colored, and
+references such as `<D3>` and `<D1-D4>` preview on the board without playing.
+
+The existing local/online development harness is preserved at
+`http://localhost:5173/hnefatafl/debug.html`. Browser checks are available at
+`client-acceptance.html` (local production client) and `acceptance.html` (online
+harness, requires a relay). All three developer entries are excluded from the
+production build. See [local client development and acceptance](docs/production-client.md).
+
 | Command | Purpose |
 | --- | --- |
 | `npm test` | Run the Vitest suite once |
 | `npm run testlive` | Run Vitest in watch mode |
-| `npm run typecheck` | Check source/tests and the Vite/Vitest configuration |
+| `npm run typecheck` | Check source/tests, Vite/Vitest configuration, and server |
+| `npm run build:server` | Compile the Node relay into ignored `dist-server/` |
+| `npm run start:server` | Start the compiled relay on loopback port 8787 |
+| `npm run dev:online` | Build/watch the relay and open the Vite online debug harness |
+| `npm run test:server` | Run room and real WebSocket tests |
 | `npm run format` | Format tooling/configuration files with pinned Prettier |
 | `npm run format:check` | Check tooling/configuration formatting without writing |
 | `npm run build` | Bundle the browser app into ignored `dist/` output |
 | `npm run preview` | Serve the existing build, normally at `http://localhost:4173/hnefatafl/` |
 
-The build does not perform TypeScript checking; run `npm run typecheck` separately.
-CI runs type checking, formatting checks, tests, and the build. Browser code in
+The browser build does not perform TypeScript checking; run `npm run typecheck` separately.
+CI runs type checking, formatting checks, tests, and both builds. Browser code in
 `src/ui` is included in type checking. Formatting currently covers
 package/lock metadata, TypeScript configs, `vite.config.ts`, `.prettierrc`, and
 workflow YAML. Source, tests, UI, and Markdown are outside this initial formatting
 scope to keep W2 focused; expand that scope in separately reviewed work. No
 lint command is declared. See the [maintenance instructions](.github/copilot-instructions.md)
 for validation details and the dated baseline.
+
+P6 adds online controls to the debug UI at `debug.html`. Set `VITE_RELAY_URL` in `.env.local`
+(see `.env.example`), start the relay, and restart Vite. With no relay URL, the UI
+continues to support local play. See [relay setup and configuration](docs/relay.md)
+for endpoints, resource limits, reconnect behavior and restart limitations.
+
+P8 adds a repeatable local [browser acceptance runner](docs/online-acceptance.md)
+and [deployment handoff](docs/relay-deployment.md). The runner exercises the actual
+UI against a local relay with isolated test storage; it is browser-invoked and
+excluded from the production build. Pages builds accept the optional public
+repository Actions variable `VITE_RELAY_URL`. Public relay hosting is not yet deployed.
 
 ## Current rules and behavior
 
@@ -95,10 +141,11 @@ establish full Copenhagen conformance for every other rule.
 ## Engine API
 
 Import the class from [src/HnefataflEngine.ts](src/HnefataflEngine.ts) in a
-TypeScript/bundler consumer. [public/index.html](public/index.html) loads a minimal
-[bootstrap](public/main.js) for Vite's public root. The checked UI lives in
-[src/ui](src/ui/main.ts): board and history rendering, selection/highlighting,
-command handling, DOM bindings, and the extracted stylesheet.
+TypeScript/bundler consumer. [public/index.html](public/index.html) loads the local
+production client in [src/client](src/client/main.ts) through a minimal
+[bootstrap](public/main.js). The development harness at
+[public/debug.html](public/debug.html) uses [src/ui](src/ui/main.ts): board and
+history rendering, selection/highlighting, command handling and online controls.
 
 ```ts
 import { HnefataflEngine } from './src/HnefataflEngine'
@@ -140,6 +187,7 @@ interface GameState {
     moveHistory: string[]
     positionHistory: string[]
     status: GameStatus
+    outcome: GameOutcome | null
 }
 
 interface Square {
@@ -158,6 +206,23 @@ type Piece =
 Capture counters count pieces lost by the named side, including the king as a
 defender. `Coordinate` is `{ x: number, y: number }`, indexed as `position[y][x]`:
 `A11` is `{ x: 0, y: 0 }`, and `K1` is `{ x: 10, y: 10 }`.
+
+**P1 structured outcomes:** `GameState.outcome` is `null` while in progress, or
+`{ winner: Player, reason }` after completion. Reasons are `king_capture`,
+`king_escape`, `exit_fort`, `encirclement`, `repetition`, and `resignation`.
+Status is derived from the outcome; board wins retain precedence over repetition.
+The outcome object is detached on every state/result read, just like counters.
+Reset clears it, failed commands preserve it, and load/save replay reconstructs
+it without changing the portable notation. Consumers constructing `GameState`
+must now supply `outcome`. Existing validation result shapes remain unchanged.
+
+The raw `getGameOutcomeAfterMove` in `src/rules.ts` evaluates an already-applied
+board with captures removed, excluding repetition. `getGameStatusAfterMove`
+remains a compatibility wrapper; `statusForOutcome` maps an outcome to the legacy
+status. Successful `resolveMove` results include the outcome with repetition
+accounted for. These additions do not change rules, resignation restrictions,
+or the meaning of `currentPlayer` after game end.
+
 `PossibleMove` contains `to: Coordinate`, `captures: Coordinate[]`, and optional
 `repetition: 'allowed' | 'loss'`. The engine omits the flag for new positions,
 uses `allowed` for a repeat that does not trigger the repetition penalty, and
@@ -226,7 +291,9 @@ The portable grammar is:
 game        = { tag }, move-list ;
 tag         = "[", tag-name, ":", tag-value, "]" ;
 move-list   = move, { whitespace, move }, [ whitespace, resignation ] ;
-move        = square, "-", square, [ captures ], [ terminal ] ;
+move        = square, "-", square, [ captures ], [ terminal ], { comment } ;
+comment     = "{", [ author-prefix ], text, "}" ;
+author-prefix = "[", name, "]:" ;
 captures    = "x", square, { "/", square } ;
 terminal    = "++" | "--" ;
 resignation = "---" ;
@@ -275,6 +342,27 @@ is a separate final ` ---`, without marking the preceding move as a win or loss.
 There is no trailing whitespace or newline. Loading and saving canonical text is
 stable, and replay restores the same engine state. Empty games cannot be exported;
 Copy Game is disabled until the first move.
+
+A move may have multiple ordered comments, for example:
+
+```text
+d11-d8 {[Alice]:A standard opening} {[Bob]:Consider <D11-D9>, [Alice]!} f8-e8 {should have played D1:D4}
+```
+
+Only a leading `[name]:` identifies an author; a plain `Alice:` or a colon inside
+prose remains anonymous. Names are trimmed and limited to 80 characters, excluding
+brackets, braces, backslashes and line breaks. Use `\{`, `\}` and `\\` for literal
+braces/backslashes. An anonymous comment whose text starts with `[name]:` is saved
+with an escaped initial bracket (`{\[Alice]:literal text}`) to retain anonymity.
+Comments attach to board moves, not to the separate resignation entry.
+
+Comment bodies are limited to 500 Unicode characters, excluding the author.
+Long imported comments are shortened without rejecting an otherwise valid game.
+The reserved suffix `… (comment truncated)` fits within that limit and preserves
+the UI's **Truncated** badge through export/reload. The UI colors bracketed names
+as mentions and previews valid square/orthogonal move references on hover, focus
+or tap; unrecognized references stay ordinary text. These annotations do not
+change engine history, repetition, legal moves or results.
 
 `parseGame` in [src/gameFormat.ts](src/gameFormat.ts) consumes syntax and checks
 square bounds; use `engine.loadGame` for full semantic validation. `serializeGame`
@@ -347,6 +435,45 @@ is fixed to 11×11: `coordFromString` returns `null` for invalid notation, while
 coordinates instead of emitting invalid notation.
 
 ## Maintenance and next work
+
+P3 routes the debug UI through `GameSession` in `src/session/GameSession.ts`.
+`LocalGameSession` owns its engine and controls both sides. `getView()` returns
+detached state, a monotonically increasing `generation`, mode/connection/side,
+and move/validate/import/export/reset capabilities. `subscribe` immediately sends
+a detached view and then publishes successful changes; it returns an unsubscribe
+function. Each subscriber owns its copy. Observer errors are logged without
+turning a committed move into a failed command.
+
+`submitMove(command, generation)` is asynchronous and rechecks the observed
+generation before committing. Validation, move generation, import and reset also
+require that generation. Imports/reset advance it even if history gets shorter;
+failed operations leave it unchanged. Results include the generation they describe.
+Disposal publishes a closed view, releases subscribers and rejects queued/future
+mutations. Export is available only for nonempty standard-opening games.
+
+`bindCommands(ui, session)` subscribes without resetting the game and returns an
+idempotent cleanup function. Rebinding the same board removes the previous binding.
+The owner must also dispose a session when replacing it; UI cleanup alone does
+not own the session lifetime. Bootstrap creates the initial local session and
+cleans up both binding and session on Vite hot replacement. P6's session-controls
+owner handles online/local replacement and asks before replacing a nonempty game.
+Rendering comes from
+session updates, with generation/binding guards for stale board callbacks and
+asynchronous results. Create/join, copy room code, reconnect, leave and explicit
+local continuation are wired. P7 saves online games and replays them before refresh
+recovery. See [browser recovery](docs/browser-recovery.md) for storage failures,
+private backups, one-slot behavior and local-continuation limits.
+
+P2 adds pure online record and message contracts under `src/online` and `shared`;
+see [protocol APIs and examples](docs/online-protocol.md) and
+[implementation progress](docs/online-play-progress.md). Complete records support
+zero moves and independently replay with structured outcome checks. P4 provides
+the standalone relay; P5 adds `OnlineGameSession` with seat-gated commands,
+complete-record synchronization, correlated acknowledgements and explicit reconnect.
+See [the online session API](docs/online-session.md). Shared transport contracts contain no
+engine imports. The source type-check root is now the repository root to include
+`shared/`; Vite still builds the same browser entry and output. Client version
+metadata is injected from `package.json` by the Vite/Vitest configuration.
 
 - [Maintenance instructions](.github/copilot-instructions.md): commands, validation,
   module boundaries, and deployment behavior.

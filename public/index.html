@@ -2,134 +2,83 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Hnefatafl Debug UI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#f5f2e9" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#18231e" media="(prefers-color-scheme: dark)">
+    <meta name="description" content="Play Hnefatafl locally or online, and review games together with move comments.">
+    <title>Hnefatafl — The King's Table</title>
 </head>
 <body>
-    <h1>Hnefatafl Debug UI</h1>
-    
-    <div class="controls-row">
-        <button id="howToPlayBtn">How to Play</button>
-        <div class="toggle-group">
-            <input type="checkbox" id="displayMovesToggle" checked>
-            <label for="displayMovesToggle">Display Possible Moves</label>
-        </div>
-        <div class="toggle-group">
-            <input type="checkbox" id="autoValidateToggle">
-            <label for="autoValidateToggle">Auto Validate</label>
-        </div>
-        <div class="toggle-group">
-            <input type="checkbox" id="autoApplyToggle">
-            <label for="autoApplyToggle">Auto Apply</label>
-        </div>
-    </div>
-
-    <div id="boardcontainer" style="display: flex; flex-direction: row; gap: 20px;">
-        <div>
-            <div id="board" class="board"></div>
-            <div class="move-legend">
-                <span class="repeat-allowed">Allowed repeat</span>
-                <span class="repeat-loss">Repeat: defenders lose</span>
-                <br>Flagged moves can still be played.
-            </div>
-            <div class="movecontrols">
-                <div class="info">
-                    <input id="fromInput" placeholder="From (e.g. E5)">
-                    <input id="toInput" placeholder="To (e.g. E6)">
+<div id="client" class="client">
+    <a class="skip-link" href="#game-board">Skip to board</a>
+    <header class="site-header">
+        <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" focusable="false" fill="currentColor"><path d="M16 5v22M5 16h22" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16 12 4 4-4 4-4-4z"/><circle cx="16" cy="5" r="2"/><circle cx="13.5" cy="7.5" r="2"/><circle cx="18.5" cy="7.5" r="2"/><circle cx="27" cy="16" r="2"/><circle cx="24.5" cy="13.5" r="2"/><circle cx="24.5" cy="18.5" r="2"/><circle cx="16" cy="27" r="2"/><circle cx="13.5" cy="24.5" r="2"/><circle cx="18.5" cy="24.5" r="2"/><circle cx="5" cy="16" r="2"/><circle cx="7.5" cy="13.5" r="2"/><circle cx="7.5" cy="18.5" r="2"/></svg></span><div><p class="eyebrow">The king's table</p><h1>Hnefatafl</h1></div></div>
+        <nav aria-label="Game actions"><button id="help-button" class="text-button">How to play</button><button id="new-button" class="primary-button">New game <span aria-hidden="true">↗</span></button></nav>
+    </header>
+    <main id="main-content">
+        <div class="game-layout">
+            <section class="play-area" aria-label="Game">
+                <div class="game-intro"><span id="game-mode" class="mode-tag">● Local game</span><span id="game-mode-help" class="muted">Two players · One board</span></div>
+                <section id="online-room" class="online-room" aria-label="Online room" hidden>
+                    <p id="online-status" role="status" aria-live="polite"></p><p id="online-warning" class="form-error" role="status"></p>
+                    <details><summary>Room <strong id="visible-room-code" class="room-code"></strong> · Options &amp; sharing</summary>
+                        <div class="online-actions"><button id="copy-room-code" class="secondary-button">Copy code</button><button id="copy-room-link" class="secondary-button">Copy invite link</button><button id="online-rename" class="text-button">Change name</button><button id="online-reconnect" class="secondary-button">Reconnect</button><button id="online-local" class="secondary-button">Continue locally</button><button id="online-leave" class="text-button">Leave room</button><button id="online-backup" class="text-button">Private recovery backup</button></div>
+                        <p id="online-copy-status" role="status"></p><p id="online-save" class="muted" role="status"></p><p class="muted">Private recovery backups contain your seat credentials. Share Save / copy records or invitations instead.</p>
+                    </details>
+                    <p id="online-comment-status" class="muted" role="status"></p>
+                </section>
+                <div class="turn-banner"><span id="turn-marker" class="turn-marker attacker" aria-hidden="true"></span><div class="turn-heading"><h2 id="turn-title">Attackers to move</h2></div><div class="turn-status"><span id="move-number" class="move-number">Move 1</span><p id="turn-detail" hidden></p></div></div>
+                <div class="board-frame">
+                    <div class="file-labels" aria-hidden="true"><span>A</span><span>B</span><span>C</span><span>D</span><span>E</span><span>F</span><span>G</span><span>H</span><span>I</span><span>J</span><span>K</span></div>
+                    <div class="board-with-ranks"><div class="rank-labels" aria-hidden="true"><span>11</span><span>10</span><span>9</span><span>8</span><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span></div><div id="game-board" class="game-board" role="grid" aria-label="Hnefatafl board" aria-rowcount="11" aria-colcount="11" aria-describedby="keyboard-hint"></div></div>
+                    <div class="file-labels bottom-labels" aria-hidden="true"><span>A</span><span>B</span><span>C</span><span>D</span><span>E</span><span>F</span><span>G</span><span>H</span><span>I</span><span>J</span><span>K</span></div>
                 </div>
-                <div class="info">
-                    <button id="clearBtn">Clear</button>
-                    <button id="validateBtn">Validate</button>
-                    <button id="applyBtn">Apply</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="side-panel">
-            <div class="status">
-                <div>Status:</div><div id="gameStatus"></div>
-                <div>Current Player:</div><div id="currentPlayer"></div>
-                <div>Captured:</div>
-                <div>
-                    A: <span id="capturedA"></span>, D: <span id="capturedD"></span>
-                </div>
-            </div>
-            <div class="game-lists">
-                <div class="current-game">
-                    <div>Current Game</div>
-                    <ul id="currentMoves"></ul>
-                    <button id="copyGame">Copy Game</button>
-                </div>
-                <div class="load-game">
-                    <label for="notationInput">Load Game</label>
-                    <div class="load-game-input">
-                        <textarea id="notationInput" rows="5" placeholder="[Event:Friendly game]&#10;d11-d10 f8-e8" aria-describedby="loadHelp"></textarea>
-                        <button id="loadBtn">Load</button>
+                <div id="review-controls" class="review-controls" aria-label="Move navigation">
+                    <div class="review-step-buttons">
+                        <button id="review-start" class="secondary-button" aria-label="Go to start"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 4v16M20 12H8m6-6-6 6 6 6"/></svg></button>
+                        <button id="review-back" class="secondary-button" aria-label="Previous move"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12H4m7-7-7 7 7 7"/></svg></button>
                     </div>
-                    <small id="loadHelp">Validates and replaces the current game. Invalid games leave it unchanged.</small>
+                    <span id="review-position" class="review-position" aria-live="polite">Main game · 0 / 0</span>
+                    <div class="review-step-buttons">
+                        <button id="review-next" class="secondary-button" aria-label="Next move"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12h16m-7-7 7 7-7 7"/></svg><span class="review-choice-indicator" aria-hidden="true">▾</span></button>
+                        <button id="review-end" class="secondary-button" aria-label="Go to end"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 4v16M4 12h12m-6-6 6 6-6 6"/></svg></button>
+                    </div>
                 </div>
-            </div>
+                <button id="return-live" class="secondary-button return-live" hidden>Return to live</button>
+                <div class="board-guide"><span><i class="legend-dot" aria-hidden="true"></i> Legal move</span><span><i class="legend-repeat" aria-hidden="true">↻</i> Repeated position</span><button id="cancel-selection" class="text-button" disabled>Clear selection <span aria-hidden="true">×</span></button></div>
+                <p id="feedback" class="feedback" role="status" aria-live="polite" aria-atomic="true">Select an attacker to begin.</p>
+                <p id="keyboard-hint" class="keyboard-hint">Select a piece, then a destination. Keyboard: arrow keys to explore, Enter or Space to select, Esc to clear.</p>
+            </section>
+            <aside class="game-sidebar" aria-label="Players and game record">
+                <section class="players-panel" aria-label="Sides">
+                    <div id="attacker-card" class="side-card active-side"><span class="piece-sample attacker" aria-hidden="true"></span><div><h3>Attackers</h3><p id="attacker-player" class="player-name" hidden></p><p id="attacker-captured">0 captured</p></div><div class="piece-count"><strong id="attacker-count">24</strong><span>remaining</span></div></div>
+                    <div id="defender-card" class="side-card"><span class="piece-sample defender" aria-hidden="true"></span><div><h3>Defenders</h3><p id="defender-player" class="player-name" hidden></p><p id="defender-captured">0 captured</p></div><div class="piece-count"><strong id="defender-count">13</strong><span>with king</span></div></div>
+                </section>
+                <section class="history-panel" aria-labelledby="history-heading"><div class="panel-heading"><h2 id="history-heading">Game record</h2><span id="record-count" class="muted">0 moves</span></div>
+                    <div class="record-tabs" role="tablist" aria-label="Game record views"><button id="moves-tab" role="tab" aria-selected="true" aria-controls="moves-panel">Moves</button><button id="variants-tab" role="tab" aria-selected="false" aria-controls="variants-panel" tabindex="-1">Variants</button></div>
+                    <div id="moves-panel" role="tabpanel" aria-labelledby="moves-tab"><div class="history-columns" aria-hidden="true"><span>#</span><span>Attackers</span><span>Defenders</span></div><div id="history-scroll" class="history-scroll"><p id="empty-history" class="empty-history">Every escape starts<br>with a first move.</p><ol id="game-history" class="game-history" aria-label="Move history"></ol></div></div>
+                    <div id="variants-panel" class="variants-panel" role="tabpanel" aria-labelledby="variants-tab" tabindex="0" hidden><div class="variant-actions"><p>Choose a line to review. Play a move from an earlier position to explore an alternative.</p><button id="describe-variant" class="text-button" disabled>Edit description</button></div><div id="variant-list" class="variant-list" aria-label="Game variants"></div></div>
+                    <section id="move-comments" class="move-comments" aria-labelledby="comment-heading"><div class="comment-panel-heading"><h3 id="comment-heading">Move comments</h3><span class="comment-limit">500 characters</span></div><div id="comment-list" class="comment-list" role="region" aria-label="Comments on selected move" tabindex="0"><p class="comments-empty">Select a move to read or add comments.</p></div><form id="comment-form" class="comment-form"><label for="comment-text" class="sr-only">Add a move comment</label><textarea id="comment-text" rows="2" maxlength="1000" placeholder="Select a played move to comment…" aria-describedby="comment-count comment-status" disabled></textarea><div class="comment-entry-actions"><span id="comment-count" class="muted">0 / 500</span><button id="add-comment" class="text-button" type="submit" disabled>Add comment</button></div><p id="comment-status" class="comment-status" role="status" aria-live="polite"></p></form></section>
+                    <div class="record-actions"><button id="import-button" class="secondary-button">Load game</button><button id="export-button" class="secondary-button" disabled>Save / copy</button></div>
+                </section>
+                <p id="save-note" class="save-note" role="status" aria-live="polite">Save / copy keeps a separate backup of your game.</p>
+                <div class="objective-note"><span aria-hidden="true">♔</span><p><strong>One king. Four ways out.</strong><br>The attackers have the numbers.<br>The defenders have a way home.</p></div>
+            </aside>
         </div>
-    </div>
-    <pre id="log"></pre>
-
-
-
-    <script type="module" src="./main.js"></script>
-
-    <!-- How to Play Modal -->
-    <div id="howToPlayModal" class="modal-overlay" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>How to Play Hnefatafl</h2>
-                <button id="closeModalBtn" class="close-btn">&times;</button>
-            </div>
-            <div class="modal-body">
-                <h3>Pronunciation & Origin</h3>
-                <p><strong>Hnefatafl</strong> is pronounced "nef-ah-tah-ful" (roughly). It's an ancient Norse board game, also known as "King's Table" or "Viking Chess."</p>
-                
-                <h3>Historical Context</h3>
-                <p>Hnefatafl was played throughout medieval Scandinavia and the broader Viking world. The original rules have been lost to time, so modern versions are reconstructions based on archaeological evidence, board layouts found in ancient sites, and references in medieval literature.</p>
-                
-                <h3>Game Overview</h3>
-                <p>This is an asymmetric strategy game with two sides:</p>
-                <ul>
-                    <li><strong>Defenders (D)</strong> and the <strong>King (K)</strong> - fewer pieces, start in the center</li>
-                    <li><strong>Attackers (A)</strong> - more numerous, start around the edges</li>
-                </ul>
-                
-                <h3>Objective</h3>
-                <ul>
-                    <li><strong>Defenders win</strong> if the King reaches a corner square or if the King reaches an edge square while surrounded by a 'fort' of uncapturable defenders and is still free to move</li>
-                    <li><strong>Attackers win</strong> if they capture the King or completely surround all defenders</li>
-                </ul>
-                
-                <h3>Basic Rules</h3>
-                <ul>
-                    <li><strong>Movement:</strong> All pieces move like a rook in chess (horizontally or vertically any number of squares)</li>
-                    <li><strong>Captures:</strong> Pieces are captured by being sandwiched between two enemy pieces, and only occur as a result of an enemy move. Captures are mandatory and automatic.</li>
-                    <li><strong>Special Squares:</strong>
-                        <ul>
-                            <li><strong>Throne (center, yellow):</strong> Only the King can occupy this square. When not occupied, the throne is hostile to attackers and the King, and can be used to capture</li>
-                            <li><strong>Corners (red):</strong> Act as "hostile" squares for captures, only the King can enter</li>
-                        </ul>
-                    </li>
-                    <li><strong>King Capture:</strong> The King must be surrounded on all four sides to be captured (or three sides if against the throne)</li>
-                </ul>
-                
-                <h3>Forts</h3>
-                <p>Defenders can form protective formations called "forts" where they cannot be captured if properly arranged on the board's edge.</p>
-                
-                <h3>How to Use This Interface</h3>
-                <ul>
-                    <li>Click a piece to select it (must be your piece and your turn)</li>
-                    <li>Click a destination square to move there</li>
-                    <li>Use the input fields below to manually enter moves (e.g., "E5-E6")</li>
-                    <li>Toggle "Display Possible Moves" to see valid moves highlighted</li>
-                    <li>Use "Auto Validate" or "Auto Apply" for faster gameplay</li>
-                </ul>
-            </div>
-        </div>
-    </div>
-
+    </main>
+    <footer class="site-footer"><span>A game of escape &amp; encirclement</span><span>11 × 11 · Attackers move first</span></footer>
+    <dialog id="online-setup" aria-labelledby="online-setup-title"><div class="dialog-heading"><p class="eyebrow">Across the table</p><h2 id="online-setup-title">Start a game</h2></div><label for="game-kind">How would you like to play?</label><select id="game-kind"><option value="local">Local game · One board</option><option value="create">Create online game</option><option value="join">Join online game</option></select><div id="online-name-field"><label for="online-name">Your name (optional)</label><input id="online-name" type="text" autocomplete="nickname" maxlength="160" aria-describedby="screen-name-help"><p id="screen-name-help" class="muted">A screen name, up to 80 characters. Names can be shared by different players.</p></div><div id="online-side-field"><label for="online-side">Your side</label><select id="online-side"><option value="attacker">Attackers · Move first</option><option value="defender">Defenders · Protect the king</option></select></div><div id="online-code-field"><label for="online-code">Room code</label><input id="online-code" type="text" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABC234"></div><p id="online-configuration" class="muted"></p><p id="online-setup-error" class="form-error" role="alert"></p><button id="online-resume" class="text-button" hidden>Resume saved online game</button><p id="setup-recovery-status" class="muted" role="status"></p><button id="setup-private-backup" class="text-button" hidden>Private recovery backup (contains seat credentials)</button><div class="dialog-actions"><button id="online-cancel" class="secondary-button">Cancel</button><button id="online-start" class="primary-button">Start local game</button></div></dialog>
+    <dialog id="name-dialog" aria-labelledby="name-title"><div class="dialog-heading"><h2 id="name-title">Change your screen name</h2></div><label for="new-screen-name">Your name (optional)</label><input id="new-screen-name" type="text" maxlength="160" autocomplete="nickname"><p class="muted">The other player sees this name. Previous comment bylines stay as they were.</p><p id="screen-name-error" class="form-error" role="alert"></p><div class="dialog-actions"><button id="cancel-screen-name" class="secondary-button">Cancel</button><button id="save-screen-name" class="primary-button">Save name</button></div></dialog>
+    <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-heading"><p class="eyebrow">Learn the game</p><h2 id="help-title">The king needs a way out.</h2></div><div class="help-content"><p>Play together on one board, or choose New game to create or join an online room. The dark attackers surround the ivory defenders and their crowned king.</p><h3>Two sides, two goals</h3><p><strong>Attackers:</strong> capture the king by surrounding him on four sides with attackers or hostile special squares, or encircle every defender.</p><p><strong>Defenders:</strong> move the king to any corner, or form an exit fort: a mobile king at the edge protected by a formation that survives capture analysis.</p><h3>Move &amp; capture</h3><p>Every piece moves any clear distance horizontally or vertically. Pieces cannot jump. Only the king may stop on the center throne or a corner; other pieces may cross an empty throne.</p><p>Sandwich an enemy piece between your moved piece and friendly support to capture it. Special squares can also provide hostile support. An empty throne is hostile to both sides; a throne occupied by the king is hostile to attackers. Captures happen automatically. Supported groups along a physical board edge can be captured by a shieldwall; this does not capture the king.</p><h3>Repeated positions</h3><p>A second occurrence is allowed. The third occurrence of the same position and side to move ends the game as an attacker win. Captures restart repetition history. A direct board win takes precedence. Repeated destinations show ↻; a losing repeat also shows ! and remains playable.</p><h3>At the board</h3><p>Select a piece belonging to the side to move, then a highlighted destination. Select it again or press Esc to cancel. Arrow keys explore the board; Enter or Space selects a piece or plays a move. Home and End move to a row's edges; Ctrl+Home and Ctrl+End reach the board's corners.</p><p>These are this project's implemented rules. There is no pass or separate no-legal-move ending. The current local game, its variants and review position are saved automatically in this browser and restored when you return. Starting or loading another game replaces that automatic copy. Use Save / copy to keep separate records. Load accepts portable game notation or a JSON variant study. Choose a file or drop one into the load dialog to review its contents before loading.</p><h3>Review &amp; alternatives</h3><p>Use the controls below the board to step through recorded moves. In a local game, play from an earlier position to create a variant without discarding the existing line. Online, review is private to your browser: live moves continue arriving, and Return to live restores the current position before you play. Continue locally opens a separate study and disconnects this player. Leave room closes the room for both players; it does not resign the game.</p><h3>Move comments</h3><p>Select a move to read or add comments. Connected online players share comments, with screen names and side labels; names may be identical. Local entries are anonymous. Names in [brackets] are highlighted mentions, and references such as &lt;D3&gt; or &lt;D1-D4&gt; preview on the board. Each comment has a 500-character limit; online games also have a total comment limit. Save / copy includes the full game and comments. Room invitations and exported game records contain no private seat credentials.</p></div><div class="dialog-actions"><button id="close-help" class="primary-button">Back to the board</button></div></dialog>
+    <dialog id="import-dialog" aria-labelledby="import-title"><div class="dialog-heading"><p class="eyebrow">Continue a game</p><h2 id="import-title">Load a game record</h2></div><p>Choose a test game, open a saved file or paste your own. The complete record is checked before your board changes.</p><label for="game-library">Test game library</label><select id="game-library" disabled aria-describedby="library-status"><option value="">Choose a test game (optional)</option></select><p id="library-status" class="library-status" role="status">Select a game to review it below. Load game applies the notation.</p>
+        <div id="import-drop-zone" class="import-drop-zone"><span>Drop a game or variant study here</span><button id="choose-game-file" class="secondary-button" type="button">Choose file</button><input id="game-file" type="file" accept=".txt,.json,.csv,text/plain,application/json,text/csv" hidden></div><p id="file-status" class="library-status" role="status"></p>
+        <label for="import-text">Game notation</label><textarea id="import-text" rows="7" spellcheck="false" placeholder="[Event:Friendly game]&#10;d11-d8 f8-e8 f10-f8xe8" aria-describedby="import-error"></textarea><p id="import-error" class="form-error" role="alert"></p><div class="dialog-actions"><button id="cancel-import" class="secondary-button">Cancel</button><button id="load-game" class="primary-button">Load game</button></div></dialog>
+    <dialog id="export-dialog" aria-labelledby="export-title"><div class="dialog-heading"><p class="eyebrow">Keep the record</p><h2 id="export-title">Save your game</h2></div><p id="export-help">This record contains the complete game, including moves beyond the position you are viewing.</p><label for="export-text">Game notation</label><textarea id="export-text" rows="7" readonly></textarea><p id="export-status" role="status" aria-live="polite"></p><div class="dialog-actions"><button id="close-export" class="secondary-button">Close</button><button id="download-game" class="secondary-button">Download</button><button id="copy-game" class="primary-button">Copy record</button></div></dialog>
+    <dialog id="next-dialog" aria-labelledby="next-title"><div class="dialog-heading"><p class="eyebrow">A fork in the game</p><h2 id="next-title">Choose the next move</h2></div><div id="next-choices" class="next-choices"></div><div class="dialog-actions"><button id="cancel-next" class="secondary-button">Cancel</button></div></dialog>
+    <dialog id="variant-dialog" aria-labelledby="variant-title"><div class="dialog-heading"><p class="eyebrow">Explore a possibility</p><h2 id="variant-title">Create a variant</h2></div><p id="variant-help">The current game line stays intact. Confirm to create a variant and play your selected move.</p><label for="variant-description">Short description (optional)</label><input id="variant-description" type="text" maxlength="120" autocomplete="off" placeholder="e.g. Try a king-side escape"><p id="variant-error" class="form-error" role="alert"></p><div class="dialog-actions"><button id="cancel-variant" class="secondary-button">Cancel</button><button id="save-variant" class="primary-button">Create variant</button></div></dialog>
+    <dialog id="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-description"><div class="dialog-heading"><p class="eyebrow">Before you continue</p><h2 id="confirm-title">Replace this game?</h2></div><p id="confirm-description">Save the current record first if you want to keep it.</p><div class="dialog-actions"><button id="cancel-replace" class="secondary-button" autofocus>Keep playing</button><button id="confirm-replace" class="primary-button">Replace game</button></div></dialog>
+</div>
+<script type="module" src="./main.js"></script>
 </body>
 </html>

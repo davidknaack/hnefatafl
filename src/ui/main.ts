@@ -1,5 +1,4 @@
-import { HnefataflEngine } from '../HnefataflEngine'
-import { bindCommands } from './commands'
+import { bindSessionControls } from './sessionControls'
 import { getElements } from './elements'
 
 const ui = getElements()
@@ -12,5 +11,8 @@ ui.closeModal.onclick = () => {
 ui.modal.onclick = (event) => {
     if (event.target === ui.modal) ui.modal.style.display = 'none'
 }
-bindCommands(ui, new HnefataflEngine())
+const unbind = bindSessionControls(ui, import.meta.env.VITE_RELAY_URL)
+if (import.meta.hot) import.meta.hot.dispose(() => {
+    unbind()
+})
 import './styles.css'

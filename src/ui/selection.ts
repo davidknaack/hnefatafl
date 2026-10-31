@@ -1,4 +1,4 @@
-import { HnefataflEngine } from '../HnefataflEngine'
+import { GameSession } from '../session/GameSession'
 import { coordToString } from '../coordinates'
 import { isSameCoord } from '../movement'
 import { Coordinate, PossibleMove } from '../types'
@@ -11,7 +11,7 @@ export class Selection {
 
     constructor(
         private ui: UIElements,
-        private engine: HnefataflEngine
+        private session: GameSession
     ) {}
 
     clearHighlights(): void {
@@ -53,12 +53,12 @@ export class Selection {
         })
     }
 
-    select(from: Coordinate): void {
+    select(from: Coordinate, generation: number): void {
         this.from = from
         this.ui.from.value = coordToString(from)
         this.ui.to.value = ''
         this.clearHighlights()
-        this.possibleMoves = this.engine.getPossibleMoves(from)
+        this.possibleMoves = this.session.getPossibleMoves(from, generation)
         this.ui.log.textContent = JSON.stringify(this.possibleMoves, null, 2)
         if (this.ui.displayMoves.checked) this.show(from, this.possibleMoves)
     }

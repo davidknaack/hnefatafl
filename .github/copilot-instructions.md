@@ -1,7 +1,8 @@
 # Hnefatafl maintenance instructions
 
-This repository is a browser application with a synchronous TypeScript engine
-and a plain HTML/TypeScript debug UI, bundled with Vite. Read the
+This repository is a browser application with a synchronous TypeScript engine,
+a local production client in `src/client`, and a preserved local/online debug
+harness in `src/ui`, bundled with Vite. Read the
 [README](../README.md) for current rules, API, notation, and layout semantics.
 Use source and configuration to verify these notes when making changes.
 
@@ -23,7 +24,10 @@ so no compatibility shim is needed.
 | --- | --- |
 | `npm test` | One Vitest run |
 | `npm run testlive` | Vitest watch mode |
-| `npm run typecheck` | Source/tests plus Vite/Vitest configuration type check |
+| `npm run typecheck` | Source/tests, Vite/Vitest configuration and server type check |
+| `npm run build:server` | Node relay build into ignored `dist-server/` |
+| `npm run start:server` | Run the compiled standalone relay |
+| `npm run test:server` | Room and real WebSocket tests |
 | `npm run format` | Format tooling/configuration files |
 | `npm run format:check` | Check tooling/configuration formatting without writing |
 | `npm run build` | Vite browser build into ignored `dist/` |
@@ -45,15 +49,20 @@ already installed dependencies are:
 node node_modules/vitest/vitest.mjs run
 node node_modules/typescript/bin/tsc --noEmit
 node node_modules/typescript/bin/tsc --project tsconfig.node.json
+node node_modules/typescript/bin/tsc --project tsconfig.server.json --noEmit
 node node_modules/prettier/bin/prettier.cjs --check package.json package-lock.json "tsconfig*.json" vite.config.ts .prettierrc ".github/workflows/*.yml"
 node node_modules/vite/bin/vite.js build
+node node_modules/typescript/bin/tsc --project tsconfig.server.json
 ```
 
-`tsconfig.json` covers `src` and tests. `tsconfig.node.json` inherits its strict
-compiler options and checks `vite.config.ts` without emitting files; this keeps
-the source project's `rootDir` unchanged. `npm run typecheck` runs both checks.
+`tsconfig.json` covers `src`, `shared`, and tests, with the repository as `rootDir`
+since P2 added engine-independent transport contracts. `tsconfig.node.json`
+inherits its strict compiler options and checks `vite.config.ts` without emitting
+files. `tsconfig.server.json` checks/emits NodeNext server and shared modules;
+tests are excluded from its output. `npm run typecheck` runs all three checks.
 The extracted browser code under `src/ui` is included in the source check.
-`public/main.js` only imports that checked entry for Vite's public root.
+`public/main.js` imports the checked production entry in `src/client/main.ts`.
+The debug harness uses `public/debug.html` and `public/debug.js`.
 Vite's build is not a type check.
 
 ## Validation baseline and expectations
@@ -118,14 +127,57 @@ mask it.
 | `src/utils.ts` | Compatibility exports for coordinates, encirclement, debug rendering, and forts |
 | `src/types.ts` | Exported state, piece, move, and result types |
 | `src/ui/` | Checked DOM bindings, board/history rendering, selection/highlighting, commands, modal wiring, and CSS |
-| `public/index.html` | HTML entry and modal content |
-| `public/main.js` | Minimal Vite bootstrap importing `src/ui/main.ts` |
+| `src/client/` | Production local-game consumer, persistent keyboard board, history/outcomes, import/export dialogs, responsive CSS |
+| `src/session/` | Local/online engine ownership, subscriptions, capabilities, generation guards, record synchronization, disposal |
+| `src/online/` | Client record replay, peer messages, version metadata and native socket adapter |
+| `shared/` | Engine-independent JSON and relay envelope contracts |
+| `server/` | Ephemeral room metadata, opaque WebSocket relay, configuration and lifecycle |
+| `public/index.html` | Local production HTML entry and native dialogs |
+| `public/main.js` | Minimal Vite bootstrap importing `src/client/main.ts` |
+| `public/debug.html`, `public/debug.js` | Development-only original harness and bootstrap |
 
 The facade methods are `reset`, `getState`, `validateMove`, `applyMove`,
 `applyMoveSequence`, `loadGame`, `saveGame`, `resign`, and `getPossibleMoves(from)`. The lower-level
 `generatePossibleMoves` is not a facade method. Capture arrays contain
 `Coordinate` objects, not notation strings. State uses `position: Square[][]`,
 not `board`; squares use `isRestricted`, not `isCorner`.
+
+P3's debug UI uses `GameSession` rather than directly owning the engine.
+The local production client also uses `GameSession`; `SessionOwner` handles
+unbind-before-dispose replacement for both consumers. Production local play must
+not read or overwrite the online recovery slot. See `docs/production-client.md`
+for the local client/browser acceptance gate. `client-acceptance.html` exercises
+the production consumer; `acceptance.html` fetches `debug.html` for online checks.
+Production local sessions enable `{ review: true }`; the harness retains linear
+sessions. `LocalReview` owns main/variant records and replay-based navigation,
+separate from board rendering. Preserve complete future lines while reviewing,
+generation guards, JSON version/bounds, replay validation of every branch, and
+the standard-text export when no variants exist. See `docs/game-review.md`.
+`bindCommands` returns UI cleanup and does not reset the bound game. The caller
+owns session disposal. Session commands carry the observed generation; subscribers
+drive rendering. See README and `docs/online-play-progress.md` for the contract.
+
+P4's relay must not import the engine or client session code, retain peer payloads,
+or infer moves/outcomes. Sender identity comes from socket membership; reconnect
+tokens reserve seats. Run server tests and build as well as browser checks above
+when changing shared protocol or relay code. See `docs/relay.md` for local setup.
+
+P5 adds `OnlineGameSession`; see `docs/online-session.md`. A successful local
+submission can still await peer acceptance. Never enable online moves based only
+on socket send, revision count or presence. Preserve complete-record replay,
+canonical prefix comparison, current-connection ack matching and retained local
+extensions after send loss. P6's `src/ui/sessionControls.ts` owns local/online
+replacement, room controls and status. Keep board commands on `GameSession`.
+`VITE_RELAY_URL` is optional public build-time configuration; `.env.local` is ignored.
+Local continuation must prepare replay before disposing the online source. P7's
+`src/online/recovery.ts` owns bounded envelope validation and guarded storage;
+the UI owner saves/recovers online sessions. See `docs/browser-recovery.md`.
+Never overwrite incompatible data automatically or claim success after storage
+failure. Automatic resume must target the configured matching relay; archived
+records and local continuations must not reconnect. Keep tokens out of normal
+DOM/clipboard/logging; only the explicitly private backup contains credentials.
+Native WebSocket integration tests require the supported Node 24 runtime; verify
+the executable when a shell or permission boundary changes PATH.
 
 W5 guarantees unique captures, preview/apply equivalence, and legal facade move
 generation against the same state/history. W7 returns detached snapshots from
@@ -191,17 +243,26 @@ migrated. No framework rewrite or Rust-rule port is implied by the work packages
 
 Use the review's acceptance criteria and reproduction fixtures for selected
 fixes. Parser tests cover strict syntax, indexed failures, and serialization.
-There is no dedicated browser test suite. The large fort test count does not
-establish the deferred public contracts.
+P8 provides a browser-invoked acceptance runner at `/hnefatafl/acceptance.html`
+on the Vite development server. Follow [the acceptance guide](../docs/online-acceptance.md)
+for the local relay setup and manual release gate. The runner uses actual UI
+bindings with isolated storage, is excluded from `dist/`, and does not run in
+Vitest or hosted CI. The large fort test count does not establish the deferred
+public contracts.
 
 ## Deployment
 
 [deploy.yml](workflows/deploy.yml) runs `npm ci`, type and tooling-format checks,
-tests, and the build on pushes to
+tests, and browser/server builds on pushes to
 `main` and pull requests targeting `main`, then uploads `dist/` as a Pages artifact.
 The deploy job requires `github.ref == 'refs/heads/main'`; pull requests validate
 but do not deploy. There is no `workflow_dispatch` trigger. The application base
 path is `/hnefatafl/`, configured in `vite.config.ts`.
+
+The browser build receives optional public Actions variable `VITE_RELAY_URL`.
+See [relay deployment](../docs/relay-deployment.md) for the separate single-process
+relay artifact, configuration, release checks and rollback limitations. P8 did
+not provision a public host or set a repository variable.
 
 The package is a private application, with no library entry point or supported
 exports/types entry. Node/RL packaging is future scope. Do not

@@ -1,8 +1,10 @@
 import { Coordinate, GameStatus, Move, Player } from './types'
 import { BOARD_SIZE, coordToString } from './coordinates'
+import { MoveComment, readMoveComments, serializeComments } from './moveComments'
+import { parseMove } from './parser'
 
 export type Terminal = '++' | '--'
-export interface RecordedMove extends Move { terminal?: Terminal }
+export interface RecordedMove extends Move { terminal?: Terminal; comments?: MoveComment[] }
 export interface GameTag { name: string; value: string }
 export interface GameRecord {
     tags: GameTag[]
@@ -72,10 +74,16 @@ export function parseGame(input: string): GameParseResult {
         if (match[4]) move.terminal = match[4] as Terminal
         game.moves.push(move)
         offset = movePattern.lastIndex
-        if (offset < input.length && !/\s/.test(input[offset])) {
+        if (offset < input.length && !/\s/.test(input[offset]) && input[offset] !== '{') {
             return { success: false, error: `Move ${index}: Invalid move format or missing whitespace separator` }
         }
         skipSpace()
+        if (input[offset] === '{') {
+            try {
+                const chain = readMoveComments(input, offset)
+                move.comments = chain.comments; offset = chain.offset
+            } catch (error) { return { success: false, error: `Move ${index}: ${error instanceof Error ? error.message : 'Invalid move comment'}` } }
+        }
     }
     return game.moves.length ? { success: true, game } : { success: false, error: 'Move 1: Expected a move' }
 }
@@ -91,7 +99,21 @@ export function serializeRecordedMove(move: RecordedMove): string {
     // Capture order carries no meaning. Sort by file, then numeric rank.
     const captures = [...move.captures].sort((a, b) => a.x - b.x || b.y - a.y)
     const suffix = captures.length ? `x${captures.map(squareText).join('/')}` : ''
-    return `${squareText(move.from)}-${squareText(move.to)}${suffix}${move.terminal ?? ''}`
+    return `${squareText(move.from)}-${squareText(move.to)}${suffix}${move.terminal ?? ''}${serializeComments(move.comments)}`
+}
+
+/** JSON studies accept both engine capture notation and portable notation, with inline comments. */
+export function parseStudyMove(input: string): RecordedMove | null {
+    const start = input.indexOf('{'), command = (start < 0 ? input : input.slice(0, start)).trim()
+    const move = parseMove(command)
+    if (move) {
+        try {
+            const chain = readMoveComments(input, start < 0 ? input.length : start)
+            return chain.offset === input.length ? { ...move, ...(chain.comments.length ? { comments: chain.comments } : {}) } : null
+        } catch { return null }
+    }
+    const parsed = parseGame(input)
+    return parsed.success && !parsed.game.resigned && parsed.game.moves.length === 1 ? parsed.game.moves[0] : null
 }
 
 /** Serialize a replay-validated record with one tag per line and one move line. */

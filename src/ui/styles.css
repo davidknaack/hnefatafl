@@ -5,6 +5,16 @@ body {
     padding: 0.125rem;
 }
 
+.session-panel { border: 1px solid #555; border-radius: 0.25rem; padding: 0.6rem; margin-bottom: 0.75rem; max-width: 62rem; }
+.session-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; }
+.session-panel [hidden] { display: none; }
+#roomCodeInput { width: 6rem; text-transform: uppercase; }
+#connectionStatus { margin: 0.4rem 0; }
+#sessionError { color: #ffb6ad; }
+#sessionWarning { color: #ffe298; }
+#sessionConfirmation { border-top: 1px solid #666; margin-top: 0.5rem; padding-top: 0.3rem; }
+button:disabled { cursor: default; opacity: 0.55; }
+
 .board {
     display: grid;
     grid-template-columns: repeat(11, 2rem);

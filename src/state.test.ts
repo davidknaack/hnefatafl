@@ -8,6 +8,41 @@ function stateFrom(result: ApplyMoveResult): GameState {
 }
 
 describe('Detached engine snapshots', () => {
+    test.each(['getState', 'applyMove', 'applyMoveSequence', 'loadGame', 'resign'] as const)(
+        '%s returns an independent terminal outcome', (method) => {
+            const engine = new HnefataflEngine()
+            const cycle = 'D11-D10,F8-E8,D10-D11,E8-F8'
+            const prefix = `${cycle},D11-D10,F8-E8,D10-D11`
+            let snapshot: GameState
+            if (method === 'loadGame') {
+                snapshot = stateFrom(engine.loadGame(`${cycle},${cycle}`.split(',').join(' ')))
+            } else if (method === 'resign') {
+                stateFrom(engine.applyMove('D11-D10'))
+                snapshot = stateFrom(engine.resign())
+            } else {
+                stateFrom(engine.applyMoveSequence(prefix))
+                snapshot = stateFrom(engine[method === 'applyMoveSequence' ? method : 'applyMove']('E8-F8'))
+                if (method === 'getState') snapshot = engine.getState()
+            }
+            const sibling = engine.getState()
+            const original = structuredClone(sibling)
+            expect(snapshot.outcome).not.toBeNull()
+            snapshot.outcome!.winner = Player.Defender
+            snapshot.outcome!.reason = 'king_escape'
+            expect(engine.getState()).toEqual(original)
+            expect(sibling).toEqual(original)
+            expect(engine.applyMove('D11-D10').success).toBe(false)
+            expect(engine.resign().success).toBe(false)
+            expect(engine.loadGame('d11-d10 f8-e8 garbage').success).toBe(false)
+            expect(() => engine.reset(['K'])).toThrow()
+            expect(engine.getState()).toEqual(original)
+            engine.reset()
+            expect(engine.getState().outcome).toBeNull()
+            expect(engine.getState().status).toBe(GameStatus.InProgress)
+            expect(sibling).toEqual(original)
+        }
+    )
+
     test.each(['getState', 'applyMove', 'applyMoveSequence'] as const)(
         '%s exposes no mutable engine references', (method) => {
             const engine = new HnefataflEngine()

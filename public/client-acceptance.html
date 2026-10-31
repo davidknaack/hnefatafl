@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Local client acceptance</title></head>
+<body>
+    <h1>Local production client acceptance</h1>
+    <p>Development-only browser checks mount the actual client with disposable local sessions. Storage checks use disposable in-memory copies; real saved games and online recovery are untouched.</p>
+    <button id="run-client">Run client checks</button>
+    <p id="client-summary" role="status">Not run</p>
+    <ol id="client-results"></ol>
+    <h2>Production online checks</h2>
+    <p>These checks use the production room controls, a real loopback relay and independent in-memory browser storage. They never read or replace real saved games.</p>
+    <label for="production-relay">Loopback relay endpoint</label><input id="production-relay" value="ws://127.0.0.1:8787/relay" size="38">
+    <button id="run-production-online">Run online client checks</button><p id="production-online-summary" role="status">Not run</p><ol id="production-online-results"></ol>
+    <details>
+        <summary>Compare light and dark previews</summary>
+        <p>These isolated local games use the iframe's browser color preference; your browser setting and saved records are unchanged.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:16px">
+            <iframe id="light-preview" title="Light preference preview" loading="lazy" style="color-scheme:light;width:540px;height:1500px;border:0"></iframe>
+            <iframe id="dark-preview" title="Dark preference preview" loading="lazy" style="color-scheme:dark;width:540px;height:1500px;border:0"></iframe>
+        </div>
+    </details>
+    <div id="client-fixtures"></div>
+    <script type="module" src="./client-acceptance.js"></script>
+</body>
+</html>

@@ -46,6 +46,11 @@ jobs:
 
       - name: Build project
         run: npm run build
+        env:
+          VITE_RELAY_URL: ${{ vars.VITE_RELAY_URL }}
+
+      - name: Build relay
+        run: npm run build:server
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

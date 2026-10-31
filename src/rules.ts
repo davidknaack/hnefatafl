@@ -1,5 +1,6 @@
 import {
     GameStatus,
+    GameOutcome,
     PieceType,
     Player,
     Square,
@@ -11,37 +12,52 @@ import { extractEscapeTargets } from './board'
 
 // Requires the post-move board with all resolved captures already removed.
 // Repetition is evaluated by the transition resolver, which owns its history.
-export function getGameStatusAfterMove(
+export function getGameOutcomeAfterMove(
     position: Square[][],
     move: Move,
     currentPlayer: Player
-): GameStatus {
+): GameOutcome | null {
     const piece = position[move.to.y][move.to.x].occupant
 
     if (isKingCaptured(position)) {
-        return GameStatus.AttackerWin
+        return { winner: Player.Attacker, reason: 'king_capture' }
     } else if (piece && piece.type === PieceType.King) {
         const dest = position[move.to.y][move.to.x]
         // King escapes by reaching a restricted square.
         // A throne (isThrone) is restricted and does not count as escape.
-        if (dest.isRestricted && !dest.isThrone) return GameStatus.DefenderWin
+        if (dest.isRestricted && !dest.isThrone) return { winner: Player.Defender, reason: 'king_escape' }
     }
 
     // An exit fort wins only with a mobile edge king still isolated after
     // recursively removing every structurally capturable defender.
     if (defendersHaveFort(position)) {
-        return GameStatus.DefenderWin
+        return { winner: Player.Defender, reason: 'exit_fort' }
     }
 
     // Check for encirclement after attacker moves
     if (currentPlayer === Player.Attacker) {
         const escapeTargets = extractEscapeTargets(position)
         if (!defendersCanEscape(position, escapeTargets)) {
-            return GameStatus.AttackerWin
+            return { winner: Player.Attacker, reason: 'encirclement' }
         }
     }
 
-    return GameStatus.InProgress
+    return null
+}
+
+/** Keep legacy status values derived from the same outcome decision. */
+export function statusForOutcome(outcome: GameOutcome | null): GameStatus {
+    if (!outcome) return GameStatus.InProgress
+    return outcome.winner === Player.Attacker ? GameStatus.AttackerWin : GameStatus.DefenderWin
+}
+
+/** Compatibility API for an already-applied board; excludes repetition. */
+export function getGameStatusAfterMove(
+    position: Square[][],
+    move: Move,
+    currentPlayer: Player
+): GameStatus {
+    return statusForOutcome(getGameOutcomeAfterMove(position, move, currentPlayer))
 }
 
 export { getAvailableCaptures, isSquareHostileTo } from './captures'

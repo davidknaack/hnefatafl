@@ -168,6 +168,7 @@ describe('Validated load/save', () => {
         const engine = new HnefataflEngine()
         expect(engine.loadGame(text).success).toBe(true)
         expect(engine.getState().status).toBe(GameStatus.AttackerWin)
+        expect(engine.getState().outcome).toEqual({ winner: Player.Attacker, reason: 'repetition' })
         expect(engine.saveGame()).toBe(text + marker)
         const replay = new HnefataflEngine()
         expect(replay.loadGame(engine.saveGame()).success).toBe(true)
@@ -179,6 +180,10 @@ describe('Validated load/save', () => {
         expect(engine.loadGame(`${text} ---`).success).toBe(true)
         const state = engine.getState()
         expect(state.status).toBe(state.currentPlayer === Player.Attacker ? GameStatus.DefenderWin : GameStatus.AttackerWin)
+        expect(state.outcome).toEqual({
+            winner: state.currentPlayer === Player.Attacker ? Player.Defender : Player.Attacker,
+            reason: 'resignation',
+        })
         expect(engine.saveGame()).toBe(`${text} ---`)
         expect(engine.applyMove('D10-D11').success).toBe(false)
         expect(engine.resign().success).toBe(false)

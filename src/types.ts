@@ -20,6 +20,12 @@ export enum GameStatus {
     DefenderWin = 'defender_win',
 }
 
+/** The winner and cause of a completed game; null while play continues. */
+export interface GameOutcome {
+    winner: Player
+    reason: 'king_capture' | 'king_escape' | 'exit_fort' | 'encirclement' | 'repetition' | 'resignation'
+}
+
 export interface Coordinate {
     x: number // 0-based column
     y: number // 0-based row
@@ -49,6 +55,7 @@ export interface GameState {
     /** Full-board/side-to-move keys since initialization or the last capture. */
     positionHistory: string[]
     status: GameStatus
+    outcome: GameOutcome | null
 }
 
 /** Captures and status are available on both branches, including diagnostics. */

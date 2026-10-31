@@ -81,15 +81,15 @@ describe('W5 resolved captures', () => {
     })
 
     test.each([
-        { name: 'king capture', layout: kingCapture, setup: '', move: 'D6-E6', captures: 'F6', status: GameStatus.AttackerWin },
+        { name: 'king capture', layout: kingCapture, setup: '', move: 'D6-E6', captures: 'F6', status: GameStatus.AttackerWin, reason: 'king_capture' },
         { name: 'encirclement after removing the outside defender', layout: overlap.map((row, y) =>
             y === 4 || y === 6 ? '.....A.....' : y === 5 ? '....AKA....' : row),
-          setup: '', move: 'D11-C11', captures: 'B11', status: GameStatus.AttackerWin },
+          setup: '', move: 'D11-C11', captures: 'B11', status: GameStatus.AttackerWin, reason: 'encirclement' },
         { name: 'fort after removing the inside attacker', layout: [
             'RA........R', '...........', '...........', '...........', '...........',
             '.....T.....', '..........D', '.........D.', '........D..', '.......DK..', 'R.....D..AR',
-          ], setup: 'B11-B10', move: 'I2-I1', captures: 'J1', status: GameStatus.DefenderWin },
-    ])('$name has identical automatic and explicit outcomes', ({ layout, setup, move, captures, status }) => {
+          ], setup: 'B11-B10', move: 'I2-I1', captures: 'J1', status: GameStatus.DefenderWin, reason: 'exit_fort' },
+    ])('$name has identical automatic and explicit outcomes', ({ layout, setup, move, captures, status, reason }) => {
         const automatic = new HnefataflEngine()
         const explicit = new HnefataflEngine()
         for (const engine of [automatic, explicit]) {
@@ -109,6 +109,9 @@ describe('W5 resolved captures', () => {
         play(explicit, `${move}(${captures})`)
         expect(automatic.getState()).toEqual(explicit.getState())
         expect(automatic.getState().status).toBe(preview.status)
+        expect(automatic.getState().outcome).toEqual({
+            winner: status === GameStatus.AttackerWin ? Player.Attacker : Player.Defender, reason,
+        })
         expect(automatic.getState().currentPlayer).toBe(before.currentPlayer)
         for (const side of [Player.Attacker, Player.Defender]) {
             expect(count(before.position, side) - count(automatic.getState().position, side))
@@ -177,6 +180,7 @@ describe('W5 repetition and legal moves', () => {
         expect(engine.getState()).toEqual(before)
         play(engine, final)
         expect(engine.getState().status).toBe(GameStatus.AttackerWin)
+        expect(engine.getState().outcome).toEqual({ winner: Player.Attacker, reason: 'repetition' })
         expect(engine.getState().currentPlayer).toBe(before.currentPlayer)
         expect(engine.getPossibleMoves(move.to)).toEqual([])
         const ended = structuredClone(engine.getState())
@@ -230,7 +234,10 @@ describe('W5 repetition and legal moves', () => {
         const move = parseMove('C11-A11')!
         const key = positionKey(applyMoveToPosition(position, move), Player.Attacker)
         expect(resolveMove(position, Player.Defender, move, edgeSquares, [key, key]))
-            .toMatchObject({ isValid: true, status: GameStatus.DefenderWin, repetition: 'allowed' })
+            .toMatchObject({
+                isValid: true, status: GameStatus.DefenderWin, repetition: 'allowed',
+                outcome: { winner: Player.Defender, reason: 'king_escape' },
+            })
     })
 
     test('every advertised move validates and applies against the same replay state', () => {
