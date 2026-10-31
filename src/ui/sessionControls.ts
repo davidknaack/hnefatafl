@@ -6,9 +6,9 @@ import { UIElements } from './elements'
 import { RecoveryEnvelope, RecoveryStore } from '../online/recovery'
 import { CLIENT_VERSION } from '../online/clientVersion'
 import { versionWarning } from '../../shared/relayProtocol'
-import { compareRecords } from '../online/record'
 import { validRelayEndpoint } from '../online/endpoint'
 import { SessionOwner } from '../session/SessionOwner'
+import { SessionRecovery } from '../session/SessionRecovery'
 
 export interface SessionControlDependencies {
     recoveryStore?: RecoveryStore
@@ -32,32 +32,17 @@ export function bindSessionControls(ui: UIElements, configuredEndpoint?: string,
     const recoveryStore = dependencies.recoveryStore ?? new RecoveryStore()
     const createOnline = dependencies.createOnline ?? (options => new OnlineGameSession(options))
     const loaded = recoveryStore.load()
+    const persistence = new SessionRecovery(recoveryStore, loaded)
     let saved: RecoveryEnvelope | null = loaded.kind === 'saved' ? loaded.value : null
     let storageStatus = loaded.kind === 'invalid' ? `Saved recovery could not be opened: ${loaded.error}. It has been preserved; download a private backup before replacing it.`
         : loaded.kind === 'unavailable' ? loaded.error : ''
     let savedWarning = saved ? versionWarning(CLIENT_VERSION, saved.clientVersion) : null
     let savingEnabled = false
-    // Restoring/duplicating a tab must not rewrite an unchanged save or steal
-    // ownership from the still-live tab merely by changing its timestamp.
-    let lastSavedSignature = saved ? JSON.stringify({ storageVersion: 1, endpoint: saved.endpoint,
-        credentials: saved.credentials, record: saved.record, clientVersion: CLIENT_VERSION,
-        resume: saved.resume, conflict: saved.conflict }) : ''
 
     function persist(resume: boolean): void {
         if (!(session instanceof OnlineGameSession)) return
-        const snapshot = session.getRecovery()
-        if (!snapshot) return
-        const conflict = session.getConflictRecord() ?? (saved && compareRecords(saved.record, snapshot.record) === 'equal' ? saved.conflict : null)
-        const content = { storageVersion: 1 as const, ...snapshot, clientVersion: CLIENT_VERSION, resume: resume && !conflict, conflict }
-        const signature = JSON.stringify(content)
-        if (signature === lastSavedSignature) return
-        const envelope = { ...content, savedAt: Date.now() }
-        const result = recoveryStore.save(envelope)
-        if (result.success) {
-            saved = envelope; lastSavedSignature = signature
-            storageStatus = envelope.resume ? 'Online game saved in this browser. Refresh will replay it and reconnect.'
-                : 'Online record retained for review. It will not reconnect automatically.'
-        } else storageStatus = result.error
+        persistence.persist(session, resume)
+        saved = persistence.saved; storageStatus = persistence.status
     }
 
     function archive(): void {
@@ -133,7 +118,7 @@ export function bindSessionControls(ui: UIElements, configuredEndpoint?: string,
         ask('Start a new online game? This replaces the current board and the browser’s saved recovery slot when the room is assigned. Copy Game or download a private recovery backup first if needed.',
             () => {
                 const next = createOnline({ endpoint, start })
-                recoveryStore.permitReplacement(); savingEnabled = true; lastSavedSignature = ''; savedWarning = null
+                persistence.permitReplacement(); savingEnabled = true; savedWarning = null
                 replace(next)
             }, session.getView().state.moveHistory.length > 0 || recoveryStore.hasSaved())
     }

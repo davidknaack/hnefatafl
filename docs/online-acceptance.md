@@ -1,5 +1,10 @@
 # Online-play acceptance and handoff
 
+Production online controls are now implemented. See
+[the production online guide](production-online-client.md) and the online section
+of `client-acceptance.html` for the new consumer's checks. The P1–P8 debug-harness
+baseline and historical release handoff below remain useful reference evidence.
+
 P1–P8 implement lightweight trusted two-player play in the debug UI. The browser
 owns the rules and complete record; the relay only owns ephemeral room membership.
 The production UI can use `GameSession` without taking ownership of the engine,

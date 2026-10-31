@@ -45,6 +45,21 @@ button:disabled { cursor: default; opacity: .45; }
 button:focus-visible, a:focus-visible, textarea:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 [hidden] { display: none !important; }
+.online-room { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 10px 12px; margin-bottom: 12px; font-size: 12px; overflow-wrap: anywhere; }
+.online-room p { margin: 0 0 6px; min-height: 1.3em; }
+.online-room p:empty { display: none; }
+.online-room #online-status { min-height: 2.6em; }
+.online-room summary { cursor: pointer; min-height: 32px; padding: 6px 0; }
+.online-room details { border-top: 1px solid var(--line); }
+.online-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0; }
+.online-actions button { font-size: 12px; padding: 8px 10px; }
+.room-code { user-select: all; letter-spacing: .12em; }
+.return-live { width: 100%; margin-top: 8px; }
+.side-card > div { min-width: 0; }
+.side-card .player-name { overflow-wrap: anywhere; font-size: 12px; line-height: 1.45; margin-bottom: 4px; color: var(--text); }
+#online-setup > div[id$="-field"] { margin-top: 14px; }
+#online-setup input, #online-setup select, #name-dialog input { width: 100%; min-width: 0; }
+#online-setup .muted, #name-dialog .muted { font-size: 12px; line-height: 1.5; margin-top: 6px; overflow-wrap: anywhere; }
 .client { max-width: 1216px; padding: 0 48px; margin: 0 auto; }
 .skip-link { position: absolute; left: 16px; top: -80px; z-index: 10; background: var(--action); color: var(--action-text); padding: 14px; }
 .skip-link:focus { top: 12px; }

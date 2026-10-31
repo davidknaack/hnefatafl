@@ -4,7 +4,7 @@ import { Coordinate } from './types'
 export const MAX_COMMENT_LENGTH = 500
 export const TRUNCATED_COMMENT_MARKER = '… (comment truncated)'
 const MAX_NAME_LENGTH = 80
-export interface MoveComment { text: string; author?: string; truncated?: boolean }
+export interface MoveComment { text: string; author?: string; truncated?: boolean; seat?: 'attacker' | 'defender'; id?: string }
 export type BoardReference = { from: Coordinate; to?: Coordinate }
 export type CommentPart = { text: string; mention?: string; reference?: BoardReference }
 const characters = (text: string) => Array.from(text)

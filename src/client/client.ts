@@ -13,6 +13,7 @@ import { MAX_STUDY_BYTES } from '../session/LocalReview'
 import { loadGameLibrary } from './gameLibrary'
 import { createLocalGameStorage, LocalGameStorage } from './localGameStorage'
 import { bindComments } from './comments'
+import type { bindOnlineControls, OnlineClientDependencies } from './onlineControls'
 
 function bindGame(ui: ClientElements, session: GameSession, author: () => string | undefined): () => void {
     let view = session.getView(), selected: Coordinate | null = null, moves: PossibleMove[] = []
@@ -26,6 +27,8 @@ function bindGame(ui: ClientElements, session: GameSession, author: () => string
     function clear() {
         selected = null; moves = []; renderBoard()
         ui.feedback.textContent = view.state.outcome ? gameDetail(view.state) : `Select ${view.state.currentPlayer === Player.Attacker ? 'an attacker' : 'a defender or the king'}.`
+        if (view.mode === 'online' && !view.capabilities.move) ui.feedback.textContent = view.review && view.review.cursor < view.review.moves.length
+            ? 'Reviewing an earlier position. Return to live to play.' : view.connection === 'ready' ? 'Waiting for the opponent’s move.' : 'Online moves are paused. You can still review the record.'
     }
     function activate(coord: Coordinate) {
         if (pending || !view.capabilities.move) return
@@ -62,16 +65,20 @@ function bindGame(ui: ClientElements, session: GameSession, author: () => string
         if (!active) return
         const oldLength = view.state.moveHistory.length
         const oldLine = view.review?.line
-        if (next.generation !== view.generation) { selected = null; moves = [] }
+        const metadataOnly = next.mode === 'online' && next.connection === view.connection && next.capabilities.move === view.capabilities.move &&
+            next.review?.cursor === view.review?.cursor && next.state.moveHistory.length === view.state.moveHistory.length &&
+            next.state.moveHistory.every((command, index) => command === view.state.moveHistory[index])
+        if (next.generation !== view.generation && !metadataOnly) { selected = null; moves = [] }
         view = next
-        ui.title.textContent = gameHeading(next.state)
-        ui.detail.hidden = !next.state.outcome
-        ui.detail.textContent = next.state.outcome ? gameDetail(next.state) : ''
+        const live = next.liveState ?? next.state
+        ui.title.textContent = gameHeading(live)
+        ui.detail.hidden = !live.outcome
+        ui.detail.textContent = live.outcome ? gameDetail(live) : ''
         ui.detail.title = ui.detail.textContent
-        ui.marker.className = `turn-marker ${next.state.outcome ? 'finished' : next.state.currentPlayer}`
-        const playing = !next.state.outcome
-        ui.attackerCard.classList.toggle('active-side', playing && next.state.currentPlayer === Player.Attacker)
-        ui.defenderCard.classList.toggle('active-side', playing && next.state.currentPlayer === Player.Defender)
+        ui.marker.className = `turn-marker ${live.outcome ? 'finished' : live.currentPlayer}`
+        const playing = !live.outcome
+        ui.attackerCard.classList.toggle('active-side', playing && live.currentPlayer === Player.Attacker)
+        ui.defenderCard.classList.toggle('active-side', playing && live.currentPlayer === Player.Defender)
         let attackers = 0, defenders = 0
         next.state.position.forEach(row => row.forEach(square => {
             if (square.occupant?.owner === Player.Attacker) attackers++
@@ -81,11 +88,14 @@ function bindGame(ui: ClientElements, session: GameSession, author: () => string
         const captured = next.state.captured
         ui.attackerCaptured.textContent = `${captured.attacker} captured`
         ui.defenderCaptured.textContent = `${captured.defender} captured`
-        const boardMoves = next.state.moveHistory.filter(move => move !== '---').length
+        const boardMoves = live.moveHistory.filter(move => move !== '---').length
         ui.moveNumber.textContent = playing ? `Move ${Math.floor(boardMoves / 2) + 1}` : 'Game finished'
         ui.exportButton.disabled = !next.capabilities.export
         ui.importButton.disabled = !next.capabilities.import
-        if (next.state.outcome) ui.feedback.textContent = `${gameHeading(next.state)}. ${gameDetail(next.state)}`
+        if (next.mode === 'online' && next.review && next.review.cursor < next.review.moves.length) {
+            ui.feedback.textContent = `Reviewing move ${next.review.cursor} of ${next.review.moves.length}. Return to live to play.${!live.outcome && live.currentPlayer === next.localSide ? ' It is your turn in the live game.' : ''}`
+        }
+        else if (next.state.outcome) ui.feedback.textContent = `${gameHeading(next.state)}. ${gameDetail(next.state)}`
         else if (next.review && next.review.cursor < next.review.moves.length) {
             ui.feedback.textContent = `Viewing ${next.review.label}, move ${next.review.cursor} of ${next.review.moves.length}. Use the next arrow to continue, or play a move to create a variant.`
         } else if (next.review && oldLine !== next.review.line) {
@@ -103,24 +113,26 @@ function bindGame(ui: ClientElements, session: GameSession, author: () => string
     const unsubscribe = session.subscribe(render)
     return () => { active = false; unsubscribe(); unbindComments(); review.dispose(); board.dispose(); ui.clear.onclick = null }
 }
-
 export interface ClientDependencies {
     loadLibrary?: () => Promise<readonly string[]>
     storage?: LocalGameStorage | null
     commentAuthor?: () => string | undefined
+    online?: OnlineClientDependencies
 }
 
 /** Local production consumer with its own autosave slot; no online recovery-slot access. */
-export function mountLocalClient(root: ParentNode, initial?: GameSession, dependencies: ClientDependencies = {}): () => void {
+export function mountLocalClient(root: ParentNode, initial?: GameSession, dependencies: ClientDependencies = {}, onlineBinder?: typeof bindOnlineControls): () => void {
     const ui = clientElements(root)
     let active = true
     const storage = dependencies.storage === null ? undefined : createLocalGameStorage(
         () => dependencies.storage ?? window.localStorage, message => { ui.saveNote.textContent = message })
     const session = initial ?? storage?.restore() ?? new LocalGameSession({ review: true })
+    let onlineControls: ReturnType<typeof bindOnlineControls> | undefined
     const owner = new SessionOwner(session, next => {
         const unbind = bindGame(ui, next, dependencies.commentAuthor ?? (() => undefined))
         const stopSaving = next instanceof LocalGameSession ? storage?.bind(next) : undefined
-        return () => { stopSaving?.(); unbind() }
+        const stopOnline = onlineControls?.bind(next)
+        return () => { stopSaving?.(); stopOnline?.(); unbind() }
     })
     let replacement: { commit: () => void; cancel: () => void } | undefined
     const dialogs = [ui.help, ui.importDialog, ui.exportDialog, ui.confirm]
@@ -201,6 +213,8 @@ export function mountLocalClient(root: ParentNode, initial?: GameSession, depend
         cancelReplacement()
         replacement = { commit, cancel: () => candidate.dispose() }
         ui.confirmDescription.textContent = description
+        ui.confirm.querySelector('h2')!.textContent = 'Replace this game?'
+        ui.replace.textContent = 'Replace game'; ui.cancelReplace.textContent = 'Keep playing'
         ui.confirm.showModal(); ui.cancelReplace.focus()
     }
     ui.newGame.onclick = () => replace(new LocalGameSession({ review: true }), 'Start a new game? Save or copy the current record first if you want to keep it.')
@@ -264,6 +278,24 @@ export function mountLocalClient(root: ParentNode, initial?: GameSession, depend
         setTimeout(() => URL.revokeObjectURL(url), 0)
         ui.exportStatus.textContent = 'Game record prepared for download.'
     }
+    if (dependencies.online && onlineBinder) {
+        onlineControls = onlineBinder(root, ui, dependencies.online,
+            dependencies.storage === null ? null : () => dependencies.storage ?? window.localStorage, {
+                current: () => owner.session,
+                replace: next => owner.replace(next),
+                cancelPending() { cancelReplacement(); ui.confirm.close() },
+                ask(message, action, required = true) {
+                    if (!required) { action(); return }
+                    cancelReplacement()
+                    replacement = { commit: action, cancel: () => {} }
+                    ui.confirm.querySelector('h2')!.textContent = 'Before you continue'
+                    ui.confirmDescription.textContent = message + (ui.commentText.value.trim() ? ' Unposted comment drafts will be discarded.' : '')
+                    ui.replace.textContent = 'Continue'; ui.cancelReplace.textContent = 'Cancel'
+                    ui.confirm.showModal(); ui.cancelReplace.focus()
+                },
+            })
+        onlineControls.bind(owner.session)
+    }
     return () => {
         if (!active) return
         active = false; cancelReplacement()
@@ -271,7 +303,7 @@ export function mountLocalClient(root: ParentNode, initial?: GameSession, depend
         ui.importDialog.removeEventListener('cancel', cancelFileRead)
         ui.importDialog.ondragover = null; ui.importDialog.ondragleave = null; ui.importDialog.ondrop = null; ui.file.onchange = null
         ui.confirm.removeEventListener('cancel', cancelReplacement); ui.confirm.removeEventListener('close', cancelReplacement)
-        dialogs.forEach(dialog => dialog.close()); owner.dispose()
+        dialogs.forEach(dialog => dialog.close()); onlineControls?.dispose(); owner.dispose()
         ui.library.onchange = null; ui.importText.oninput = null
         for (const button of [ui.newGame, ui.helpButton, ui.closeHelp, ui.importButton, ui.cancelImport, ui.chooseFile,
             ui.load, ui.replace, ui.cancelReplace, ui.exportButton, ui.closeExport, ui.copy, ui.download]) button.onclick = null

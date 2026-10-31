@@ -1,5 +1,10 @@
 # Browser recovery (P7)
 
+The production UI now reuses this gameplay recovery format and adds a separate
+names/comments/review sidecar and active-mode preference. Its local continuation
+uses local autosave. See [production online recovery](production-online-client.md#saving-and-departure).
+The debug-harness behaviors below remain its reference baseline.
+
 The debug UI saves the most recent online game in `localStorage` under
 `hnefatafl.online.recent.v1`. There is one slot per browser origin, not a game
 library. In this debug harness, local games and moves made after Continue Locally

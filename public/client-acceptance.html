@@ -7,6 +7,10 @@
     <button id="run-client">Run client checks</button>
     <p id="client-summary" role="status">Not run</p>
     <ol id="client-results"></ol>
+    <h2>Production online checks</h2>
+    <p>These checks use the production room controls, a real loopback relay and independent in-memory browser storage. They never read or replace real saved games.</p>
+    <label for="production-relay">Loopback relay endpoint</label><input id="production-relay" value="ws://127.0.0.1:8787/relay" size="38">
+    <button id="run-production-online">Run online client checks</button><p id="production-online-summary" role="status">Not run</p><ol id="production-online-results"></ol>
     <details>
         <summary>Compare light and dark previews</summary>
         <p>These isolated local games use the iframe's browser color preference; your browser setting and saved records are unchanged.</p>

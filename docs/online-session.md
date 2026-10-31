@@ -1,5 +1,10 @@
 # Online session API (P5)
 
+The production client composes this live session with `OnlineStudySession` for
+names, independent review and shared comments. Optional peer features have
+separate acknowledgements and do not change the gameplay contracts below. See
+[production online contracts](production-online-client.md#implementation-and-validation).
+
 `src/session/OnlineGameSession.ts` implements `GameSession` using the P2 record
 codec and P4 relay. It is browser code with no DOM or storage dependency. The
 debug UI starts with `LocalGameSession`; P6's `bindSessionControls` owns replacement

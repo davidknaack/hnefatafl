@@ -469,3 +469,17 @@ outside board rendering. The final review found no further major architectural
 blocker within this scope. One-origin storage, ephemeral rooms, local-continuation
 save limits and future server requirements remain explicit in the
 [acceptance handoff](online-acceptance.md) and [deployment guide](relay-deployment.md).
+## Production online UI — October 18, 2026
+
+The approved [production UI plan](production-online-ui-plan.md) is implemented
+through its local acceptance handoff. The production entry adds create/join and
+invitation flows, optional nonunique seat names, live review, shared move comments,
+refresh recovery, separate local continuation and private backups. Gameplay record
+version 1 and engine rules are unchanged. See [behavior, contracts and verification](production-online-client.md).
+
+Validation: **606 unit/integration tests**, all TypeScript/format/build gates,
+**43 local production browser checks**, **9 production online checks**, and **9
+original debug online checks** passed. Manual built-preview checks used two
+independent origins with a loopback relay, including duplicate names, keyboard
+play, capture, shared comments, clipboard exports and a real refresh. Public
+relay deployment and independent-network validation remain pending hosting work.

@@ -25,6 +25,12 @@ export interface OnlineSessionOptions {
     /** Open a retained game for review without sending credentials or reconnecting. */
     autoConnect?: boolean
 }
+export interface PeerFeature {
+    type: string
+    payload: unknown
+    senderSeat: Seat
+    messageId: string
+}
 type Pending = { message: GameRecordMessage; id: string; connection: number }
 
 /** Owns replay, permissions and synchronization; never gives the UI an engine/socket. */
@@ -44,6 +50,7 @@ export class OnlineGameSession implements GameSession {
     private unlisten?: () => void
     private timer?: ReturnType<typeof setTimeout>
     private listeners = new Set<SessionListener>()
+    private featureListeners = new Set<(feature: PeerFeature) => void>()
     private pending?: Pending
     private controlId = ''
     private syncId: string | null = null
@@ -91,6 +98,19 @@ export class OnlineGameSession implements GameSession {
         if (!this.disposed) this.listeners.add(listener)
         this.deliver(listener)
         return () => { this.listeners.delete(listener) }
+    }
+    /** Optional client features share membership/transport, never gameplay acknowledgements. */
+    subscribeFeatures(listener: (feature: PeerFeature) => void): () => void {
+        this.featureListeners.add(listener)
+        return () => { this.featureListeners.delete(listener) }
+    }
+    sendFeature(type: string, payload: unknown): string | null {
+        if (this.disposed || !this.peer || !this.record || !this.credentials || !this.socket) return null
+        const messageId = this.options.messageId(), body = { type, payload }
+        const forwarded = readJson({ ...this.base(), type: 'relayed', gameId: this.record.gameId,
+            senderSeat: this.credentials.seat, body }, this.options.maxWireBytes)
+        if (!forwarded.success) return null
+        return this.peerSend(body, messageId) ? messageId : null
     }
     getView(): SessionView {
         const state = this.engine.getState()
@@ -250,7 +270,15 @@ export class OnlineGameSession implements GameSession {
         const warning = versionWarning(CLIENT_VERSION, message.clientVersion)
         const warningChanged = warning !== this.warning
         this.warning = warning
-        if (body.type === 'unsupported') { if (warningChanged) this.notify(); return }
+        if (body.type === 'unsupported') {
+            for (const listener of [...this.featureListeners]) {
+                try { listener({ type: message.body.type, payload: message.body.payload,
+                    senderSeat: message.senderSeat, messageId: message.messageId }) }
+                catch { console.error('Online feature subscriber failed') }
+            }
+            if (warningChanged) this.notify()
+            return
+        }
         if (body.type === 'sync-request') {
             if (!this.recovering) this.beginSync()
             if (this.socket && this.sendRecord(body.payload.syncId)) { this.deadline(); this.notify() }
@@ -333,6 +361,6 @@ export class OnlineGameSession implements GameSession {
     }
     dispose(): void {
         if (this.disposed) return
-        this.disposed = true; this.detach(); this.connection = 'closed'; this.notify(); this.listeners.clear()
+        this.disposed = true; this.detach(); this.connection = 'closed'; this.notify(); this.listeners.clear(); this.featureListeners.clear()
     }
 }

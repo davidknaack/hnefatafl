@@ -152,8 +152,9 @@ format's limits.
 
 `LocalGameSession({ review: true })` enables local review. The production client
 uses it for new/imported games. The debug harness retains its default linear
-`LocalGameSession()` behavior. Online sessions do not expose review actions or
-change their protocol/recovery format.
+`LocalGameSession()` behavior. The raw online session keeps its existing live
+protocol/recovery format; the production `OnlineStudySession` wrapper adds
+[independent live review and shared comments](production-online-client.md).
 
 `SessionView.review` is detached and includes the selected line/cursor, complete
 line commands/status, variant summaries, available next choices and the current

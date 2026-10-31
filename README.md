@@ -43,8 +43,10 @@ variant** for an optional description; confirming creates the line and plays the
 move, while cancelling leaves the game unchanged. The **Variants** tab lists available lines, and Next offers a choice
 at forks. Studies with variants save as JSON; ordinary games retain portable text.
 The load dialog also accepts file selection and drag-and-drop. See
-[game review and variant format](docs/game-review.md). Resignation controls,
-AI and production online controls remain deferred.
+[game review and variant format](docs/game-review.md). Resignation controls and
+AI remain deferred. [Production online play](docs/production-online-client.md)
+adds create/join rooms, optional nonunique screen names, independent live review,
+shared move comments and refresh recovery.
 Per-move comments appear below the move list. Authors use `{[Alice]:text}`;
 anonymous comments use `{text}`. Mentions such as `[Bob]` are colored, and
 references such as `<D3>` and `<D1-D4>` preview on the board without playing.

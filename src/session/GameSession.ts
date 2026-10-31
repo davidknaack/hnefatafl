@@ -11,6 +11,8 @@ export interface SessionCapabilities {
 
 export interface SessionView {
     state: GameState
+    /** Online review may display history while the live game continues independently. */
+    liveState?: GameState
     /** Monotonic within this session, including imports/reset/lifecycle changes. */
     generation: number
     /** Generation of the latest import/reset. These positions are presented without animation. */
@@ -30,6 +32,10 @@ export interface SessionView {
         pendingAcceptance: boolean
         error: string | null
         warning: string | null
+        names?: Partial<Record<Player, string>>
+        commentsAvailable?: boolean
+        annotationStatus?: string
+        annotationWarning?: string | null
     }
 }
 
@@ -52,5 +58,6 @@ export interface GameSession {
     submitVariant?(command: string, description: string, generation: number): Promise<SessionResult>
     describeVariant?(line: string, description: string, generation: number): SessionResult
     addComment?(text: string, author: string | undefined, generation: number): SessionResult
+    holdReviewForDraft?(hold: boolean): void
     dispose(): void
 }

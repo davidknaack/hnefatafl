@@ -1,10 +1,10 @@
 # Local production client
 
-The default `/hnefatafl/` entry now serves a local two-player client. It is the
-first implementation milestone from the [readiness review](production-client-readiness-2026-10-17.md).
-Two people control opposite sides on one browser board. Online controls remain
-available in the development harness at `/hnefatafl/debug.html`; they are not yet
-integrated into the production client.
+The default `/hnefatafl/` entry serves local play, online rooms and game review.
+This page describes local behavior and its acceptance baseline. See
+[production online play](production-online-client.md) for room controls, optional
+names, live review, shared comments and recovery. The original debug harness
+remains at `/hnefatafl/debug.html` as a reference consumer.
 
 ## Implemented experience
 
@@ -70,11 +70,10 @@ imported resignation records still replay and display their results.
 | `public/client-acceptance.html` | Repeatable production-client browser checks |
 | `public/acceptance.html` | Existing online/harness browser checks, now loading `debug.html` |
 
-Both consumers use `SessionOwner` and `GameSession`. Debug-specific online/recovery
-orchestration remains in `src/ui/sessionControls.ts`; it has not been copied into
-the local client. The production entry never reads or replaces the online recovery
-slot, including when an older online game exists in browser storage. Integrating
-that orchestration with production controls is a later milestone.
+Both consumers use `SessionOwner` and `GameSession`. The isolated `mountLocalClient`
+consumer never reads or replaces online recovery. The production `mountClient`
+composition adds online controls and shares credential-bearing persistence policy
+with the debug harness. See [online ownership](production-online-client.md#implementation-and-validation).
 
 Vite builds only the default entry. The harness and both browser runners are
 development-only HTML entries and must remain absent from `dist/`. No framework,
@@ -100,7 +99,7 @@ binding the restored session. An unreadable or invalid slot leaves a fresh board
 and an explanatory status; an invalid copy remains untouched until the player
 changes or replaces the game. Failed writes preserve the previous storage value
 and show Save / copy guidance; a later successful write clears that status.
-The online recovery slot is never read or replaced.
+Local autosave never reads or replaces the online recovery slot.
 
 Initial and imported positions snap into place without move slides, captures,
 ghosts, arrows or win messages. The local session exposes the generation of its

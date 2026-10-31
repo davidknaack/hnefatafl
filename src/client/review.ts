@@ -118,9 +118,10 @@ export function bindReview(ui: ClientElements, session: GameSession, beforeNavig
         view = next
         const review = next.review, cursor = review?.cursor ?? next.state.moveHistory.length
         const commands = review?.moves ?? next.state.moveHistory
-        ui.reviewControls.hidden = !review; ui.variantsTab.hidden = !review
-        ui.reviewPosition.textContent = review ? `${review.label} · ${cursor} / ${commands.length}` : ''
-        const available = next.connection !== 'closed'
+        ui.reviewControls.hidden = !review; ui.variantsTab.hidden = !review || next.mode === 'online'
+        if (next.mode === 'online') tab(0)
+        ui.reviewPosition.textContent = review ? next.mode === 'online' ? `${cursor === commands.length ? 'Live' : 'Reviewing'} · ${cursor} / ${commands.length}` : `${review.label} · ${cursor} / ${commands.length}` : ''
+        const available = next.mode === 'online' || next.connection !== 'closed'
         ui.reviewStart.disabled = ui.reviewBack.disabled = !available || cursor === 0
         ui.reviewNext.disabled = !available || !review?.next.length
         ui.reviewNext.classList.toggle('has-choices', !!review && review.next.length > 1)
@@ -133,6 +134,7 @@ export function bindReview(ui: ClientElements, session: GameSession, beforeNavig
         ui.recordCount.textContent = `${count} ${count === 1 ? 'move' : 'moves'}`
         const signature = `${review?.line ?? ''}:${commands.join(' ')}:${review?.status ?? next.state.status}`
         if (signature !== historySignature) {
+            const focusedPly = ui.history.contains(document.activeElement) ? (document.activeElement as HTMLElement).dataset.ply : undefined
             historySignature = signature; ui.history.replaceChildren()
             const history = displayHistory({ ...next.state, moveHistory: commands, status: review?.status ?? next.state.status })
             for (let index = 0; index < history.length; index += 2) {
@@ -151,6 +153,7 @@ export function bindReview(ui: ClientElements, session: GameSession, beforeNavig
                 ui.history.append(row)
             }
             ui.empty.hidden = history.length > 0
+            if (focusedPly) ui.history.querySelector<HTMLButtonElement>(`button[data-ply="${focusedPly}"]`)?.focus()
         }
         ui.history.querySelectorAll<HTMLButtonElement>('button[data-ply]').forEach(button => {
             const ply = Number(button.dataset.ply)

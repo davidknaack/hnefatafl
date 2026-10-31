@@ -1,5 +1,5 @@
-import { mountLocalClient } from './client'
+import { mountClient } from './application'
 import './styles.css'
 
-const dispose = mountLocalClient(document)
+const dispose = mountClient(document)
 if (import.meta.hot) import.meta.hot.dispose(dispose)
