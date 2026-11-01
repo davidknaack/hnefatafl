@@ -20,7 +20,7 @@ npm run start:server
 ```
 
 In another run `npm run dev`. Open
-`http://localhost:5173/hnefatafl/acceptance.html`, enter the local relay endpoint
+`http://localhost:5173/acceptance.html`, enter the local relay endpoint
 (default `ws://127.0.0.1:8787/relay`) and click **Run acceptance checks**. If Vite
 chooses a different port, configure that exact origin in `RELAY_ORIGINS` and restart
 the relay. The expected result is **9 passed; 0 failed**. Failed rows describe the

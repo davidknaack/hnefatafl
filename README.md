@@ -1,6 +1,6 @@
 # Hnefatafl Game Engine
 
-**[Play the game online](https://davidknaack.github.io/hnefatafl/)**
+**[Play the game online](https://tafl.ac0kg.org/)**
 
 A browser-based Hnefatafl game with a synchronous TypeScript engine and an
 interactive 11×11 board. Attackers move first. Defenders win by moving the king
@@ -25,7 +25,7 @@ npm run dev
 ```
 
 Vite opens the browser and normally serves the app at
-`http://localhost:5173/hnefatafl/`. It may select another port if that one is busy.
+`http://localhost:5173/`. It may select another port if that one is busy.
 
 The default entry is the production client's **local two-player game**. Select a
 piece and a highlighted destination to move. It supports keyboard navigation,
@@ -52,7 +52,7 @@ anonymous comments use `{text}`. Mentions such as `[Bob]` are colored, and
 references such as `<D3>` and `<D1-D4>` preview on the board without playing.
 
 The existing local/online development harness is preserved at
-`http://localhost:5173/hnefatafl/debug.html`. Browser checks are available at
+`http://localhost:5173/debug.html`. Browser checks are available at
 `client-acceptance.html` (local production client) and `acceptance.html` (online
 harness, requires a relay). All three developer entries are excluded from the
 production build. See [local client development and acceptance](docs/production-client.md).
@@ -69,7 +69,7 @@ production build. See [local client development and acceptance](docs/production-
 | `npm run format` | Format tooling/configuration files with pinned Prettier |
 | `npm run format:check` | Check tooling/configuration formatting without writing |
 | `npm run build` | Bundle the browser app into ignored `dist/` output |
-| `npm run preview` | Serve the existing build, normally at `http://localhost:4173/hnefatafl/` |
+| `npm run preview` | Serve the existing build, normally at `http://localhost:4173/` |
 
 The browser build does not perform TypeScript checking; run `npm run typecheck` separately.
 CI runs type checking, formatting checks, tests, and both builds. Browser code in
@@ -88,14 +88,13 @@ for endpoints, resource limits, reconnect behavior and restart limitations.
 P8 adds a repeatable local [browser acceptance runner](docs/online-acceptance.md)
 and [deployment handoff](docs/relay-deployment.md). The runner exercises the actual
 UI against a local relay with isolated test storage; it is browser-invoked and
-excluded from the production build. Pages builds accept the optional public
+excluded from the production build. CI builds accept the optional public
 repository Actions variable `VITE_RELAY_URL`. Public relay hosting is not yet deployed.
 
 ## Current rules and behavior
 
 These describe the implementation, not conformance to an external named variant.
-The [project review](docs/project-review-2026-09-05.md) records known defects and
-rules decisions that remain open.
+Open rules questions are tracked alongside the relevant rule documentation.
 
 - Pieces move orthogonally any distance along an unobstructed path. They cannot
   jump occupied squares. Only the king may stop on restricted squares; other
@@ -465,8 +464,7 @@ recovery. See [browser recovery](docs/browser-recovery.md) for storage failures,
 private backups, one-slot behavior and local-continuation limits.
 
 P2 adds pure online record and message contracts under `src/online` and `shared`;
-see [protocol APIs and examples](docs/online-protocol.md) and
-[implementation progress](docs/online-play-progress.md). Complete records support
+see [protocol APIs and examples](docs/online-protocol.md). Complete records support
 zero moves and independently replay with structured outcome checks. P4 provides
 the standalone relay; P5 adds `OnlineGameSession` with seat-gated commands,
 complete-record synchronization, correlated acknowledgements and explicit reconnect.
@@ -477,8 +475,6 @@ metadata is injected from `package.json` by the Vite/Vitest configuration.
 
 - [Maintenance instructions](.github/copilot-instructions.md): commands, validation,
   module boundaries, and deployment behavior.
-- [September 5 project review](docs/project-review-2026-09-05.md): B1–B8 defects,
-  T1 tooling gaps, reproduction fixtures, and W1–W8 work packages.
 - [Exit-fort notes](docs/exit-fort.md): structural semantics and regression examples.
 
 W1–W8's selected scope is complete: maintenance guidance and runtime/configuration/check
@@ -494,5 +490,6 @@ The package is marked `private` and has no library entry point. An engine
 distribution should wait until reuse is explicitly in scope.
 
 GitHub Actions runs installation, type and formatting checks, tests, and the build
-for pushes to `main` and pull requests targeting `main`. The deployment job runs only for the `main` ref
-and publishes `dist/` to GitHub Pages. A pull request does not deploy the site.
+for pushes to `main` and pull requests targeting `main`. It does not deploy the
+site. Coolify hosts the browser app at <https://tafl.ac0kg.org/> and creates preview
+deployments for pull requests.

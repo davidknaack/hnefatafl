@@ -17,7 +17,7 @@ npm run dev:online
 
 This builds and watches the relay, restarts it after server changes, and starts
 the Vite client in the same terminal, opening the online harness at
-`/hnefatafl/debug.html`. The default app entry now serves the local production
+`/debug.html`. The default app entry now serves the local production
 client. Press Ctrl+C to stop both. To run only the
 relay, use `npm run build:server` followed by `npm run start:server`.
 
@@ -31,8 +31,9 @@ The NodeNext server build emits `server/` and engine-independent `shared/` modul
 under ignored `dist-server/`. Keep that directory beside the root `package.json`
 and installed production dependencies when running it. `start:server` uses the
 compiled entry and reads the package version; rebuild after source changes.
-The browser build remains in `dist/`. CI builds both, but only uploads the browser
-artifact to Pages. No server hosting is configured.
+The browser build remains in `dist/`. CI validates both builds. Coolify deploys
+the browser app at `https://tafl.ac0kg.org/`; the relay is a separate Node service.
+See [relay deployment](relay-deployment.md) for its hosting requirements.
 
 ## Debug UI setup
 
@@ -50,7 +51,7 @@ an invalid URL) disables Create/Join while leaving local play available. HTTPS
 pages require a `wss://` endpoint. If Vite uses another port, include its exact
 origin in `RELAY_ORIGINS` before starting the relay.
 
-Open `http://localhost:5173/hnefatafl/debug.html` in two tabs. Choose a side and Create Room in one, then enter the
+Open `http://localhost:5173/debug.html` in two tabs. Choose a side and Create Room in one, then enter the
 six-character code and Join Room in the other. Each browser controls its assigned
 side only after synchronization. Status distinguishes waiting, synchronization,
 turn, disconnection and room errors; board outcome remains separate. Load is

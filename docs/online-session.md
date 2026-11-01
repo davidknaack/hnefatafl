@@ -94,7 +94,5 @@ for tests. Production defaults use native WebSocket, UUIDs and normal timers.
 `src/online/socket.ts` removes every listener when detached.
 
 The implementation is tested with controlled message ordering/loss and two native
-WebSocket sessions against the real relay. P6 adds controls and deliberate reconnect;
-P7 adds browser storage and refresh recovery. Production hosting remains later work. See
-[relay setup](relay.md), [wire protocol](online-protocol.md), and
-[progress](online-play-progress.md).
+WebSocket sessions against the real relay. See [relay setup](relay.md) and the
+[wire protocol](online-protocol.md).

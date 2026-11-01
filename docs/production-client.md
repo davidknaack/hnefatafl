@@ -1,10 +1,10 @@
 # Local production client
 
-The default `/hnefatafl/` entry serves local play, online rooms and game review.
+The default `/` entry serves local play, online rooms and game review.
 This page describes local behavior and its acceptance baseline. See
 [production online play](production-online-client.md) for room controls, optional
 names, live review, shared comments and recovery. The original debug harness
-remains at `/hnefatafl/debug.html` as a reference consumer.
+remains at `/debug.html` as a reference consumer.
 
 ## Implemented experience
 
@@ -116,7 +116,7 @@ it, and clearing site data removes it. Save / copy keeps an independent backup.
 Run the normal repository test, type-check, tooling-format, browser build and
 relay build commands. With `npm run dev` running, open:
 
-`http://localhost:5173/hnefatafl/client-acceptance.html`
+`http://localhost:5173/client-acceptance.html`
 
 Choose **Run client checks**. Expected: **43 passed; 0 failed**. The runner uses
 actual production markup, the real client binding and disposable local sessions.
