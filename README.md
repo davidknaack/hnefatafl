@@ -94,8 +94,7 @@ repository Actions variable `VITE_RELAY_URL`. Public relay hosting is not yet de
 ## Current rules and behavior
 
 These describe the implementation, not conformance to an external named variant.
-The [project review](docs/project-review-2026-09-05.md) records known defects and
-rules decisions that remain open.
+Open rules questions are tracked alongside the relevant rule documentation.
 
 - Pieces move orthogonally any distance along an unobstructed path. They cannot
   jump occupied squares. Only the king may stop on restricted squares; other
@@ -466,7 +465,7 @@ private backups, one-slot behavior and local-continuation limits.
 
 P2 adds pure online record and message contracts under `src/online` and `shared`;
 see [protocol APIs and examples](docs/online-protocol.md) and
-[implementation progress](docs/online-play-progress.md). Complete records support
+implementation details. Complete records support
 zero moves and independently replay with structured outcome checks. P4 provides
 the standalone relay; P5 adds `OnlineGameSession` with seat-gated commands,
 complete-record synchronization, correlated acknowledgements and explicit reconnect.
@@ -477,8 +476,6 @@ metadata is injected from `package.json` by the Vite/Vitest configuration.
 
 - [Maintenance instructions](.github/copilot-instructions.md): commands, validation,
   module boundaries, and deployment behavior.
-- [September 5 project review](docs/project-review-2026-09-05.md): B1–B8 defects,
-  T1 tooling gaps, reproduction fixtures, and W1–W8 work packages.
 - [Exit-fort notes](docs/exit-fort.md): structural semantics and regression examples.
 
 W1–W8's selected scope is complete: maintenance guidance and runtime/configuration/check

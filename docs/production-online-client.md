@@ -1,8 +1,7 @@
 # Production online play
 
 The default client supports local play and online rooms. Configure `VITE_RELAY_URL`
-for online play; without a usable endpoint local play remains available. The
-approved design is in [the implementation plan](production-online-ui-plan.md).
+for online play; without a usable endpoint local play remains available.
 
 ## Playing together
 
