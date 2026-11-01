@@ -238,8 +238,7 @@ migrated. No framework rewrite or Rust-rule port is implied by the work packages
   canonical saving omits these redundant representations. Wrong captures and
   illegal moves still fail atomically.
 
-Use the review's acceptance criteria and reproduction fixtures for selected
-fixes. Parser tests cover strict syntax, indexed failures, and serialization.
+Parser tests cover strict syntax, indexed failures, and serialization.
 The browser-invoked acceptance runner is available at `/acceptance.html`
 on the Vite development server. Follow [the acceptance guide](../docs/online-acceptance.md)
 for the local relay setup and manual release gate. The runner uses actual UI

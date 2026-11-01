@@ -464,8 +464,7 @@ recovery. See [browser recovery](docs/browser-recovery.md) for storage failures,
 private backups, one-slot behavior and local-continuation limits.
 
 P2 adds pure online record and message contracts under `src/online` and `shared`;
-see [protocol APIs and examples](docs/online-protocol.md) and
-implementation details. Complete records support
+see [protocol APIs and examples](docs/online-protocol.md). Complete records support
 zero moves and independently replay with structured outcome checks. P4 provides
 the standalone relay; P5 adds `OnlineGameSession` with seat-gated commands,
 complete-record synchronization, correlated acknowledgements and explicit reconnect.
