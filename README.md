@@ -491,5 +491,6 @@ The package is marked `private` and has no library entry point. An engine
 distribution should wait until reuse is explicitly in scope.
 
 GitHub Actions runs installation, type and formatting checks, tests, and the build
-for pushes to `main` and pull requests targeting `main`. The deployment job runs only for the `main` ref
-and publishes `dist/` to GitHub Pages. A pull request does not deploy the site.
+for pushes to `main` and pull requests targeting `main`. It does not deploy the
+site. Coolify hosts the browser app at <https://tafl.ac0kg.org/> and creates preview
+deployments for pull requests.
