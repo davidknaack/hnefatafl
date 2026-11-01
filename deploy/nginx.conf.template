@@ -2,7 +2,8 @@
 resolver 127.0.0.11 valid=5s ipv6=off;
 upstream relay_backend {
     zone relay_backend 64k;
-    server relay:8787 resolve;
+    # Coolify renames the service in PR previews and injects this matching name.
+    server ${SERVICE_NAME_RELAY}:8787 resolve;
 }
 
 map $http_upgrade $connection_upgrade {

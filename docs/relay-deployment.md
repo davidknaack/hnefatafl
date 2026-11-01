@@ -24,6 +24,11 @@ Health requests never fall back to frontend HTML. Each container has a Docker
 health check; the web check establishes static-page liveness independently of
 relay availability.
 
+Coolify renames preview service keys (for example `relay-pr-35`). Nginx's startup
+template uses the injected `SERVICE_NAME_RELAY` to reach that deployment's relay;
+plain Compose defaults to `relay`. Only this variable is substituted, leaving
+Nginx request variables untouched.
+
 `compose.yaml` publishes no host ports. Coolify routes only the `web` service's
 internal port 80. The relay listens on `0.0.0.0:8787` inside the stack network.
 Do not attach multiple deployments to a shared external network or assign fixed

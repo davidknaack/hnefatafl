@@ -30,7 +30,8 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
 CMD ["node", "dist-server/server/main.js"]
 
 FROM nginx:1.28-alpine AS web
-COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
+ENV SERVICE_NAME_RELAY=relay NGINX_ENVSUBST_FILTER=SERVICE_NAME_RELAY
+COPY deploy/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=web-build /app/dist /usr/share/nginx/html
 EXPOSE 80
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \

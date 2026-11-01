@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { WebSocket } from 'ws'
 
 // Works against the CI Compose stack or an HTTPS Coolify deployment. Never log
-// assignments: they contain private resume tokens. All created rooms are left.
+// assignments: they contain private resume tokens. Successful checks leave their room.
 const base = new URL(process.argv[2] ?? 'http://127.0.0.1:8080')
 assert(['http:', 'https:'].includes(base.protocol), 'Expected an HTTP(S) deployment URL')
 const endpoint = new URL('/relay', base)
