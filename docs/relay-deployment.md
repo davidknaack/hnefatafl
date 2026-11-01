@@ -1,7 +1,7 @@
-# Relay deployment handoff
+# Relay deployment
 
-No public host is provisioned by P8. The runnable artifact and required settings
-are ready for a concrete hosting choice. Use one long-lived Node 24 process with
+The browser app is hosted by Coolify at `https://tafl.ac0kg.org/`. The relay runs
+as a separate service. Use one long-lived Node 24 process with
 TLS termination for browser WSS connections. The process has no database or game
 history to migrate. Restarting or replacing it discards every room and token.
 
@@ -11,7 +11,7 @@ Build from the reviewed commit with `npm ci`, the repository checks, and
 `npm run build:server`. Keep `dist-server/` beside `package.json` and the lockfile;
 install runtime dependencies with `npm ci --omit=dev`. Start with
 `npm run start:server`. The entry reads the root package version. The server does
-not serve the browser app; deploy only `dist/` to Pages.
+not serve the browser app; Coolify deploys the static browser artifact from `dist/`.
 
 Set `RELAY_HOST`/`RELAY_PORT` for the host's private listener, and `RELAY_ORIGINS`
 to the exact frontend origin (scheme, hostname, port; no path). Forward `/relay`
@@ -21,12 +21,13 @@ Compression is disabled; enforce limits at least as strict as the documented
 server ceilings where the hosting platform allows it. The process defaults and
 complete environment list are in [relay operation](relay.md).
 
-Set the repository's public Actions variable `VITE_RELAY_URL` to the final
-`wss://…/relay` endpoint before a Pages build. The build job passes this optional
-variable to Vite. No value leaves local mode available with online setup disabled.
+Set `VITE_RELAY_URL` to the final `wss://…/relay` endpoint in Coolify's browser
+build environment before building the app. CI separately accepts the repository's
+public Actions variable of the same name for its validation build. No value
+leaves local mode available with online setup disabled.
 This URL is public bundle configuration, not a secret; it must contain no userinfo,
 query or fragment. Changing it requires rebuilding the browser artifact. No
-repository variable has been set by this implementation.
+repository or hosting setting is provisioned by the build itself.
 
 ## Operate and verify
 
@@ -40,7 +41,8 @@ the settings already supported by the server.
 Run the [release gate](online-acceptance.md) against the local artifact first, then
 validate HTTPS/WSS, exact-origin access and two independent networks on the actual
 host. Public publication, account actions and paid hosting are separate decisions.
-Do not infer deployment completion from passing local tests or a Pages build.
+Verify the deployed browser app and relay directly; passing CI checks alone does
+not establish deployment completion.
 
 ## Restart, rollback and incompatibility
 

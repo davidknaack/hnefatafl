@@ -31,8 +31,9 @@ The NodeNext server build emits `server/` and engine-independent `shared/` modul
 under ignored `dist-server/`. Keep that directory beside the root `package.json`
 and installed production dependencies when running it. `start:server` uses the
 compiled entry and reads the package version; rebuild after source changes.
-The browser build remains in `dist/`. CI builds both, but only uploads the browser
-artifact to Pages. No server hosting is configured.
+The browser build remains in `dist/`. CI validates both builds. Coolify deploys
+the browser app at `https://tafl.ac0kg.org/`; the relay is a separate Node service.
+See [relay deployment](relay-deployment.md) for its hosting requirements.
 
 ## Debug UI setup
 
