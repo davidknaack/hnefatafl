@@ -6,11 +6,8 @@ harness in `src/ui`, bundled with Vite. Read the
 [README](../README.md) for current rules, API, notation, and layout semantics.
 Use source and configuration to verify these notes when making changes.
 
-The [September 5, 2026 review](../docs/project-review-2026-09-05.md) records the
-baseline, defects B1–B8, tooling issue T1, and work packages W1–W8. W1 is
-documentation only. Preserve the distinction between behavior-preserving
-extraction and selected functional/API corrections; do not fix deferred defects
-incidentally or encode known bad behavior as the desired rules.
+Use the current rule and behavior documentation linked from README when changing
+the engine. Keep implementation decisions grounded in the current source and tests.
 
 ## Commands and runtime
 
@@ -31,8 +28,8 @@ so no compatibility shim is needed.
 | `npm run format` | Format tooling/configuration files |
 | `npm run format:check` | Check tooling/configuration formatting without writing |
 | `npm run build` | Vite browser build into ignored `dist/` |
-| `npm run dev` | Development server; normally `http://localhost:5173/hnefatafl/` |
-| `npm run preview` | Serve an existing build; normally `http://localhost:4173/hnefatafl/` |
+| `npm run dev` | Development server; normally `http://localhost:5173/` |
+| `npm run preview` | Serve an existing build; normally `http://localhost:4173/` |
 
 Vite may choose a different port when one is occupied. `npm run repomix` runs
 `npx repomix@latest`; it is an optional repository export, not validation.
@@ -155,7 +152,7 @@ generation guards, JSON version/bounds, replay validation of every branch, and
 the standard-text export when no variants exist. See `docs/game-review.md`.
 `bindCommands` returns UI cleanup and does not reset the bound game. The caller
 owns session disposal. Session commands carry the observed generation; subscribers
-drive rendering. See README and `docs/online-play-progress.md` for the contract.
+drive rendering. See README and `docs/online-session.md` for the contract.
 
 P4's relay must not import the engine or client session code, retain peer payloads,
 or infer moves/outcomes. Sender identity comes from socket membership; reconnect
@@ -243,7 +240,7 @@ migrated. No framework rewrite or Rust-rule port is implied by the work packages
 
 Use the review's acceptance criteria and reproduction fixtures for selected
 fixes. Parser tests cover strict syntax, indexed failures, and serialization.
-P8 provides a browser-invoked acceptance runner at `/hnefatafl/acceptance.html`
+The browser-invoked acceptance runner is available at `/acceptance.html`
 on the Vite development server. Follow [the acceptance guide](../docs/online-acceptance.md)
 for the local relay setup and manual release gate. The runner uses actual UI
 bindings with isolated storage, is excluded from `dist/`, and does not run in
@@ -252,12 +249,10 @@ public contracts.
 
 ## Deployment
 
-[deploy.yml](workflows/deploy.yml) runs `npm ci`, type and tooling-format checks,
-tests, and browser/server builds on pushes to
-`main` and pull requests targeting `main`, then uploads `dist/` as a Pages artifact.
-The deploy job requires `github.ref == 'refs/heads/main'`; pull requests validate
-but do not deploy. There is no `workflow_dispatch` trigger. The application base
-path is `/hnefatafl/`, configured in `vite.config.ts`.
+[ci.yml](workflows/ci.yml) runs `npm ci`, type and tooling-format checks, tests,
+and browser/server builds on pushes to `main` and pull requests targeting `main`.
+It validates changes only; Coolify deploys the browser app at
+`https://tafl.ac0kg.org/`. The Vite application base is `/`.
 
 The browser build receives optional public Actions variable `VITE_RELAY_URL`.
 See [relay deployment](../docs/relay-deployment.md) for the separate single-process

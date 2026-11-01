@@ -88,7 +88,7 @@ for endpoints, resource limits, reconnect behavior and restart limitations.
 P8 adds a repeatable local [browser acceptance runner](docs/online-acceptance.md)
 and [deployment handoff](docs/relay-deployment.md). The runner exercises the actual
 UI against a local relay with isolated test storage; it is browser-invoked and
-excluded from the production build. Pages builds accept the optional public
+excluded from the production build. CI builds accept the optional public
 repository Actions variable `VITE_RELAY_URL`. Public relay hosting is not yet deployed.
 
 ## Current rules and behavior
