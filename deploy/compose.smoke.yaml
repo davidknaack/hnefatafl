@@ -1,0 +1,8 @@
+# Local/CI-only port publication. Coolify uses compose.yaml alone.
+services:
+  web:
+    ports:
+      - "127.0.0.1:8080:80"
+  relay:
+    environment:
+      SERVICE_URL_WEB: http://127.0.0.1:8080

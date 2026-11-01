@@ -89,7 +89,9 @@ P8 adds a repeatable local [browser acceptance runner](docs/online-acceptance.md
 and [deployment handoff](docs/relay-deployment.md). The runner exercises the actual
 UI against a local relay with isolated test storage; it is browser-invoked and
 excluded from the production build. CI builds accept the optional public
-repository Actions variable `VITE_RELAY_URL`. Public relay hosting is not yet deployed.
+repository Actions variable `VITE_RELAY_URL`. The container build uses `/relay`
+for same-origin online play, including isolated PR previews. See the
+[Coolify deployment guide](docs/relay-deployment.md) for setup and verification.
 
 ## Current rules and behavior
 
@@ -489,7 +491,9 @@ Do not infer the intended variant from the Rust reference project.
 The package is marked `private` and has no library entry point. An engine
 distribution should wait until reuse is explicitly in scope.
 
-GitHub Actions runs installation, type and formatting checks, tests, and the build
+GitHub Actions runs installation, type and formatting checks, tests, both builds,
+and a real Nginx/WebSocket container smoke test
 for pushes to `main` and pull requests targeting `main`. It does not deploy the
-site. Coolify hosts the browser app at <https://tafl.ac0kg.org/> and creates preview
+site. The Git-backed Compose configuration serves the static client and relay
+together; Coolify hosts the browser app at <https://tafl.ac0kg.org/> and creates preview
 deployments for pull requests.

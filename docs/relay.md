@@ -31,8 +31,9 @@ The NodeNext server build emits `server/` and engine-independent `shared/` modul
 under ignored `dist-server/`. Keep that directory beside the root `package.json`
 and installed production dependencies when running it. `start:server` uses the
 compiled entry and reads the package version; rebuild after source changes.
-The browser build remains in `dist/`. CI validates both builds. Coolify deploys
-the browser app at `https://tafl.ac0kg.org/`; the relay is a separate Node service.
+The browser build remains in `dist/`. CI validates both builds and the Compose
+stack. Coolify serves the static client and a separate Node container together
+at `https://tafl.ac0kg.org/`, with WSS on `/relay`.
 See [relay deployment](relay-deployment.md) for its hosting requirements.
 
 ## Debug UI setup
@@ -67,8 +68,8 @@ Replacement/continuation/leave actions ask for confirmation when appropriate.
 P7 saves online recovery data in one localStorage slot per origin and replays it
 before refresh/resume. Check the displayed save status; failures preserve the
 in-memory game but require Copy Game for unsaved moves. See [browser recovery](browser-recovery.md).
-Public hosting and online integration into the new production client remain
-later work. See [the local client milestone](production-client.md).
+The production client also supports online rooms. See
+[production online play](production-online-client.md).
 
 ## Configuration
 
@@ -79,6 +80,8 @@ port 0 selects an ephemeral port. The process fails startup for invalid settings
 | --- | --- | --- |
 | `RELAY_HOST` | `127.0.0.1` | Bind address |
 | `RELAY_PORT` | `8787` | TCP port, 0–65535 |
+| `RELAY_PUBLIC_URL` | unset | Optional public HTTP(S) web URL; its exact origin is allowed when `RELAY_ORIGINS` is unset |
+| `SERVICE_URL_WEB` | unset | Coolify-generated production/preview web URL, used when `RELAY_PUBLIC_URL` is unset |
 | `RELAY_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | Comma-separated exact browser origins; empty rejects all browser origins |
 | `RELAY_MAX_CONNECTIONS` | `250` | Concurrent WebSocket cap |
 | `RELAY_MAX_ROOMS` | `100` | In-memory room cap |
@@ -94,7 +97,9 @@ Expiry and unjoined-connection cleanup run at heartbeat intervals. Requests also
 sweep expired rooms before handling. A live player prevents idle expiry; absolute
 expiry always applies. An unjoined connection that responds to pings still times
 out. Browser origins include scheme and port, without paths or trailing slashes.
-Clients without an Origin header are allowed for native clients and diagnostics;
+`NODE_ENV=production` requires explicit origins or a valid public URL; it never
+falls back to development origins. Explicit `RELAY_ORIGINS` takes precedence,
+including an empty list. Clients without an Origin header are allowed for native clients and diagnostics;
 the allowlist is not authentication. Malformed requests consume the rate budget.
 
 For PowerShell, for example:

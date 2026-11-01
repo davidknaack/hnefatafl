@@ -8,7 +8,21 @@ export function configFromEnv(env: NodeJS.ProcessEnv, version: string): RelayOpt
         if (!env[name]!.trim() || !Number.isSafeInteger(value) || value < min) throw new Error(`Invalid ${name}`)
         return value
     }
-    const origins = env.RELAY_ORIGINS === undefined ? defaultRelayOptions.allowedOrigins
+    // Coolify injects SERVICE_URL_WEB for the current deployment, including PRs.
+    // Read the generated value directly rather than interpolating a stored
+    // production URL into another variable before preview generation.
+    const publicUrl = env.RELAY_PUBLIC_URL ?? env.SERVICE_URL_WEB
+    let publicOrigin: string | undefined
+    if (env.RELAY_ORIGINS === undefined && publicUrl) {
+        const url = new URL(publicUrl)
+        if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password ||
+            url.pathname !== '/' || url.search || url.hash) throw new Error('Invalid relay public URL')
+        publicOrigin = url.origin
+    }
+    if (env.RELAY_ORIGINS === undefined && !publicOrigin && env.NODE_ENV === 'production') {
+        throw new Error('Production relay requires RELAY_ORIGINS, RELAY_PUBLIC_URL or SERVICE_URL_WEB')
+    }
+    const origins = env.RELAY_ORIGINS === undefined ? publicOrigin ? [publicOrigin] : defaultRelayOptions.allowedOrigins
         : env.RELAY_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)
     for (const origin of origins) {
         const url = new URL(origin)
