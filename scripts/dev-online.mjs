@@ -17,7 +17,7 @@ const commands = {
         '--preserveWatchOutput',
     ],
     relay: ['--watch', 'dist-server/server/main.js'],
-    client: ['node_modules/vite/bin/vite.js', '--open', '/hnefatafl/debug.html'],
+    client: ['node_modules/vite/bin/vite.js', '--open', '/debug.html'],
 }
 
 function start(args) {

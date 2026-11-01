@@ -14,7 +14,7 @@ export default defineConfig({
         __HNEFATAFL_CLIENT_VERSION__: JSON.stringify(version),
     },
     root: 'public',
-    base: '/hnefatafl/',
+    base: '/',
     server: {
         open: true,
     },

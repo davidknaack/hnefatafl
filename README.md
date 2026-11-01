@@ -1,6 +1,6 @@
 # Hnefatafl Game Engine
 
-**[Play the game online](https://davidknaack.github.io/hnefatafl/)**
+**[Play the game online](https://tafl.ac0kg.org/)**
 
 A browser-based Hnefatafl game with a synchronous TypeScript engine and an
 interactive 11×11 board. Attackers move first. Defenders win by moving the king
@@ -25,7 +25,7 @@ npm run dev
 ```
 
 Vite opens the browser and normally serves the app at
-`http://localhost:5173/hnefatafl/`. It may select another port if that one is busy.
+`http://localhost:5173/`. It may select another port if that one is busy.
 
 The default entry is the production client's **local two-player game**. Select a
 piece and a highlighted destination to move. It supports keyboard navigation,
@@ -52,7 +52,7 @@ anonymous comments use `{text}`. Mentions such as `[Bob]` are colored, and
 references such as `<D3>` and `<D1-D4>` preview on the board without playing.
 
 The existing local/online development harness is preserved at
-`http://localhost:5173/hnefatafl/debug.html`. Browser checks are available at
+`http://localhost:5173/debug.html`. Browser checks are available at
 `client-acceptance.html` (local production client) and `acceptance.html` (online
 harness, requires a relay). All three developer entries are excluded from the
 production build. See [local client development and acceptance](docs/production-client.md).
@@ -69,7 +69,7 @@ production build. See [local client development and acceptance](docs/production-
 | `npm run format` | Format tooling/configuration files with pinned Prettier |
 | `npm run format:check` | Check tooling/configuration formatting without writing |
 | `npm run build` | Bundle the browser app into ignored `dist/` output |
-| `npm run preview` | Serve the existing build, normally at `http://localhost:4173/hnefatafl/` |
+| `npm run preview` | Serve the existing build, normally at `http://localhost:4173/` |
 
 The browser build does not perform TypeScript checking; run `npm run typecheck` separately.
 CI runs type checking, formatting checks, tests, and both builds. Browser code in
