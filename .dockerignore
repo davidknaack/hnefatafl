@@ -1,0 +1,10 @@
+.git
+.github
+node_modules
+dist
+dist-server
+.env*
+docs
+**/*.test.ts
+src/test
+repomix-output.xml

@@ -1,0 +1,38 @@
+services:
+  web:
+    build:
+      context: .
+      target: web
+    expose:
+      - "80"
+    depends_on:
+      relay:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  relay:
+    build:
+      context: .
+      target: relay
+    environment:
+      # Coolify replaces this with the current web service URL, including PRs.
+      # Locally, set SERVICE_URL_WEB to the public URL of your published web port.
+      SERVICE_URL_WEB: ${SERVICE_URL_WEB:-}
+    expose:
+      - "8787"
+    restart: unless-stopped
+    stop_grace_period: 10s
+    mem_limit: 256m
+    cpus: 0.5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

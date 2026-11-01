@@ -42,3 +42,36 @@ jobs:
 
       - name: Build relay
         run: npm run build:server
+
+  deployment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install smoke test dependencies
+        run: npm ci --omit=dev --ignore-scripts
+
+      - name: Validate Compose
+        run: docker compose -f compose.yaml -f deploy/compose.smoke.yaml config --quiet
+
+      - name: Build and start deployment
+        run: docker compose -f compose.yaml -f deploy/compose.smoke.yaml up --build --detach --wait --wait-timeout 120
+
+      - name: Check static client and proxied relay
+        run: node scripts/smoke-deployment.mjs
+
+      - name: Deployment diagnostics
+        if: failure()
+        run: docker compose -f compose.yaml -f deploy/compose.smoke.yaml logs --no-color --tail 100
+
+      - name: Stop deployment
+        if: always()
+        run: docker compose -f compose.yaml -f deploy/compose.smoke.yaml down --volumes
