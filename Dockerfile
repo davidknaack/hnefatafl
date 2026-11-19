@@ -29,7 +29,7 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
     CMD node -e "fetch('http://127.0.0.1:8787/health').then(async r => { if (!r.ok || (await r.json()).status !== 'ok') process.exit(1) }).catch(() => process.exit(1))"
 CMD ["node", "dist-server/server/main.js"]
 
-FROM nginx:1.28-alpine AS web
+FROM nginx:1.30-alpine AS web
 ENV SERVICE_NAME_RELAY=relay NGINX_ENVSUBST_FILTER=SERVICE_NAME_RELAY
 COPY deploy/nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=web-build /app/dist /usr/share/nginx/html
